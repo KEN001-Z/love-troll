@@ -1,8 +1,24 @@
-import { getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
+import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const friendlyError = error => error?.message || 'Something went wrong. Please try again.';
+
+function friendlyError(error) {
+  const message = error?.message || '';
+  if (error instanceof TypeError || /failed to fetch|networkerror|network request failed/i.test(message)) {
+    return 'VYBE could not reach the server. Check your internet connection and try again.';
+  }
+  if (error?.code === 'email_not_confirmed' || /email not confirmed/i.test(message)) {
+    return 'Confirm your email address from the link we sent you, then try logging in again.';
+  }
+  if (/invalid login credentials/i.test(message)) {
+    return 'That email or password does not match an account. Check your details or reset your password.';
+  }
+  if (/user already registered/i.test(message)) {
+    return 'An account with that email already exists. Log in or reset your password instead.';
+  }
+  return message || 'Something went wrong. Please try again.';
+}
 
 function setStatus(status, message, state = 'fail') {
   if (!status) return;
@@ -14,6 +30,24 @@ function setStatus(status, message, state = 'fail') {
 function setBusy(button, busy, label) {
   button.disabled = busy;
   button.textContent = busy ? 'Just a sec…' : label;
+  button.setAttribute('aria-busy', String(busy));
+}
+
+async function getAuthenticatedDestination(supabase, user) {
+  const { data: profile, error } = await supabase.from('profiles')
+    .select('onboarding_completed')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return profile?.onboarding_completed ? 'home.html' : 'onboarding.html';
+}
+
+async function ensureUserProfile(supabase, user) {
+  const { error } = await supabase.from('profiles').upsert({
+    id: user.id,
+    display_name: user.user_metadata?.display_name || null
+  }, { onConflict: 'id', ignoreDuplicates: true });
+  if (error) throw error;
 }
 
 function validate(form) {
@@ -96,12 +130,15 @@ async function submitAuthForm(form, supabase) {
   const status = $('.status', form);
   const button = $('[type="submit"]', form);
   const initialLabel = button.textContent;
+  let submitting = false;
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
+    if (submitting) return;
     status.hidden = true;
     if (!validate(form)) return;
 
+    submitting = true;
     setBusy(button, true, initialLabel);
     try {
       if (kind === 'signup') {
@@ -110,15 +147,18 @@ async function submitAuthForm(form, supabase) {
           password: $('[name="password"]', form).value,
           options: {
             data: { display_name: $('[name="name"]', form).value.trim() },
-            emailRedirectTo: new URL('login.html', window.location.href).toString()
+            emailRedirectTo: new URL('onboarding.html', window.location.href).toString()
           }
         });
         if (error) throw error;
         if (data.session) {
-          window.location.assign('onboarding.html');
+          const user = data.user || data.session.user;
+          if (!user) throw new Error('Your account was created, but we could not start your session. Please log in to continue.');
+          await ensureUserProfile(supabase, user);
+          window.location.replace('onboarding.html');
           return;
         }
-        setStatus(status, 'Account created. Check your email to confirm your address, then log in to finish setting up your VYBE.', 'ok');
+        setStatus(status, 'Check your email to confirm your account. The confirmation link will take you to onboarding.', 'ok');
       } else if (kind === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: $('[name="email"]', form).value.trim(),
@@ -128,7 +168,9 @@ async function submitAuthForm(form, supabase) {
         if (!data.session) {
           throw new Error('We couldn’t start your session. Confirm your email address, then try logging in again.');
         }
-        window.location.assign('home.html');
+        const user = data.user || data.session.user;
+        if (!user) throw new Error('Your session started, but we could not load your account. Please try again.');
+        window.location.replace(await getAuthenticatedDestination(supabase, user));
       } else if (kind === 'reset') {
         const { error } = await supabase.auth.resetPasswordForEmail(
           $('[name="email"]', form).value.trim(),
@@ -143,6 +185,7 @@ async function submitAuthForm(form, supabase) {
       status.focus();
     } finally {
       setBusy(button, false, initialLabel);
+      submitting = false;
     }
   });
 }
@@ -151,8 +194,10 @@ async function submitNewPassword(form, supabase) {
   const status = $('.status', form);
   const button = $('[type="submit"]', form);
   const initialLabel = button.textContent;
+  let submitting = false;
   form.addEventListener('submit', async event => {
     event.preventDefault();
+    if (submitting) return;
     const password = $('[name="new-password"]', form);
     const confirm = $('[name="confirm-password"]', form);
     status.hidden = true;
@@ -167,6 +212,7 @@ async function submitNewPassword(form, supabase) {
       return;
     }
 
+    submitting = true;
     setBusy(button, true, initialLabel);
     try {
       const { error } = await supabase.auth.updateUser({ password: password.value });
@@ -178,6 +224,7 @@ async function submitNewPassword(form, supabase) {
       status.focus();
     } finally {
       setBusy(button, false, initialLabel);
+      submitting = false;
     }
   });
 }
@@ -192,12 +239,15 @@ async function initializeAuthForms(supabase) {
     }
   }
 
-  if ($('form[data-form="login"]')) {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (session) {
-      window.location.replace('home.html');
+  const loginForm = $('form[data-form="login"]');
+  if (loginForm) {
+    const { user, recovered } = await getAuthenticatedUser(supabase);
+    if (user) {
+      window.location.replace(await getAuthenticatedDestination(supabase, user));
       return;
+    }
+    if (recovered || new URLSearchParams(window.location.search).get('session') === 'expired') {
+      setStatus($('.status', loginForm), 'Your saved session expired. Log in again to continue.', 'pending');
     }
   }
 
@@ -250,10 +300,9 @@ async function initializeOnboarding(supabase) {
     navigationControls.forEach(control => { control.disabled = pending; });
   };
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
+  const { user, recovered } = await getAuthenticatedUser(supabase);
   if (!user) {
-    window.location.replace('login.html');
+    window.location.replace(recovered ? 'login.html?session=expired' : 'login.html');
     return;
   }
   const supabaseUser = user;
@@ -262,6 +311,7 @@ async function initializeOnboarding(supabase) {
     .eq('id', user.id)
     .maybeSingle();
   if (profileError) throw profileError;
+  if (!profile) await ensureUserProfile(supabase, user);
   if (profile) {
     answers.relationship_status = profile.relationship_status;
     answers.food_personality = profile.food_personality;
@@ -331,6 +381,12 @@ async function initializeOnboarding(supabase) {
         relationship_status: answers.relationship_status,
         food_personality: answers.food_personality,
         looking_for: answers.looking_for,
+        matchmaking_enabled: Boolean(
+          complete &&
+          answers.relationship_status &&
+          ['single', 'complicated', 'cruise'].includes(answers.relationship_status) &&
+          answers.looking_for
+        ),
         vibe: answers.vibe,
         interests: answers.interests,
         onboarding_completed: complete,
@@ -344,9 +400,7 @@ async function initializeOnboarding(supabase) {
     return write.then(() => {
       status.hidden = true;
       if (complete) {
-        $('.onboarding-questions', app).hidden = true;
-        $('.onboarding-done', app).hidden = false;
-        $('.onboarding-done h1').focus();
+        window.location.replace('home.html');
       }
       return true;
     }).catch(error => {
@@ -417,8 +471,7 @@ async function initializeOnboarding(supabase) {
 
   render();
   if (profile?.onboarding_completed) {
-    $('.onboarding-questions', app).hidden = true;
-    $('.onboarding-done', app).hidden = false;
+    window.location.replace('home.html');
   }
 }
 
@@ -430,9 +483,8 @@ async function initializeLanding(supabase) {
     guestControls.forEach(element => { element.hidden = Boolean(session); });
     userControls.forEach(element => { element.hidden = !session; });
   };
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  applySession(session);
+  const { user } = await getAuthenticatedUser(supabase);
+  applySession(user);
   supabase.auth.onAuthStateChange((_event, updatedSession) => applySession(updatedSession));
 
   if (new URLSearchParams(window.location.search).get('logout') === 'unconfirmed') {

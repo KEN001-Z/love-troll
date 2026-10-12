@@ -21,6 +21,40 @@ export function getSupabaseClient() {
   return client;
 }
 
+function isRejectedSessionError(error) {
+  return error?.status === 401 ||
+    error?.code === 'bad_jwt' ||
+    (error?.status === 400 &&
+      /refresh token/i.test(error?.message || ''));
+}
+
+function getAuthStorageKey() {
+  return `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
+}
+
+async function clearRejectedSession(supabase) {
+  const sessionKey = getAuthStorageKey();
+  window.localStorage.removeItem(sessionKey);
+  window.localStorage.removeItem(`${sessionKey}-user`);
+
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (session) throw new Error('We couldn’t clear the expired session. Please clear this site’s saved data and try again.');
+}
+
+export async function getAuthenticatedUser(supabase) {
+  const hadStoredSession = Boolean(window.localStorage.getItem(getAuthStorageKey()));
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (!error) return { user, recovered: false };
+  if (error?.name === 'AuthSessionMissingError') {
+    return { user: null, recovered: hadStoredSession };
+  }
+  if (!isRejectedSessionError(error)) throw error;
+
+  await clearRejectedSession(supabase);
+  return { user: null, recovered: true };
+}
+
 export async function signOutCurrentSession(supabase) {
   let signOutError;
   try {
