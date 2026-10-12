@@ -177,7 +177,8 @@ function bindGoogleAuth(form, supabase) {
   if (!button) return;
 
   const status = $('.status', form);
-  const initialLabel = button.textContent;
+  const label = $('.google-label', button);
+  const initialLabel = label.textContent;
   let signingIn = false;
 
   button.addEventListener('click', async () => {
@@ -186,7 +187,9 @@ function bindGoogleAuth(form, supabase) {
     if (form.dataset.form === 'signup' && !validateGoogleSignup(form)) return;
 
     signingIn = true;
-    setBusy(button, true, initialLabel);
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    label.textContent = 'Connecting to Google…';
     try {
       const redirectTo = new URL(
         form.dataset.form === 'signup' ? 'onboarding.html' : 'login.html',
@@ -201,7 +204,9 @@ function bindGoogleAuth(form, supabase) {
       setStatus(status, friendlyError(error));
       status.focus();
     } finally {
-      setBusy(button, false, initialLabel);
+      button.disabled = false;
+      button.setAttribute('aria-busy', 'false');
+      label.textContent = initialLabel;
       signingIn = false;
     }
   });
