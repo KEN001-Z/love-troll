@@ -20,13 +20,40 @@
 <main class="auth">
 <section class="pane"><a class="logo" href="index.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
 <h1>Ah, you don come back! 😂</h1><p class="sub">Your people, your gist, your VYBE. Oya, let's get you back in.</p>
-<form class="form" data-form="login" novalidate><div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email"><span class="err"></span></div><div class="field"><label for="password">Password</label><div class="pw"><input id="password" name="password" type="password" autocomplete="current-password"><button type="button" aria-label="Show password" aria-pressed="false">Show</button></div><span class="err"></span></div><div class="row"><span></span><a class="link" href="reset.html">Forgot password?</a></div>
+<form class="form" data-form="login" method="post" novalidate>
+<button class="google-auth-button" type="button" data-google-auth><span class="google-mark" aria-hidden="true">G</span>Continue with Google</button>
+<div class="auth-divider" aria-hidden="true"><span>or continue with email</span></div>
+<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" inputmode="email"><span class="err"></span></div><div class="field"><label for="password">Password</label><div class="pw"><input id="password" name="password" type="password" autocomplete="current-password"><button type="button" aria-label="Show password" aria-pressed="false">Show</button></div><span class="err"></span></div><div class="row"><span></span><a class="link" href="reset.html">Forgot password?</a></div>
 <button class="btn block" type="submit">Log in</button>
 <div class="status" role="status" aria-live="polite" tabindex="-1" hidden></div></form>
 <p>New here? <a class="link" href="signup.html">Create an account</a></p></section>
 <aside class="art login" aria-hidden="true"><span class="dot" style="width:200px;height:200px;background:#FFD166;right:-50px;top:-50px"></span><span class="dot" style="width:120px;height:120px;background:#BDEBD7;left:8%;bottom:8%"></span>
 <h2>Wetin dey happen? Your gist don pile up.</h2><div><span class="chip" style="--rot:-4deg;background:#fff">You don land</span><span class="chip" style="--rot:3deg;background:#FFD166">Make we hear your side</span><span class="chip" style="--rot:-2deg;background:#BDEBD7">Who send you?</span></div></aside>
 </main>
+<script>
+(() => {
+  const url = new URL(window.location.href);
+  const hadCredentials = url.searchParams.has('email') || url.searchParams.has('password');
+  if (hadCredentials) {
+    url.searchParams.delete('email');
+    url.searchParams.delete('password');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  const form = document.querySelector('form[data-form="login"]');
+  const status = document.querySelector('.status');
+  if (window.location.port === '5500') {
+    status.hidden = false;
+    status.className = 'status pending';
+    status.textContent = 'This page is being served by Live Server, which cannot load VYBE’s Supabase client. Run npm run dev and open the Vite URL (usually http://localhost:5173/login.html). Enter your details in the form there.';
+    form.addEventListener('submit', event => event.preventDefault());
+  } else if (hadCredentials) {
+    status.hidden = false;
+    status.className = 'status pending';
+    status.textContent = 'For your security, password details in the URL were removed. Enter your email and password in the form.';
+  }
+})();
+</script>
 <script type="module" src="auth.js"></script>
 </body>
 </html>

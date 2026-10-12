@@ -1,4 +1,4 @@
-import { getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
+import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const status = $('[data-home-status]');
@@ -49,8 +49,16 @@ const labels = {
 let supabase;
 let currentUserId;
 let ownInterests = [];
+let ownMatchmakingEnabled = false;
 let candidates = [];
 const pendingActions = new Set();
+const DEMO_NAME_PATTERNS = [/^test\s*user$/i, /^demo/i, /^sample/i, /^guest/i, /^user$/i];
+
+function sanitizeName(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return '';
+  return DEMO_NAME_PATTERNS.some(pattern => pattern.test(trimmed)) ? '' : trimmed;
+}
 
 function makeElement(tag, className, text) {
   const element = document.createElement(tag);
@@ -82,13 +90,24 @@ function renderCandidates() {
   if (!visible.length) {
     setSectionMessage(peopleMessage, '');
     const empty = makeElement('li', 'people-empty');
-    empty.append(
-      makeElement('p', 'home-eyebrow', candidates.length ? 'THAT’S EVERYONE FOR NOW' : 'YOUR PEOPLE, YOUR PACE'),
-      makeElement('h3', '', candidates.length ? 'You’re all caught up.' : 'Your VYBE story starts here.'),
-      makeElement('p', '', candidates.length
+    const campusText = !ownMatchmakingEnabled
+      ? 'Matchmaking is off. You can switch it on from your profile whenever you’re ready to meet people.'
+      : candidates.length
         ? 'You’ve seen everyone in this batch. Check back later as more people join.'
-        : 'No completed profiles are available just yet. As people finish setting up, they’ll show here.')
+        : 'The campus is quiet for now, but the vibe is still alive. Come back for the next wave of people and moments.';
+    const title = !ownMatchmakingEnabled
+      ? 'Your call, no pressure.'
+      : candidates.length ? 'You’re all caught up.' : 'Your VYBE story starts here.';
+    empty.append(
+      makeElement('p', 'home-eyebrow', !ownMatchmakingEnabled ? 'YOUR PEOPLE, YOUR PACE' : candidates.length ? 'THAT’S EVERYONE FOR NOW' : 'YOUR PEOPLE, YOUR PACE'),
+      makeElement('h3', '', title),
+      makeElement('p', '', campusText)
     );
+    if (!ownMatchmakingEnabled) {
+      const profileLink = makeElement('a', 'text-link', 'Update your profile →');
+      profileLink.href = 'profile.html';
+      empty.append(profileLink);
+    }
     suggestionList.append(empty);
     return;
   }
@@ -98,7 +117,7 @@ function renderCandidates() {
 
 function renderCandidate(candidate) {
   const profile = candidate.profile;
-  const name = profile.display_name?.trim() || 'VYBE member';
+  const name = sanitizeName(profile.display_name) || 'VYBE member';
   const card = makeElement('li', 'suggestion-card');
   card.dataset.profileId = profile.id;
 
@@ -110,7 +129,11 @@ function renderCandidate(candidate) {
   const body = makeElement('div', 'suggestion-body');
   const heading = makeElement('div', 'suggestion-heading');
   const headingInfo = makeElement('div');
-  headingInfo.append(makeElement('h3', 'suggestion-name', name));
+  const profileLink = makeElement('a', 'suggestion-name', name);
+  profileLink.href = `profile.html?id=${encodeURIComponent(profile.id)}`;
+  const profileHeading = makeElement('h3');
+  profileHeading.append(profileLink);
+  headingInfo.append(profileHeading);
   headingInfo.append(makeElement('p', 'suggestion-intention', `Here for ${labels.lookingFor[profile.looking_for] || 'new connections'}`));
   heading.append(headingInfo);
   body.append(heading);
@@ -134,6 +157,8 @@ function renderCandidate(candidate) {
   }
 
   const actions = makeElement('div', 'suggestion-actions');
+  const viewProfile = makeElement('a', 'suggestion-profile-link', 'View profile');
+  viewProfile.href = `profile.html?id=${encodeURIComponent(profile.id)}`;
   const skip = makeElement('button', 'suggestion-skip', 'Not now');
   skip.type = 'button';
   skip.dataset.skip = '';
@@ -142,24 +167,26 @@ function renderCandidate(candidate) {
   like.type = 'button';
   like.dataset.like = '';
   like.setAttribute('aria-label', `Send interest to ${name}`);
-  actions.append(skip, like);
+  actions.append(viewProfile, skip, like);
   body.append(actions);
   card.append(visual, body);
   return card;
 }
 
 async function loadSuggestions() {
+  if (!ownMatchmakingEnabled) {
+    candidates = [];
+    setSectionMessage(peopleMessage, '');
+    renderCandidates();
+    return;
+  }
   setSectionMessage(peopleMessage, 'Finding people you might click with…');
-  const { data, error } = await supabase.from('profiles')
-    .select('id, display_name, relationship_status, food_personality, looking_for, vibe, interests')
-    .eq('onboarding_completed', true)
-    .in('relationship_status', ['single', 'complicated', 'cruise'])
-    .neq('id', currentUserId)
-    .order('created_at', { ascending: false })
-    .limit(40);
+  const { data, error } = await supabase.rpc('discover_profiles');
   if (error) throw error;
 
-  candidates = (data || []).map(profile => ({ profile, skipped: false, liked: false }));
+  candidates = (data || [])
+    .filter(profile => sanitizeName(profile.display_name) && profile.id !== currentUserId)
+    .map(profile => ({ profile, skipped: false, liked: false }));
   setSectionMessage(peopleMessage, '');
   renderCandidates();
 }
@@ -185,7 +212,7 @@ function renderConnections(matches, profiles) {
   }
 
   visibleMatches.forEach(({ profile, createdAt }) => {
-    const name = profile.display_name?.trim() || 'VYBE member';
+    const name = sanitizeName(profile.display_name) || 'VYBE member';
     const item = makeElement('li', 'connection-item');
     item.append(makeElement('span', 'connection-avatar', name.slice(0, 1).toUpperCase()));
     const description = makeElement('span', 'connection-description');
@@ -214,9 +241,7 @@ async function loadConnections() {
     return;
   }
 
-  const { data: profiles, error: profilesError } = await supabase.from('profiles')
-    .select('id, display_name')
-    .in('id', otherIds);
+  const { data: profiles, error: profilesError } = await supabase.rpc('get_profile_previews', { target_ids: otherIds });
   if (profilesError) throw profilesError;
   renderConnections(matches || [], profiles || []);
 }
@@ -249,11 +274,12 @@ async function handleCandidateAction(button) {
       throw new Error('VYBE confirmed a mutual interest but could not return the connection. Please refresh and check your connections.');
     }
 
+    const matchedName = sanitizeName(candidate.profile.display_name) || 'this VYBE member';
     candidate.liked = true;
     setSectionMessage(
       peopleMessage,
       result.matched
-        ? `It’s mutual with ${candidate.profile.display_name?.trim() || 'this VYBE member'}! You’re a match. 💜`
+        ? `It’s mutual with ${matchedName}! You’re a match. 💜`
         : 'Interest sent. If they’re into you too, you’ll both get a match. 💜',
       'success'
     );
@@ -283,16 +309,15 @@ async function initialize() {
 
   try {
     supabase = getSupabaseClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    const { user, recovered } = await getAuthenticatedUser(supabase);
     if (!user) {
-      window.location.replace('login.html');
+      window.location.replace(recovered ? 'login.html?session=expired' : 'login.html');
       return;
     }
     currentUserId = user.id;
 
     const { data: profile, error: profileError } = await supabase.from('profiles')
-      .select('display_name, interests, onboarding_completed')
+      .select('display_name, interests, matchmaking_enabled, onboarding_completed')
       .eq('id', user.id)
       .maybeSingle();
     if (profileError) throw profileError;
@@ -301,9 +326,10 @@ async function initialize() {
       return;
     }
     ownInterests = profile.interests || [];
+    ownMatchmakingEnabled = Boolean(profile.matchmaking_enabled);
 
-    const name = profile.display_name?.trim() || user.user_metadata?.display_name?.trim();
-    greeting.textContent = name ? `, ${name}` : '';
+    const safeName = sanitizeName(profile.display_name) || sanitizeName(user.user_metadata?.display_name);
+    greeting.textContent = safeName ? `, ${safeName}` : '';
     const results = await Promise.allSettled([loadSuggestions(), loadConnections()]);
     if (results[0].status === 'rejected') {
       setSectionMessage(peopleMessage, `We couldn’t load people to meet: ${results[0].reason.message || 'Please try again.'}`, 'error');
@@ -322,7 +348,7 @@ async function initialize() {
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
-      showStatus(`We couldn’t log you out: ${error.message || 'Please try again.'}`);
+      setStatus(`We couldn’t log you out: ${error.message || 'Please try again.'}`, 'error');
       logoutButton.disabled = false;
     }
   });
