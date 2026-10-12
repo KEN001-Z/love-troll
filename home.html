@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Home — VYBE</title>
-<meta name="description" content="Your VYBE home: meet people, find mutual connections, and catch the gist.">
+<title>VYBE — Your people, your pace</title>
+<meta name="description" content="Meet people who share your energy and find out what is coming to VYBE.">
 <meta name="theme-color" content="#FFF9F0">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -21,11 +21,9 @@
   <div class="app-header-inner">
     <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="app-nav-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a class="app-nav-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
+      <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
       <a class="app-nav-link" href="#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
-      <a class="app-nav-link" href="#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg>Connections</a>
-      <span class="app-nav-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg>Play<small>Soon</small></span>
-      <span class="app-nav-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community<small>Soon</small></span>
       <a class="app-nav-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
     <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
@@ -35,83 +33,121 @@
 <main class="home-main" id="main">
   <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>
 
-  <section class="hero-board" aria-labelledby="welcome-title">
-    <div class="hero-copy">
-      <p class="home-eyebrow">YOUR CAMPUS LANE</p>
-      <h1 id="welcome-title">Find your next good <span>vibe</span> before lecture ends.</h1>
-      <p>Low-key chemistry, good people, and the kind of campus energy that turns into plans without forcing it.</p>
-      <span class="greeting-tag" data-name-greeting></span>
-      <div class="hero-actions">
-        <a class="btn welcome-action" href="#people">Meet people</a>
-        <a class="btn alt" href="#connections">See your matches</a>
-      </div>
-      <div class="mini-metrics" aria-label="VYBE stats">
-        <div class="metric"><strong>12</strong><span>online now</span></div>
-        <div class="metric"><strong>3</strong><span>fresh today</span></div>
-        <div class="metric"><strong>1</strong><span>new plan</span></div>
+  <section class="welcome-board" aria-labelledby="welcome-title">
+    <div class="welcome-copy">
+      <p class="home-eyebrow">GOOD PEOPLE. MAD GIST. BETTER VIBES.</p>
+      <h1 id="welcome-title">Oya, welcome back<span data-name-greeting></span>.</h1>
+      <p>Meet someone new, catch up with your people, or see what the community is getting into.</p>
+      <div class="welcome-actions">
+        <a class="btn welcome-action" href="#people">Find your people <span aria-hidden="true">→</span></a>
+        <a class="text-link" href="community.html">Explore the community</a>
       </div>
     </div>
-
-    <div class="hero-visual" aria-hidden="true">
-      <div class="visual-window"></div>
-      <div class="floating-card accent-sun"><span>Campus mood</span><strong>Electric but easy</strong></div>
-      <div class="floating-card accent-purple"><span>Live now</span><strong>Good people nearby</strong></div>
-      <div class="floating-card accent-mint"><span>Tonight</span><strong>Something low-key</strong></div>
-      <div class="online-pill"><span></span>6 people in your orbit</div>
+    <div class="welcome-art" aria-hidden="true">
+      <span class="welcome-sticker sticker-yellow">Omo!</span>
+      <span class="welcome-sticker sticker-coral">Who’s your gist partner?</span>
+      <span class="welcome-sticker sticker-mint">No pressure. Just vibes.</span>
+      <span class="welcome-spark">✳</span>
     </div>
   </section>
 
-  <section class="campus-grid" aria-label="Campus vibes overview">
-    <article class="vibe-card vibe-main">
-      <p class="home-eyebrow">MOOD BOARD</p>
-      <h2>This is what the week feels like.</h2>
-      <p>From class breaks to late-night gist, it’s all a little chaotic and a lot alive.</p>
-    </article>
-    <article class="vibe-card tone-coral"><span class="vibe-kicker">Good people</span><strong>Friendly faces and familiar rhythms.</strong></article>
-    <article class="vibe-card tone-mint"><span class="vibe-kicker">Fresh finds</span><strong>New people, same energy, better stories.</strong></article>
-    <article class="vibe-card tone-yellow"><span class="vibe-kicker">Your lane</span><strong>Low pressure, high potential.</strong></article>
+  <section class="profile-progress-card" data-profile-progress hidden aria-labelledby="profile-progress-title">
+    <div class="profile-progress-gauge" data-profile-progress-gauge role="img" aria-label="Profile completion: 0%">
+      <svg viewBox="0 0 72 72" aria-hidden="true">
+        <circle class="profile-progress-track" cx="36" cy="36" r="31.5" pathLength="100"></circle>
+        <circle class="profile-progress-ring" data-profile-progress-ring cx="36" cy="36" r="31.5" pathLength="100"></circle>
+      </svg>
+      <span data-profile-progress-percent>0%</span>
+    </div>
+    <div class="profile-progress-copy">
+      <p class="home-eyebrow">PROFILE CHECK-IN</p>
+      <h2 id="profile-progress-title">Finish your profile</h2>
+      <p>Add your university and gender to complete your campus profile. You can choose “Prefer not to say” for gender.</p>
+      <ul class="profile-progress-items" aria-label="Profile details">
+        <li data-progress-university><span class="progress-item-mark" aria-hidden="true">○</span><span>University</span><span data-progress-state>Not added yet</span></li>
+        <li data-progress-gender><span class="progress-item-mark" aria-hidden="true">○</span><span>Gender</span><span data-progress-state>Not added yet</span></li>
+      </ul>
+      <p class="profile-progress-summary" data-profile-progress-summary>0 of 2 details added</p>
+    </div>
+    <a class="btn profile-progress-action" href="profile.html?edit=complete">Complete profile <span aria-hidden="true">→</span></a>
+  </section>
+
+  <section class="match-feature" aria-labelledby="match-title">
+    <div class="match-copy">
+      <p class="home-eyebrow">CONNECTIONS THAT FEEL LIKE YOU</p>
+      <h2 id="match-title">Find Your <span>Vibe.</span></h2>
+      <p>Meet people through the things you care about, the way you move, and the kind of connection you want. You set the pace.</p>
+      <div class="match-actions">
+        <a class="btn match-button" href="#people">Find my match <span aria-hidden="true">→</span></a>
+        <a class="match-secondary" href="#people">Explore people</a>
+      </div>
+      <p class="privacy-note"><span aria-hidden="true">♡</span> Your profile and interests stay in your control.</p>
+    </div>
+    <div class="match-art" aria-hidden="true">
+      <span class="match-orbit orbit-one"></span><span class="match-orbit orbit-two"></span>
+      <span class="match-face face-one">V</span><span class="match-face face-two">+</span>
+      <span class="match-caption">A little common ground<br>can go a long way.</span>
+    </div>
+  </section>
+
+  <section class="home-section feed-section" id="feed" aria-labelledby="feed-title">
+    <div class="section-title">
+      <div><p class="home-eyebrow">CAMPUS GIST, MEMES & EVERYDAY LIFE</p><h2 id="feed-title">What’s the Vibe?</h2></div>
+      <a class="text-link" href="community.html">Explore Community <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="feed-empty" role="status">
+      <div class="feed-empty-art" aria-hidden="true"><span>✳</span><span>♡</span><span>〰</span></div>
+      <div class="feed-empty-copy">
+        <p class="home-eyebrow">THE GIST STARTS HERE</p>
+        <h3>Your VYBE feed is getting ready.</h3>
+        <p>There aren’t any public posts to show yet, and post sharing isn’t live in this build. When it is, this is where campus gist, funny moments, polls, pictures and conversations will land.</p>
+        <p class="anonymous-note"><span aria-hidden="true">◉</span> Anonymous stories will be clearly marked and won’t link to a public profile.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section competition-section" aria-labelledby="competition-title">
+    <div class="competition-card">
+      <div class="competition-mark" aria-hidden="true">✷</div>
+      <div class="competition-copy">
+        <p class="home-eyebrow">MADE BY THE COMMUNITY</p>
+        <h2 id="competition-title">A little friendly competition?</h2>
+        <p>Community challenges and voting aren’t live yet. When they arrive, they’ll celebrate creativity and good energy—with clear participation rules and consent first.</p>
+      </div>
+      <a class="btn alt competition-link" href="community.html">Explore Community <span aria-hidden="true">→</span></a>
+    </div>
   </section>
 
   <section class="home-section people-section" id="people" aria-labelledby="people-title">
     <div class="section-title">
-      <div><p class="home-eyebrow">YOUR PEOPLE, YOUR PACE</p><h2 id="people-title">People you might click with</h2></div>
-      <p class="people-note">No pressure. Just good energy.</p>
+      <div><p class="home-eyebrow">MEET PEOPLE</p><h2 id="people-title">People you might click with</h2></div>
+      <p class="people-note">Real profiles. Shared interests. No pressure.</p>
     </div>
     <p class="section-message" data-people-message role="status" aria-live="polite">Looking for people you might click with…</p>
     <ul class="suggestion-list" data-suggestions aria-label="Suggested VYBE members"></ul>
+    <p class="section-message photo-message" data-people-photo-message role="status" aria-live="polite"></p>
   </section>
 
-  <div class="home-lower">
-    <section class="connections-section" id="connections" aria-labelledby="connections-title">
-      <div class="section-title">
-        <div><p class="home-eyebrow">WHEN IT’S MUTUAL</p><h2 id="connections-title">Your connections</h2></div>
-        <a class="text-link" href="#people">Meet people <span aria-hidden="true">→</span></a>
-      </div>
-      <p class="section-message" data-connections-message role="status" aria-live="polite">Checking your connections…</p>
-      <ul class="connection-list" data-connections aria-label="Your mutual connections"></ul>
-    </section>
+  <section class="home-section connections-section" id="connections" aria-labelledby="connections-title">
+    <div class="section-title">
+      <div><p class="home-eyebrow">WHEN IT’S MUTUAL</p><h2 id="connections-title">Your connections</h2></div>
+      <a class="text-link" href="#people">Meet people <span aria-hidden="true">→</span></a>
+    </div>
+    <p class="section-message" data-connections-message role="status" aria-live="polite">Checking your connections…</p>
+    <ul class="connection-list" data-connections aria-label="Your mutual connections"></ul>
+    <p class="section-message photo-message" data-connections-photo-message role="status" aria-live="polite"></p>
+  </section>
 
-    <aside class="conversation-card" aria-labelledby="conversation-title">
-      <p class="home-eyebrow">A LITTLE HELP WITH THE FIRST “HEY”</p>
-      <h2 id="conversation-title">Try this conversation starter</h2>
-      <p class="conversation-prompt">“What’s your campus green flag?”</p>
-      <a class="text-link" href="#people">Find someone to ask <span aria-hidden="true">→</span></a>
-    </aside>
-  </div>
-
-  <div class="coming-soon-strip" aria-label="More of VYBE coming soon">
-    <p>More of VYBE is on the way</p>
-    <span>Play <small>Coming soon</small></span>
-    <span>Community <small>Coming soon</small></span>
-  </div>
+  <aside class="messages-note" aria-label="Private messages">
+    <span class="messages-icon" aria-hidden="true">↗</span>
+    <div><strong>Good conversations deserve a little privacy.</strong><p>Private messaging isn’t available yet. Your mutual connections are here whenever you want to catch up.</p></div>
+  </aside>
 </main>
 
 <nav class="app-mobile-nav" aria-label="Main navigation">
-  <a class="app-mobile-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="app-mobile-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
+  <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
   <a class="app-mobile-link" href="#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
-  <a class="app-mobile-link" href="#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg><span>Connect</span></a>
-  <span class="app-mobile-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg><span>Play</span></span>
-  <span class="app-mobile-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></span>
   <a class="app-mobile-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
 </nav>
 

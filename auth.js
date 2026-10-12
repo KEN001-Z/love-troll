@@ -395,7 +395,7 @@ async function initializeOnboarding(supabase) {
   }
   const supabaseUser = user;
   const { data: profile, error: profileError } = await supabase.from('profiles')
-    .select('display_name, relationship_status, food_personality, looking_for, vibe, interests, onboarding_step, onboarding_completed')
+    .select('display_name, relationship_status, food_personality, looking_for, vibe, interests, matchmaking_enabled, onboarding_step, onboarding_completed')
     .eq('id', user.id)
     .maybeSingle();
   if (profileError) throw profileError;
@@ -471,6 +471,7 @@ async function initializeOnboarding(supabase) {
         looking_for: answers.looking_for,
         matchmaking_enabled: Boolean(
           complete &&
+          profile?.matchmaking_enabled &&
           answers.relationship_status &&
           ['single', 'complicated', 'cruise'].includes(answers.relationship_status) &&
           answers.looking_for
