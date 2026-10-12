@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VYBE: Meet people. Catch feelings. Blame VYBE.</title>
+  <meta name="description" content="VYBE is a playful social discovery demo with relationship games, funny quizzes and shareable results.">
+  <meta name="theme-color" content="#3a1170">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script src="data.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- Icon sprite (Lucide-style outline icons). Used with <use href="#i-name">. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/></symbol>
+    <symbol id="i-gamepad" viewBox="0 0 24 24"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.32 5H6.68a4 4 0 0 0-3.98 3.59C2.6 9.42 2 14.46 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.41-1.41A2 2 0 0 1 9.83 16h4.34a2 2 0 0 1 1.42.59L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.55-.6-6.58-.68-7.26A4 4 0 0 0 17.32 5z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="#/home" aria-label="VYBE home">
+        <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="10" fill="#3a1170"/>
+          <path d="M16 24.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 16 11.7a4.3 4.3 0 0 1 7.5 2.6c0 5.6-7.5 10.2-7.5 10.2Z" fill="#ff6b81"/>
+        </svg>
+        <span class="logo-word">VYBE</span>
+      </a>
+      <nav class="main-nav" aria-label="Main">
+        <a href="#/discover" data-nav="discover">Discover</a>
+        <a href="#/games" data-nav="games">Games</a>
+        <a href="#/ship" data-nav="ship">Ship or Skip</a>
+      </nav>
+      <a class="profile-btn" id="profile-btn" href="#/join">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg>
+        <span id="profile-btn-label">Join VYBE</span>
+      </a>
+    </div>
+  </header>
+  <p class="demo-strip"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-info"></use></svg> Demo version: every profile, result and reaction here is fictional or simulated.</p>
+
+  <nav class="bottom-nav" aria-label="Main (mobile)">
+    <a href="#/home" data-nav="home"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-home"></use></svg><span>Home</span></a>
+    <a href="#/discover" data-nav="discover"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-compass"></use></svg><span>Discover</span></a>
+    <a href="#/games" data-nav="games"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-gamepad"></use></svg><span>Games</span></a>
+    <a href="#/ship" data-nav="ship"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-heart"></use></svg><span>Ship</span></a>
+    <a href="#/profile" data-nav="profile"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span>Profile</span></a>
+  </nav>
+
+  <main id="main" tabindex="-1">
+
+    <!-- ============ HOME ============ -->
+    <div class="view" id="view-home" data-title="VYBE: Meet people. Catch feelings. Blame VYBE.">
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <h1>Meet people. Catch feelings. Blame VYBE.</h1>
+          <p class="lead">Discover new people, find your kind of connection, and play a few games that might expose your romantic decisions.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary btn-lg" href="#/join">Find My Vibe</a>
+            <a class="btn btn-ghost btn-lg" href="#/games">Let Me Cook 💀</a>
+          </div>
+          <p class="hero-note">Here for love, friends, the games, or just a look around? All valid. Nobody is pushing you toward anything.</p>
+        </div>
+        <div class="hero-stack" id="hero-stack" aria-hidden="true"></div>
+      </section>
+
+      <section class="section wrap" aria-labelledby="ways-title">
+        <h2 id="ways-title" class="section-title">Three ways to spend your time here</h2>
+        <ul class="ways">
+          <li>
+            <svg class="icon icon-lg" aria-hidden="true" focusable="false"><use href="#i-compass"></use></svg>
+            <h3>Discover people</h3>
+            <p>Browse profiles, see what people are into, and like or skip at your own pace.</p>
+          </li>
+          <li>
+            <svg class="icon icon-lg" aria-hidden="true" focusable="false"><use href="#i-gamepad"></use></svg>
+            <h3>Play the games</h3>
+            <p>Three short games about crushes, chemistry and your own romantic habits.</p>
+          </li>
+          <li>
+            <svg class="icon icon-lg" aria-hidden="true" focusable="false"><use href="#i-share"></use></svg>
+            <h3>Share the results</h3>
+            <p>Send your result to the group chat and let your friends argue with it.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section class="section section-tint" aria-labelledby="featured-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="featured-title" class="section-title">A few demo profiles</h2>
+            <p class="section-sub">Fictional adults with illustrated avatars. Nobody here is real, and nobody is online.</p>
+          </div>
+          <div class="featured-grid" id="featured-grid"></div>
+          <p class="center"><a class="btn btn-primary" href="#/discover">Browse all demo profiles</a></p>
+        </div>
+      </section>
+
+      <section class="section wrap" aria-labelledby="games-title">
+        <div class="section-head">
+          <h2 id="games-title" class="section-title">The relationship games</h2>
+          <p class="section-sub">Ten seconds to start. No account needed.</p>
+        </div>
+        <div class="game-grid" id="home-game-grid"></div>
+      </section>
+
+      <section class="section wrap" aria-labelledby="how-title">
+        <h2 id="how-title" class="section-title">How VYBE works</h2>
+        <ol class="steps">
+          <li><strong>Make a quick profile.</strong> Pick a vibe, a few interests and a short bio. In this demo it is only a preview.</li>
+          <li><strong>Look around.</strong> Like or skip demo profiles. There are no real matches or messages yet.</li>
+          <li><strong>Play and share.</strong> Take a quiz, ship two names, and send the result to your friends.</li>
+        </ol>
+      </section>
+
+      <section class="cta-band wrap" aria-labelledby="cta-title">
+        <h2 id="cta-title">Your next favourite person might be one click away.</h2>
+        <a class="btn btn-coral btn-lg" href="#/discover">Start exploring</a>
+      </section>
+    </div>
+
+    <!-- ============ GAMES HUB ============ -->
+    <div class="view" id="view-games" data-title="Games · VYBE" hidden>
+      <section class="wrap page-head">
+        <h1 class="page-title">Games</h1>
+        <p class="lead">Pick one. Each takes about a minute, and all of them are for entertainment only.</p>
+        <div class="game-grid" id="games-hub-grid"></div>
+      </section>
+    </div>
+
+    <!-- ============ DELULU METER ============ -->
+    <div class="view" id="view-delulu" data-title="The DELULU Meter · VYBE" hidden>
+      <section class="wrap narrow page-head">
+        <a class="back-link" href="#/games"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-left"></use></svg> All games</a>
+        <h1 class="page-title">The DELULU Meter</h1>
+        <p class="lead">Five questions. Zero judgement. Maybe a little judgement.</p>
+        <div id="delulu-root" class="quiz-root"></div>
+      </section>
+    </div>
+
+    <!-- ============ SHIP OR SKIP ============ -->
+    <div class="view" id="view-ship" data-title="Ship or Skip · VYBE" hidden>
+      <section class="wrap narrow page-head">
+        <a class="back-link" href="#/games"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-left"></use></svg> All games</a>
+        <h1 class="page-title">Ship or Skip</h1>
+        <p class="lead">Enter two names and see what the VYBE algorithm has to say. It has no scientific basis whatsoever.</p>
+        <div id="ship-root"></div>
+      </section>
+    </div>
+
+    <!-- ============ VYBE CHECK ============ -->
+    <div class="view" id="view-vibecheck" data-title="The VYBE Check · VYBE" hidden>
+      <section class="wrap narrow page-head">
+        <a class="back-link" href="#/games"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-left"></use></svg> All games</a>
+        <h1 class="page-title">The VYBE Check</h1>
+        <p class="lead">Find out which relationship character you are. Six questions, no wrong answers.</p>
+        <div id="vibecheck-root" class="quiz-root"></div>
+      </section>
+    </div>
+
+    <!-- ============ DISCOVER ============ -->
+    <div class="view" id="view-discover" data-title="Discover · VYBE" hidden>
+      <section class="wrap narrow page-head">
+        <h1 class="page-title">Discover</h1>
+        <p class="lead">Demo profiles only. Likes stay on this page and nobody is notified.</p>
+        <div id="discover-root"></div>
+      </section>
+    </div>
+
+    <!-- ============ JOIN (registration demo) ============ -->
+    <div class="view" id="view-join" data-title="Join VYBE · VYBE" hidden>
+      <section class="wrap auth-wrap">
+        <div class="auth-card">
+          <a class="back-link" href="#/home"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-left"></use></svg> Back to home</a>
+          <h1 class="auth-title">Alright, main character. Let's get you in.</h1>
+          <p class="lead">Create your VYBE identity. Your future bestie, favourite person, or questionable crush awaits.</p>
+          <p class="notice"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-info"></use></svg><span><strong>Demo only.</strong> This form checks your input in your browser, then forgets it. Nothing is sent or saved, so please don't use a real password.</span></p>
+
+          <form id="join-form" novalidate>
+            <div class="field">
+              <label for="join-name">What should we call you?</label>
+              <input id="join-name" name="name" type="text" autocomplete="off" maxlength="30" aria-describedby="join-name-error">
+              <p class="field-error" id="join-name-error" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="join-email">Where can we reach you?</label>
+              <input id="join-email" name="email" type="email" autocomplete="off" inputmode="email" aria-describedby="join-email-error">
+              <p class="field-error" id="join-email-error" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="join-password">Create a password. Make it stronger than your last situationship.</label>
+              <div class="input-with-btn">
+                <input id="join-password" name="password" type="password" autocomplete="off" aria-describedby="join-password-hint join-password-error">
+                <button type="button" class="icon-btn" data-toggle-password="join-password" aria-label="Show password" aria-pressed="false"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-eye"></use></svg></button>
+              </div>
+              <p class="field-hint" id="join-password-hint">At least 8 characters.</p>
+              <p class="field-error" id="join-password-error" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="join-confirm">Confirm your password</label>
+              <div class="input-with-btn">
+                <input id="join-confirm" name="confirm" type="password" autocomplete="off" aria-describedby="join-confirm-error">
+                <button type="button" class="icon-btn" data-toggle-password="join-confirm" aria-label="Show password" aria-pressed="false"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-eye"></use></svg></button>
+              </div>
+              <p class="field-error" id="join-confirm-error" aria-live="polite"></p>
+            </div>
+            <div class="field field-check">
+              <input id="join-terms" name="terms" type="checkbox" aria-describedby="join-terms-error">
+              <label for="join-terms">I agree to the <button type="button" class="link-btn" data-open-about>demo terms and privacy notice</button>.</label>
+              <p class="field-error" id="join-terms-error" aria-live="polite"></p>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Let's Get This Vibe Started</button>
+          </form>
+
+          <p class="auth-alt">Already part of the chaos? <button type="button" class="link-btn" id="signin-toggle" aria-expanded="false" aria-controls="signin-panel">Sign in.</button></p>
+          <div class="signin-panel" id="signin-panel" hidden>
+            <p><strong>Sign-in isn't available in this demo.</strong> There are no real accounts yet, because that needs a backend. You can preview the sign-up experience instead, or look around as a guest.</p>
+            <a class="btn btn-soft" href="#/discover">Explore as a guest</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ ONBOARDING ============ -->
+    <div class="view" id="view-onboarding" data-title="Set up your VYBE · VYBE" hidden>
+      <section class="wrap narrow page-head">
+        <div id="onboarding-root"></div>
+      </section>
+    </div>
+
+    <!-- ============ PROFILE PREVIEW ============ -->
+    <div class="view" id="view-profile" data-title="Your profile preview · VYBE" hidden>
+      <section class="wrap narrow page-head">
+        <h1 class="page-title">Your profile</h1>
+        <div id="profile-root"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div>
+        <a class="logo" href="#/home" aria-label="VYBE home"><span class="logo-word">VYBE</span></a>
+        <p class="footer-note">A playful frontend prototype. Profiles are fictional, results are entertainment, and nothing is saved.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="#/discover">Discover</a>
+        <a href="#/games">Games</a>
+        <a href="#/ship">Ship or Skip</a>
+        <button type="button" class="link-btn" data-open-about>Demo terms and privacy</button>
+        <button type="button" class="link-btn" id="back-to-top">Back to top</button>
+      </nav>
+    </div>
+  </footer>
+
+  <dialog id="about-dialog" aria-labelledby="about-title">
+    <form method="dialog">
+      <h2 id="about-title">About this demo</h2>
+      <p>VYBE is a frontend prototype built with HTML, CSS and JavaScript. It has no backend, so there are no real accounts, matches, messages or notifications.</p>
+      <h3>Demo terms</h3>
+      <p>Everything is for entertainment. Profiles are invented adults, and quiz and compatibility results are jokes, not predictions or psychological assessments.</p>
+      <h3>Demo privacy notice</h3>
+      <p>Anything you type is processed in your browser only. Passwords and emails are never sent, and are not stored in cookies, localStorage or sessionStorage. Refresh the page and your demo profile disappears.</p>
+      <button class="btn btn-primary" value="close">Got it</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
