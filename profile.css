@@ -83,3 +83,7 @@
   .about-section{padding:17px}
   .profile-tabs{margin-top:16px}
   .profile-tabs button{flex:1;min-width:0}
+  .profile-dialog{padding:19px 16px}
+  .edit-submit{bottom:-19px}
+}
+@media(prefers-reduced-motion:reduce){.profile-action{transition:none}}

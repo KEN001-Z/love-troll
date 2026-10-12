@@ -466,4 +466,9 @@ async function initialize() {
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
       setMessage(status, `We couldn’t log you out: ${friendlyError(error)}`, 'error');
-      button
+      button.disabled = false;
+    }
+  });
+}
+
+initialize();
