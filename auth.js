@@ -314,6 +314,7 @@ async function submitNewPassword(form, supabase) {
 async function initializeAuthForms(supabase) {
   for (const form of $$('form[data-form]')) {
     configureFieldDescriptions(form);
+    bindGoogleAuth(form, supabase);
     if (form.dataset.form === 'reset-password') {
       await submitNewPassword(form, supabase);
     } else {
@@ -459,7 +460,7 @@ async function initializeOnboarding(supabase) {
       setStatus(status, 'Saving your answers…', 'pending');
       const { error } = await supabase.from('profiles').upsert({
         id: supabaseUser.id,
-        display_name: supabaseUser.user_metadata?.display_name || profile?.display_name || null,
+        display_name: getUserDisplayName(supabaseUser, profile?.display_name),
         relationship_status: answers.relationship_status,
         food_personality: answers.food_personality,
         looking_for: answers.looking_for,

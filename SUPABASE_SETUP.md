@@ -7,9 +7,13 @@ VYBE is a multi-page static site built with Vite. It uses the existing Supabase 
 1. Install dependencies with `npm install`.
 2. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. The URL and publishable key are browser-visible values. Never use a service-role key or secret key here.
 3. Run `npm run dev` during development and open the Vite URL it prints (normally `http://localhost:5173`). Do not use VS Code Live Server to open the source HTML directly: it does not resolve the Supabase package or inject the Vite environment variables. Run `npm run build` for a static deployment; the output is in `dist/`.
-4. Configure the deployed origin and the `onboarding.html` and `reset.html` paths in Supabase Authentication → URL Configuration. For local development, allow the Vite origins `http://localhost:5173/**` and `http://127.0.0.1:5173/**`. Configure the email templates/provider if email confirmation or password recovery messages need delivery.
+4. Configure the deployed origin and the `login.html`, `onboarding.html`, and `reset.html` paths in Supabase Authentication → URL Configuration. For local development, allow the Vite origins `http://localhost:5173/**` and `http://127.0.0.1:5173/**`. Configure the email templates/provider if email confirmation or password recovery messages need delivery.
 
 Vite embeds `VITE_` variables in client assets at build time; configure the same variables in the hosting provider before building. `.env.local` is ignored by Git.
+
+## Google sign-in
+
+Google sign-in is available on both the login and signup pages. Before users can use it, create a **Web application** OAuth client in Google Cloud, add the local and deployed site origins as authorized JavaScript origins, and add the callback URL shown in Supabase Authentication → Providers → Google as an authorized redirect URI in Google Cloud. Then enable Google in that Supabase provider settings page and enter the Google client ID and client secret there. Keep the client secret in Supabase; it does not belong in `.env.local` or browser code. Also allow the deployed `login.html` and `onboarding.html` redirect URLs in Supabase Authentication → URL Configuration. Signup with Google still requires users to confirm they are 18 or older and accept the VYBE terms before redirecting to Google.
 
 ## Database
 

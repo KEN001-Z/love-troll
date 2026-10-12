@@ -68,6 +68,14 @@ footer{padding:0 0 40px;text-align:center;color:var(--muted);font-size:15px}
 .pane{padding:32px clamp(20px,6vw,80px);display:flex;flex-direction:column;justify-content:center;gap:22px;background:var(--white)}
 .pane .logo{align-self:flex-start}.pane h1{font-size:clamp(2.2rem,5vw,3.2rem)}.pane .sub{color:var(--muted);margin-top:-8px}
 .form{display:grid;gap:18px;max-width:440px}
+.google-auth-button{width:100%;min-height:52px;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:99px;box-shadow:4px 4px 0 var(--ink);font:700 16px var(--body);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.google-auth-button:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.google-auth-button:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
+.google-auth-button:focus-visible{outline:3px solid var(--purple);outline-offset:3px}
+.google-auth-button[disabled]{opacity:.65;cursor:progress;transform:none;box-shadow:4px 4px 0 var(--ink)}
+.google-mark{font:800 21px Arial,sans-serif;color:#4285f4}
+.auth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px}
+.auth-divider::before,.auth-divider::after{content:"";height:1px;flex:1;background:var(--line,#d8d2c9)}
 .field label{display:block;font-weight:700;margin-bottom:6px}
 .field input{width:100%;font:inherit;padding:14px 16px;border:2px solid var(--ink);border-radius:16px;background:var(--ivory);color:var(--ink)}
 .field input:focus{outline:3px solid var(--purple);outline-offset:2px;background:#fff}
@@ -78,6 +86,7 @@ footer{padding:0 0 40px;text-align:center;color:var(--muted);font-size:15px}
 .pw button{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:var(--lav);font:700 14px var(--body);padding:8px 14px;border-radius:99px;cursor:pointer;color:var(--ink)}
 .hint{font-size:14px;color:var(--muted);margin-top:6px}
 .check{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;font-size:15px}.check .err{flex-basis:100%}.check input{width:22px;height:22px;accent-color:var(--purple);margin-top:2px;flex:none}
+.check.bad label{color:#b3261e}
 .row{display:flex;justify-content:space-between;align-items:center;font-size:15px}
 .link{color:var(--purple);font-weight:700}
 .status.ok,.ok{background:var(--mint);border:2px solid var(--ink);border-radius:16px;padding:14px 16px;font-weight:600}
