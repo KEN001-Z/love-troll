@@ -6,10 +6,10 @@ VYBE is a multi-page static site built with Vite. It uses the existing Supabase 
 
 1. Install dependencies with `npm install`.
 2. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. The URL and publishable key are browser-visible values. Never use a service-role key or secret key here.
-3. Run `npm run dev` during development and open the Vite URL it prints (normally `http://localhost:5173`). Do not use VS Code Live Server to open the source HTML directly: it does not resolve the Supabase package or inject the Vite environment variables. Run `npm run build` for a static deployment; the output is in `dist/`.
+3. Run `npm run dev` during development and open the Vite URL it prints (normally `http://localhost:5173`). Do not use VS Code Live Server to open the source HTML directly: it does not resolve the Supabase package or inject the Vite environment variables. Run `npm run build` for a static deployment; the output is in `dist/`. Netlify builds use [netlify.toml](./netlify.toml) to run that command and publish `dist/`; do not publish the raw project root.
 4. Configure the deployed origin and the `login.html`, `onboarding.html`, and `reset.html` paths in Supabase Authentication → URL Configuration. For local development, allow the Vite origins `http://localhost:5173/**` and `http://127.0.0.1:5173/**`. Configure the email templates/provider if email confirmation or password recovery messages need delivery.
 
-Vite embeds `VITE_` variables in client assets at build time; configure the same variables in the hosting provider before building. `.env.local` is ignored by Git.
+Vite embeds `VITE_` variables in client assets at build time; configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as Netlify build environment variables before deploying. These are browser-visible values; never put a service-role key or secret key there. `.env.local` is ignored by Git.
 
 ## Google sign-in
 
