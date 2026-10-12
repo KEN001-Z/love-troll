@@ -13,6 +13,7 @@ export default defineConfig({
         reset: page('./reset.html'),
         onboarding: page('./onboarding.html'),
         home: page('./home.html'),
+        community: page('./community.html'),
         profile: page('./profile.html')
       }
     }

@@ -11,11 +11,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/profile-CwhzTpis.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/supabase-client-DH5Vhk67.js">
-  <link rel="stylesheet" crossorigin href="/assets/supabase-client-DHinnwS3.css">
+  <script type="module" crossorigin src="/assets/profile-BXuo6PKr.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/supabase-client-AsaZEHz4.js">
+  <link rel="stylesheet" crossorigin href="/assets/supabase-client-DnOTvXcj.css">
   <link rel="stylesheet" crossorigin href="/assets/profile-DYiUokgb.css">
-  <link rel="stylesheet" crossorigin href="/assets/app-shell-BYfNyzos.css">
+  <link rel="stylesheet" crossorigin href="/assets/app-shell-Cy1KB6v_.css">
 </head>
 <body class="profile-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -23,11 +23,9 @@
   <div class="app-header-inner">
     <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
+      <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
       <a class="app-nav-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
-      <a class="app-nav-link" href="home.html#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg>Connections</a>
-      <span class="app-nav-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg>Play<small>Soon</small></span>
-      <span class="app-nav-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community<small>Soon</small></span>
       <a class="app-nav-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
     <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
@@ -61,6 +59,7 @@
           <h1 id="profile-name" data-name>Loading…</h1>
           <p class="profile-handle" data-username></p>
           <p class="profile-meta" data-education></p>
+          <p class="profile-gender" data-gender hidden></p>
           <p class="profile-bio" data-bio></p>
           <p class="profile-mood" data-mood hidden></p>
         </div>
@@ -128,11 +127,9 @@
 </main>
 
 <nav class="app-mobile-nav" aria-label="Main navigation">
-  <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
+  <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
   <a class="app-mobile-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
-  <a class="app-mobile-link" href="home.html#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg><span>Connect</span></a>
-  <span class="app-mobile-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg><span>Play</span></span>
-  <span class="app-mobile-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></span>
   <a class="app-mobile-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
 </nav>
 
@@ -151,7 +148,9 @@
     </section>
     <label class="edit-field">Display name<input name="display_name" type="text" maxlength="80" required autocomplete="name"></label>
     <label class="edit-field">Username<input name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><small>Optional · 3–24 letters, numbers or underscores.</small></label>
-    <label class="edit-field">University<input name="university" type="text" maxlength="120"></label>
+    <label class="edit-field">University<input name="university" type="text" maxlength="120" autocomplete="organization" placeholder="Enter your university"></label>
+    <label class="edit-field">Gender<select name="gender"><option value="">Choose gender</option><option value="woman">Woman</option><option value="man">Man</option><option value="non_binary">Non-binary</option><option value="self_describe">Self-describe</option><option value="prefer_not_to_say">Prefer not to say</option></select><small>Shown on your profile unless you choose “Prefer not to say”.</small></label>
+    <label class="edit-field" data-gender-description-field hidden>Describe your gender<input name="gender_description" type="text" maxlength="66" autocomplete="off"><small>This will appear on your profile.</small></label>
     <label class="edit-field">Department<input name="department" type="text" maxlength="120"></label>
     <label class="edit-field">Academic level<input name="academic_level" type="text" maxlength="40" placeholder="e.g. 300 level"></label>
     <label class="edit-field">Bio<textarea name="bio" maxlength="280" rows="3"></textarea><small><span data-bio-count>0</span>/280</small></label>

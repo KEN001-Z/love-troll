@@ -19,6 +19,12 @@ const labels = {
   },
   intentions: { friendships: 'Friendship', romance: 'Romance', 'just-vibes': 'Just vibes' }
 };
+const genderLabels = {
+  woman: 'Female',
+  man: 'Male',
+  non_binary: 'Non-binary',
+  prefer_not_to_say: 'Prefer not to say'
+};
 const interestOptions = Object.keys(labels.interests);
 const editDialog = $('[data-edit-dialog]');
 const editForm = $('[data-edit-form]');
@@ -103,6 +109,11 @@ function renderProfile() {
     : profile.is_owner ? 'Add an optional username in Edit profile' : '';
   $('[data-username]').hidden = !profile.username && !profile.is_owner;
   $('[data-education]').textContent = [profile.department, profile.academic_level, profile.university].filter(Boolean).join(' · ') || 'University details not shared';
+  const gender = profile.gender === 'prefer_not_to_say'
+    ? ''
+    : profile.gender?.startsWith('self_describe:') ? profile.gender.slice('self_describe:'.length) : genderLabels[profile.gender] || '';
+  $('[data-gender]').textContent = gender ? `Gender: ${gender}` : '';
+  $('[data-gender]').hidden = !gender;
   $('[data-bio]').textContent = profile.bio || '';
   $('[data-bio]').hidden = !profile.bio;
   $('[data-about-bio]').textContent = profile.bio || 'No bio yet. A short intro is always optional.';
@@ -177,6 +188,12 @@ function openEditDialog(focusField) {
   editForm.elements.namedItem('display_name').value = profile.display_name || '';
   editForm.elements.namedItem('username').value = profile.username || '';
   editForm.elements.namedItem('university').value = profile.university || '';
+  const genderSelect = editForm.elements.namedItem('gender');
+  const genderDescription = editForm.elements.namedItem('gender_description');
+  const isSelfDescribed = profile.gender?.startsWith('self_describe:');
+  genderSelect.value = isSelfDescribed ? 'self_describe' : genderLabels[profile.gender] ? profile.gender : '';
+  genderDescription.value = isSelfDescribed ? profile.gender.slice('self_describe:'.length) : '';
+  toggleGenderDescription();
   editForm.elements.namedItem('department').value = profile.department || '';
   editForm.elements.namedItem('academic_level').value = profile.academic_level || '';
   editForm.elements.namedItem('bio').value = profile.bio || '';
@@ -210,6 +227,13 @@ function toggleIntentionFields() {
   $$('[data-intention-fields]').forEach(field => { field.hidden = !enabled; });
   editForm.elements.namedItem('looking_for').required = enabled;
   editForm.elements.namedItem('relationship_status').required = enabled;
+}
+
+function toggleGenderDescription() {
+  const isSelfDescribed = editForm.elements.namedItem('gender').value === 'self_describe';
+  const field = $('[data-gender-description-field]');
+  field.hidden = !isSelfDescribed;
+  editForm.elements.namedItem('gender_description').required = isSelfDescribed;
 }
 
 function splitTags(value, limit, label, maxLength) {
@@ -280,6 +304,15 @@ async function saveProfile(event) {
       display_name: editForm.elements.namedItem('display_name').value.trim(),
       username: editForm.elements.namedItem('username').value.trim().toLowerCase(),
       university: editForm.elements.namedItem('university').value.trim() || null,
+      gender: (() => {
+        const selectedGender = editForm.elements.namedItem('gender').value;
+        if (selectedGender === 'self_describe') {
+          const description = editForm.elements.namedItem('gender_description').value.trim();
+          if (!description) throw new Error('Describe your gender or choose another option.');
+          return `self_describe:${description}`;
+        }
+        return selectedGender || null;
+      })(),
       department: editForm.elements.namedItem('department').value.trim() || null,
       academic_level: editForm.elements.namedItem('academic_level').value.trim() || null,
       bio: editForm.elements.namedItem('bio').value.trim() || null,
@@ -441,6 +474,9 @@ async function initialize() {
     await loadInterestState();
     status.hidden = true;
     page.hidden = false;
+    if (targetId === currentUser.id && new URLSearchParams(window.location.search).get('edit') === 'complete') {
+      openEditDialog('university');
+    }
   } catch (error) {
     status.dataset.state = 'error';
     status.textContent = ['PGRST202', 'PGRST204', 'PGRST205', '42703'].includes(error?.code)
@@ -475,6 +511,7 @@ async function initialize() {
   $('[data-interest]').addEventListener('click', event => expressInterest(event.currentTarget));
   editForm.addEventListener('submit', saveProfile);
   editForm.elements.namedItem('matchmaking_enabled').addEventListener('change', toggleIntentionFields);
+  editForm.elements.namedItem('gender').addEventListener('change', toggleGenderDescription);
   editForm.elements.namedItem('bio').addEventListener('input', event => {
     $('[data-bio-count]').textContent = String(event.currentTarget.value.length);
   });

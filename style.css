@@ -1,6 +1,14 @@
 :root{--ivory:#FFF9F0;--ink:#211D2B;--purple:#7357E8;--coral:#FF6B61;--yellow:#FFD166;--mint:#BDEBD7;--lav:#EAE4FF;--white:#fff;--muted:#5d566b;--r:24px;--shadow:0 12px 32px -14px rgba(33,29,43,.28);--display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
 *{box-sizing:border-box;margin:0}html{scroll-behavior:smooth;scroll-padding-top:84px}
 body{font:17px/1.6 var(--body);color:var(--ink);background:var(--ivory);-webkit-font-smoothing:antialiased}
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:page-exit .14s ease-in both}
+::view-transition-new(root){animation:page-enter .24s cubic-bezier(.2,.7,.2,1) both}
+@keyframes page-exit{to{opacity:0}}
+@keyframes page-enter{from{opacity:0;transform:translateY(8px)}}
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-old(root),::view-transition-new(root){animation-duration:.01ms}
+}
 a{color:inherit}img,svg{max-width:100%}
 :focus-visible{outline:3px solid var(--purple);outline-offset:3px;border-radius:8px}
 .wrap{width:min(1120px,92%);margin-inline:auto}
@@ -73,7 +81,7 @@ footer{padding:0 0 40px;text-align:center;color:var(--muted);font-size:15px}
 .google-auth-button:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
 .google-auth-button:focus-visible{outline:3px solid var(--purple);outline-offset:3px}
 .google-auth-button[disabled]{opacity:.65;cursor:progress;transform:none;box-shadow:4px 4px 0 var(--ink)}
-.google-mark{font:800 21px Arial,sans-serif;color:#4285f4}
+.google-mark{width:20px;height:20px;display:block;flex:none}
 .auth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px}
 .auth-divider::before,.auth-divider::after{content:"";height:1px;flex:1;background:var(--line,#d8d2c9)}
 .field label{display:block;font-weight:700;margin-bottom:6px}

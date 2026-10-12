@@ -3,10 +3,13 @@ import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '
 const $ = (selector, root = document) => root.querySelector(selector);
 const status = $('[data-home-status]');
 const greeting = $('[data-name-greeting]');
+const profileProgress = $('[data-profile-progress]');
 const peopleMessage = $('[data-people-message]');
+const peoplePhotoMessage = $('[data-people-photo-message]');
 const suggestionList = $('[data-suggestions]');
 const connectionsMessage = $('[data-connections-message]');
 const connectionList = $('[data-connections]');
+const connectionsPhotoMessage = $('[data-connections-photo-message]');
 const labels = {
   food: {
     indomie: 'Indomie',
@@ -79,6 +82,61 @@ function setSectionMessage(element, message, state = '') {
   element.hidden = !message;
 }
 
+function renderProfileProgress(profile) {
+  const details = [
+    { selector: '[data-progress-university]', complete: Boolean(profile.university?.trim()) },
+    { selector: '[data-progress-gender]', complete: Boolean(profile.gender?.trim()) }
+  ];
+  const completed = details.filter(detail => detail.complete).length;
+  details.forEach(({ selector, complete }) => {
+    const row = $(selector, profileProgress);
+    row.classList.toggle('is-complete', complete);
+    $('.progress-item-mark', row).textContent = complete ? '✓' : '○';
+    $('[data-progress-state]', row).textContent = complete ? 'Added' : 'Not added yet';
+  });
+  const percent = Math.round(completed / details.length * 100);
+  $('[data-profile-progress-ring]', profileProgress).style.strokeDashoffset = String(100 - percent);
+  $('[data-profile-progress-percent]', profileProgress).textContent = `${percent}%`;
+  $('[data-profile-progress-gauge]', profileProgress).setAttribute('aria-label', `Profile completion: ${percent}%`);
+  $('[data-profile-progress-summary]', profileProgress).textContent = `${completed} of ${details.length} details added`;
+  profileProgress.hidden = completed === details.length;
+}
+
+async function signProfileAvatars(profiles) {
+  const profilesWithPhotos = profiles.filter(profile => profile.avatar_path);
+  const urlsByProfileId = new Map();
+  if (!profilesWithPhotos.length) return { urlsByProfileId, warning: '' };
+
+  try {
+    const paths = [...new Set(profilesWithPhotos.map(profile => profile.avatar_path))];
+    const { data, error } = await supabase.storage.from('profile-media').createSignedUrls(paths, 3600);
+    if (error) return { urlsByProfileId, warning: `We couldn’t load profile photos: ${error.message}` };
+
+    const urlsByPath = new Map();
+    let failedCount = 0;
+    (data || []).forEach(result => {
+      if (result.error || !result.signedUrl) {
+        failedCount += 1;
+      } else {
+        urlsByPath.set(result.path, result.signedUrl);
+      }
+    });
+    profilesWithPhotos.forEach(profile => {
+      const url = urlsByPath.get(profile.avatar_path);
+      if (url) urlsByProfileId.set(profile.id, url);
+      else if (!(data || []).some(result => result.path === profile.avatar_path && (result.error || !result.signedUrl))) {
+        failedCount += 1;
+      }
+    });
+    return {
+      urlsByProfileId,
+      warning: failedCount ? `${failedCount} profile photo${failedCount === 1 ? '' : 's'} couldn’t be loaded.` : ''
+    };
+  } catch (error) {
+    return { urlsByProfileId, warning: `We couldn’t load profile photos: ${error.message || 'Please try again.'}` };
+  }
+}
+
 function renderTags(container, values, dictionary) {
   values.forEach(value => container.append(makeElement('span', 'interest-tag', dictionary[value] || value)));
 }
@@ -121,16 +179,35 @@ function renderCandidate(candidate) {
   const card = makeElement('li', 'suggestion-card');
   card.dataset.profileId = profile.id;
 
+  const profileHref = `profile.html?id=${encodeURIComponent(profile.id)}`;
+  const avatarLink = makeElement('a', 'suggestion-avatar-link');
+  avatarLink.href = profileHref;
+  avatarLink.setAttribute('aria-label', `View ${name}'s profile`);
+
   const visual = makeElement('div', 'suggestion-visual');
   visual.setAttribute('aria-hidden', 'true');
-  visual.append(makeElement('span', 'suggestion-monogram', name.slice(0, 1).toUpperCase()));
+  const monogram = makeElement('span', 'suggestion-monogram', name.slice(0, 1).toUpperCase());
+  visual.append(monogram);
   visual.append(makeElement('span', 'suggestion-visual-note', 'A new face on VYBE'));
+  if (candidate.avatarUrl) {
+    const image = makeElement('img', 'suggestion-avatar-image');
+    image.src = candidate.avatarUrl;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.addEventListener('load', () => { monogram.hidden = true; }, { once: true });
+    image.addEventListener('error', () => {
+      image.remove();
+      setSectionMessage(peoplePhotoMessage, 'A profile photo could not be displayed. You can still open the profile.', 'error');
+    }, { once: true });
+    visual.append(image);
+  }
+  avatarLink.append(visual);
 
   const body = makeElement('div', 'suggestion-body');
   const heading = makeElement('div', 'suggestion-heading');
   const headingInfo = makeElement('div');
   const profileLink = makeElement('a', 'suggestion-name', name);
-  profileLink.href = `profile.html?id=${encodeURIComponent(profile.id)}`;
+  profileLink.href = profileHref;
   const profileHeading = makeElement('h3');
   profileHeading.append(profileLink);
   headingInfo.append(profileHeading);
@@ -157,19 +234,19 @@ function renderCandidate(candidate) {
   }
 
   const actions = makeElement('div', 'suggestion-actions');
-  const viewProfile = makeElement('a', 'suggestion-profile-link', 'View profile');
-  viewProfile.href = `profile.html?id=${encodeURIComponent(profile.id)}`;
-  const skip = makeElement('button', 'suggestion-skip', 'Not now');
+  const skip = makeElement('button', 'suggestion-skip', '×');
   skip.type = 'button';
   skip.dataset.skip = '';
   skip.setAttribute('aria-label', `Skip ${name}`);
-  const like = makeElement('button', 'suggestion-like', 'Send interest');
+  skip.title = 'Not now';
+  const like = makeElement('button', 'suggestion-like', '♡');
   like.type = 'button';
   like.dataset.like = '';
   like.setAttribute('aria-label', `Send interest to ${name}`);
-  actions.append(viewProfile, skip, like);
+  like.title = 'Send interest';
+  actions.append(skip, like);
   body.append(actions);
-  card.append(visual, body);
+  card.append(avatarLink, body);
   return card;
 }
 
@@ -184,14 +261,22 @@ async function loadSuggestions() {
   const { data, error } = await supabase.rpc('discover_profiles');
   if (error) throw error;
 
-  candidates = (data || [])
-    .filter(profile => sanitizeName(profile.display_name) && profile.id !== currentUserId)
-    .map(profile => ({ profile, skipped: false, liked: false }));
+  const profiles = (data || []).filter(profile =>
+    sanitizeName(profile.display_name) && profile.id !== currentUserId
+  );
+  const { urlsByProfileId, warning } = await signProfileAvatars(profiles);
+  setSectionMessage(peoplePhotoMessage, warning, warning ? 'error' : '');
+  candidates = profiles.map(profile => ({
+    profile,
+    avatarUrl: urlsByProfileId.get(profile.id),
+    skipped: false,
+    liked: false
+  }));
   setSectionMessage(peopleMessage, '');
   renderCandidates();
 }
 
-function renderConnections(matches, profiles) {
+function renderConnections(matches, profiles, urlsByProfileId) {
   const profileById = new Map((profiles || []).map(profile => [profile.id, profile]));
   const visibleMatches = matches.flatMap(match => {
     const otherId = match.user_a === currentUserId ? match.user_b : match.user_a;
@@ -214,7 +299,23 @@ function renderConnections(matches, profiles) {
   visibleMatches.forEach(({ profile, createdAt }) => {
     const name = sanitizeName(profile.display_name) || 'VYBE member';
     const item = makeElement('li', 'connection-item');
-    item.append(makeElement('span', 'connection-avatar', name.slice(0, 1).toUpperCase()));
+    const avatar = makeElement('span', 'connection-avatar');
+    const monogram = makeElement('span', 'connection-avatar-initial', name.slice(0, 1).toUpperCase());
+    avatar.append(monogram);
+    const avatarUrl = urlsByProfileId.get(profile.id);
+    if (avatarUrl) {
+      const image = makeElement('img', 'connection-avatar-image');
+      image.src = avatarUrl;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.addEventListener('load', () => { monogram.hidden = true; }, { once: true });
+      image.addEventListener('error', () => {
+        image.remove();
+        setSectionMessage(connectionsPhotoMessage, 'A connection photo could not be displayed.', 'error');
+      }, { once: true });
+      avatar.append(image);
+    }
+    item.append(avatar);
     const description = makeElement('span', 'connection-description');
     description.append(makeElement('span', 'connection-name', name));
     const date = new Date(createdAt);
@@ -237,13 +338,15 @@ async function loadConnections() {
 
   const otherIds = [...new Set((matches || []).map(match => match.user_a === currentUserId ? match.user_b : match.user_a))];
   if (!otherIds.length) {
-    renderConnections([], []);
+    renderConnections([], [], new Map());
     return;
   }
 
   const { data: profiles, error: profilesError } = await supabase.rpc('get_profile_previews', { target_ids: otherIds });
   if (profilesError) throw profilesError;
-  renderConnections(matches || [], profiles || []);
+  const { urlsByProfileId, warning } = await signProfileAvatars(profiles || []);
+  setSectionMessage(connectionsPhotoMessage, warning, warning ? 'error' : '');
+  renderConnections(matches || [], profiles || [], urlsByProfileId);
 }
 
 async function handleCandidateAction(button) {
@@ -261,7 +364,7 @@ async function handleCandidateAction(button) {
   pendingActions.add(candidate.profile.id);
   const controls = card.querySelectorAll('button');
   controls.forEach(control => { control.disabled = true; });
-  button.textContent = 'Sending…';
+  button.textContent = '…';
   setSectionMessage(peopleMessage, '');
   try {
     const { data, error } = await supabase.rpc('express_interest', { target_user: candidate.profile.id });
@@ -294,7 +397,7 @@ async function handleCandidateAction(button) {
   } catch (error) {
     setSectionMessage(peopleMessage, error.message || 'We couldn’t send that interest. Please try again.', 'error');
     controls.forEach(control => { control.disabled = false; });
-    button.textContent = 'Send interest';
+    button.textContent = '♡';
   } finally {
     pendingActions.delete(candidate.profile.id);
   }
@@ -317,7 +420,7 @@ async function initialize() {
     currentUserId = user.id;
 
     const { data: profile, error: profileError } = await supabase.from('profiles')
-      .select('display_name, interests, matchmaking_enabled, onboarding_completed')
+      .select('display_name, interests, matchmaking_enabled, onboarding_completed, university, gender')
       .eq('id', user.id)
       .maybeSingle();
     if (profileError) throw profileError;
@@ -327,6 +430,7 @@ async function initialize() {
     }
     ownInterests = profile.interests || [];
     ownMatchmakingEnabled = Boolean(profile.matchmaking_enabled);
+    renderProfileProgress(profile);
 
     const safeName = sanitizeName(profile.display_name) || sanitizeName(user.user_metadata?.display_name);
     greeting.textContent = safeName ? `, ${safeName}` : '';
