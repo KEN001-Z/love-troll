@@ -21,10 +21,12 @@
   <div class="app-header-inner">
     <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
     <nav class="app-nav" aria-label="Main navigation">
-      <a class="app-nav-link" href="home.html">Home</a>
-      <a class="app-nav-link" href="home.html#people">Meet people</a>
-      <a class="app-nav-link" href="home.html#connections">Connections</a>
-      <a class="app-nav-link" href="profile.html" aria-current="page">Profile</a>
+      <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a class="app-nav-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="home.html#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg>Connections</a>
+      <span class="app-nav-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg>Play<small>Soon</small></span>
+      <span class="app-nav-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community<small>Soon</small></span>
+      <a class="app-nav-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
     <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
   </div>
@@ -36,9 +38,13 @@
     <section class="profile-card" aria-labelledby="profile-name">
       <div class="profile-cover" data-cover>
         <span class="cover-fallback" aria-hidden="true"></span>
+        <button class="cover-edit" type="button" data-edit-cover hidden>Change cover</button>
       </div>
       <div class="profile-identity">
-        <div class="profile-avatar" data-avatar aria-hidden="true"><span data-initials></span></div>
+        <div class="profile-avatar" data-avatar>
+          <span data-initials aria-hidden="true"></span>
+          <button class="avatar-edit" type="button" data-edit-avatar hidden aria-label="Change profile photo">✎</button>
+        </div>
         <div class="profile-actions" data-profile-actions>
           <button class="btn alt profile-action" type="button" data-share>Share profile</button>
           <button class="btn alt profile-action" type="button" data-more aria-haspopup="dialog">More</button>
@@ -49,6 +55,7 @@
         </div>
         <p class="profile-capability-note" data-social-note hidden>Following and messaging aren’t available yet.</p>
         <div class="profile-heading">
+          <p class="profile-kicker"><span aria-hidden="true">✳</span> A LITTLE CAMPUS INTRO</p>
           <h1 id="profile-name" data-name>Loading…</h1>
           <p class="profile-handle" data-username></p>
           <p class="profile-meta" data-education></p>
@@ -69,8 +76,8 @@
       <div class="profile-empty">
         <span class="empty-mark" aria-hidden="true">✳</span>
         <p class="profile-eyebrow">THE CAMPUS TIMELINE</p>
-        <h2>Posts are on the way</h2>
-        <p>Posting isn’t available in VYBE yet, so there’s nothing to show here for now.</p>
+        <h2>No gist on this page yet</h2>
+        <p>Posts aren’t switched on just yet. When they are, this is where the campus gist, photos and funny moments will land.</p>
       </div>
     </section>
     <section id="panel-about" class="profile-panel" role="tabpanel" aria-labelledby="tab-about" data-panel="about" hidden>
@@ -122,6 +129,8 @@
   <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
   <a class="app-mobile-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
   <a class="app-mobile-link" href="home.html#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg><span>Connect</span></a>
+  <span class="app-mobile-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg><span>Play</span></span>
+  <span class="app-mobile-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></span>
   <a class="app-mobile-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
 </nav>
 
@@ -134,8 +143,12 @@
     <p class="dialog-intro">Share as much or as little as you like. Fields are optional.</p>
     <p class="profile-feedback" data-edit-feedback role="status" aria-live="polite" hidden></p>
     <progress data-upload-progress aria-label="Uploading profile photo or cover photo" hidden></progress>
+    <section class="edit-photos" aria-label="Profile photos">
+      <label class="edit-field">Profile photo<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small>Leave empty to keep your current photo. JPG, PNG or WebP · up to 5 MB</small></label>
+      <label class="edit-field">Cover photo<input name="cover" type="file" accept="image/jpeg,image/png,image/webp"><small>Leave empty to keep your current cover. JPG, PNG or WebP · up to 5 MB</small></label>
+    </section>
     <label class="edit-field">Display name<input name="display_name" type="text" maxlength="80" required autocomplete="name"></label>
-    <label class="edit-field">Username<input name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" required autocomplete="username"><small>3–24 letters, numbers or underscores.</small></label>
+    <label class="edit-field">Username<input name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><small>Optional · 3–24 letters, numbers or underscores.</small></label>
     <label class="edit-field">University<input name="university" type="text" maxlength="120"></label>
     <label class="edit-field">Department<input name="department" type="text" maxlength="120"></label>
     <label class="edit-field">Academic level<input name="academic_level" type="text" maxlength="40" placeholder="e.g. 300 level"></label>
@@ -145,12 +158,33 @@
     <label class="edit-field">Personality tags<input name="personality_tags" type="text" maxlength="240" placeholder="e.g. Cruise Master, Gamer"></label>
     <label class="edit-field">Currently in the mood for<input name="current_mood" type="text" maxlength="80" placeholder="Optional"></label>
     <label class="edit-field">Your catchphrase<input name="catchphrase" type="text" maxlength="100" placeholder="Optional"></label>
-    <label class="edit-field">Profile photo<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small>JPG, PNG or WebP · up to 5 MB</small></label>
-    <label class="edit-field">Cover photo<input name="cover" type="file" accept="image/jpeg,image/png,image/webp"><small>JPG, PNG or WebP · up to 5 MB</small></label>
     <label class="edit-field visibility-choice">Profile visibility<select name="profile_visibility"><option value="campus">Visible to VYBE students</option><option value="private">Private — matched people only</option></select></label>
-    <label class="edit-check"><input name="matchmaking_enabled" type="checkbox"> Show an optional matchmaking card to eligible students</label>
-    <label class="edit-field" data-intention-fields hidden>What you’re open to<select name="looking_for"><option value="">Choose an intention</option><option value="friendships">Friendship</option><option value="romance">Romance</option><option value="just-vibes">Just vibes</option></select></label>
-    <label class="edit-field" data-intention-fields hidden>Matchmaking status<select name="relationship_status"><option value="">Choose a status</option><option value="single">Single</option><option value="complicated">It’s complicated</option><option value="cruise">Here for cruise</option></select></label>
+    <section class="matchmaking-settings" data-matchmaking-settings aria-labelledby="matchmaking-title">
+      <div class="matchmaking-heading">
+        <div>
+          <p class="profile-eyebrow">OPTIONAL · YOU’RE IN CONTROL</p>
+          <h3 id="matchmaking-title">Matchmaking</h3>
+          <p>Let eligible students know you’re open to a connection. Your choice stays private until you opt in.</p>
+        </div>
+        <span class="matchmaking-heart" aria-hidden="true">♥</span>
+      </div>
+      <label class="matchmaking-toggle">
+        <input name="matchmaking_enabled" type="checkbox" aria-controls="matchmaking-fields">
+        <span class="matchmaking-switch" aria-hidden="true"></span>
+        <span class="matchmaking-toggle-copy"><strong>Show my matchmaking card</strong><small>You can switch this off whenever you like.</small></span>
+      </label>
+      <div class="matchmaking-fields" id="matchmaking-fields" data-intention-fields hidden>
+        <label class="edit-field intention-field">
+          <span>What you’re open to</span>
+          <select name="looking_for"><option value="">Choose what feels right</option><option value="friendships">Friendship</option><option value="romance">Romance</option><option value="just-vibes">Just vibes</option></select>
+        </label>
+        <label class="edit-field intention-field">
+          <span>Your status</span>
+          <select name="relationship_status"><option value="">Choose a status</option><option value="single">Single</option><option value="complicated">It’s complicated</option><option value="cruise">Here for cruise</option></select>
+          <small>Only shared with eligible students while matchmaking is on.</small>
+        </label>
+      </div>
+    </section>
     <div class="edit-submit">
       <button class="btn alt" type="button" data-cancel-edit>Cancel</button>
       <button class="btn" type="submit">Save profile</button>

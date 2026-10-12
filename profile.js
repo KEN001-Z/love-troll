@@ -92,11 +92,16 @@ async function renderPhotos() {
 }
 
 function renderProfile() {
-  const name = profile.display_name?.trim() || 'VYBE student';
+  const authName = currentUser.user_metadata?.display_name;
+  const authDisplayName = profile.is_owner && typeof authName === 'string' ? authName.trim() : '';
+  const name = profile.display_name?.trim() || authDisplayName || 'Name not provided';
   document.title = `${name} — VYBE`;
   $('[data-name]').textContent = name;
   $('[data-about-name]').textContent = name;
-  $('[data-username]').textContent = `@${profile.username}`;
+  $('[data-username]').textContent = profile.username
+    ? `@${profile.username}`
+    : profile.is_owner ? 'Add an optional username in Edit profile' : '';
+  $('[data-username]').hidden = !profile.username && !profile.is_owner;
   $('[data-education]').textContent = [profile.department, profile.academic_level, profile.university].filter(Boolean).join(' · ') || 'University details not shared';
   $('[data-bio]').textContent = profile.bio || '';
   $('[data-bio]').hidden = !profile.bio;
@@ -128,6 +133,8 @@ function renderProfile() {
   }
 
   $('[data-edit]').hidden = !profile.is_owner;
+  $('[data-edit-avatar]').hidden = !profile.is_owner;
+  $('[data-edit-cover]').hidden = !profile.is_owner;
   $('[data-interest]').hidden = !profile.can_receive_interest;
   $('[data-follow]').hidden = profile.is_owner;
   $('[data-message]').hidden = profile.is_owner;
@@ -166,7 +173,7 @@ function renderInterestOptions(selected = []) {
   }
 }
 
-function openEditDialog() {
+function openEditDialog(focusField) {
   editForm.elements.namedItem('display_name').value = profile.display_name || '';
   editForm.elements.namedItem('username').value = profile.username || '';
   editForm.elements.namedItem('university').value = profile.university || '';
@@ -188,10 +195,18 @@ function openEditDialog() {
   toggleIntentionFields();
   setMessage($('[data-edit-feedback]'), '');
   editDialog.showModal();
+  if (focusField) {
+    requestAnimationFrame(() => {
+      const field = editForm.elements.namedItem(focusField);
+      field.scrollIntoView({ block: 'center' });
+      field.focus({ preventScroll: true });
+    });
+  }
 }
 
 function toggleIntentionFields() {
   const enabled = editForm.elements.namedItem('matchmaking_enabled').checked;
+  $('[data-matchmaking-settings]').classList.toggle('is-enabled', enabled);
   $$('[data-intention-fields]').forEach(field => { field.hidden = !enabled; });
   editForm.elements.namedItem('looking_for').required = enabled;
   editForm.elements.namedItem('relationship_status').required = enabled;
@@ -321,8 +336,11 @@ async function loadProfile() {
   const { data, error } = await supabase.rpc('get_profile_public', { target_profile: targetId });
   if (error) throw error;
   profile = Array.isArray(data) ? data[0] : data;
-  if (!profile) {
+  if (!profile || profile.id !== targetId) {
     throw new Error('This profile is private or unavailable. You can still meet more people from the VYBE home page.');
+  }
+  if (profile.is_owner !== (targetId === currentUser.id)) {
+    throw new Error('VYBE could not verify this profile’s account identity. Please reload and try again.');
   }
   renderProfile();
 }
@@ -386,7 +404,7 @@ async function shareProfile() {
   const url = new URL(`profile.html?id=${encodeURIComponent(profile.id)}`, window.location.href).toString();
   try {
     if (navigator.share) {
-      await navigator.share({ title: `${profile.display_name || 'VYBE student'} on VYBE`, url });
+      await navigator.share({ title: `${profile.display_name?.trim() || 'VYBE profile'} on VYBE`, url });
     } else if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url);
       setMessage($('[data-action-feedback]'), 'Profile link copied.', 'success');
@@ -446,7 +464,9 @@ async function initialize() {
     activateTab(tabs[next]);
   });
 
-  $('[data-edit]').addEventListener('click', openEditDialog);
+  $('[data-edit]').addEventListener('click', () => openEditDialog());
+  $('[data-edit-avatar]').addEventListener('click', () => openEditDialog('avatar'));
+  $('[data-edit-cover]').addEventListener('click', () => openEditDialog('cover'));
   $('[data-close-edit]').addEventListener('click', () => editDialog.close());
   $('[data-cancel-edit]').addEventListener('click', () => editDialog.close());
   $('[data-more]').addEventListener('click', () => moreDialog.showModal());

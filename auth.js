@@ -11,6 +11,9 @@ function friendlyError(error) {
   if (error?.code === 'email_not_confirmed' || /email not confirmed/i.test(message)) {
     return 'Confirm your email address from the link we sent you, then try logging in again.';
   }
+  if (/unsupported provider|provider.*not enabled|provider.*disabled/i.test(message)) {
+    return 'Google sign-in is not enabled yet. Please use email for now or try again later.';
+  }
   if (/invalid login credentials/i.test(message)) {
     return 'That email or password does not match an account. Check your details or reset your password.';
   }
@@ -45,9 +48,26 @@ async function getAuthenticatedDestination(supabase, user) {
 async function ensureUserProfile(supabase, user) {
   const { error } = await supabase.from('profiles').upsert({
     id: user.id,
-    display_name: user.user_metadata?.display_name || null
+    display_name: getUserDisplayName(user)
   }, { onConflict: 'id', ignoreDuplicates: true });
   if (error) throw error;
+}
+
+function getUserDisplayName(user, fallback = null) {
+  return user.user_metadata?.display_name ||
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    fallback ||
+    null;
+}
+
+function isAtLeast18(value) {
+  const birthDate = new Date(`${value}T00:00:00`);
+  if (!value || Number.isNaN(birthDate.getTime())) return false;
+  const today = new Date();
+  let years = today.getFullYear() - birthDate.getFullYear();
+  if (today < new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate())) years--;
+  return years >= 18;
 }
 
 function validate(form) {
@@ -70,12 +90,11 @@ function validate(form) {
     errors.set(password, 'Enter your password.');
   }
   if (dob) {
-    const birthDate = new Date(`${dob.value}T00:00:00`);
-    const today = new Date();
-    let years = today.getFullYear() - birthDate.getFullYear();
-    if (today < new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate())) years--;
-    if (!dob.value || Number.isNaN(birthDate.getTime())) errors.set(dob, 'Enter your date of birth.');
-    else if (years < 18) errors.set(dob, 'VYBE is for people aged 18 and above.');
+    if (!dob.value || Number.isNaN(new Date(`${dob.value}T00:00:00`).getTime())) {
+      errors.set(dob, 'Enter your date of birth.');
+    } else if (!isAtLeast18(dob.value)) {
+      errors.set(dob, 'VYBE is for people aged 18 and above.');
+    }
   }
   if (terms && !terms.checked) errors.set(terms, 'Tick the box to continue.');
 
@@ -90,6 +109,34 @@ function validate(form) {
   });
 
   if (dob) dob.max = new Date().toISOString().slice(0, 10);
+  if (firstInvalid) firstInvalid.focus();
+  return !firstInvalid;
+}
+
+function validateGoogleSignup(form) {
+  const dob = $('[name="dob"]', form);
+  const terms = $('[name="terms"]', form);
+  let firstInvalid;
+  const errors = new Map();
+
+  if (!dob.value || Number.isNaN(new Date(`${dob.value}T00:00:00`).getTime())) {
+    errors.set(dob, 'Enter your date of birth.');
+  } else if (!isAtLeast18(dob.value)) {
+    errors.set(dob, 'VYBE is for people aged 18 and above.');
+  }
+  if (!terms.checked) errors.set(terms, 'Tick the box to continue.');
+
+  [dob, terms].forEach(input => {
+    const box = input.closest('.field, .check');
+    const error = $('.err', box);
+    const message = errors.get(input) || '';
+    box.classList.toggle('bad', Boolean(message));
+    error.textContent = message;
+    input.setAttribute('aria-invalid', String(Boolean(message)));
+    if (message && !firstInvalid) firstInvalid = input;
+  });
+
+  dob.max = new Date().toISOString().slice(0, 10);
   if (firstInvalid) firstInvalid.focus();
   return !firstInvalid;
 }
@@ -122,6 +169,41 @@ function bindPasswordToggles() {
       button.setAttribute('aria-pressed', String(show));
       button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
+  });
+}
+
+function bindGoogleAuth(form, supabase) {
+  const button = $('[data-google-auth]', form);
+  if (!button) return;
+
+  const status = $('.status', form);
+  const initialLabel = button.textContent;
+  let signingIn = false;
+
+  button.addEventListener('click', async () => {
+    if (signingIn) return;
+    status.hidden = true;
+    if (form.dataset.form === 'signup' && !validateGoogleSignup(form)) return;
+
+    signingIn = true;
+    setBusy(button, true, initialLabel);
+    try {
+      const redirectTo = new URL(
+        form.dataset.form === 'signup' ? 'onboarding.html' : 'login.html',
+        window.location.href
+      ).toString();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo }
+      });
+      if (error) throw error;
+    } catch (error) {
+      setStatus(status, friendlyError(error));
+      status.focus();
+    } finally {
+      setBusy(button, false, initialLabel);
+      signingIn = false;
+    }
   });
 }
 
