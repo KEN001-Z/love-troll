@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home — VYBE</title>
+<meta name="description" content="Your VYBE home: meet people, find mutual connections, and catch the gist.">
+<meta name="theme-color" content="#FFF9F0">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="app-shell.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body class="home-body">
+<a class="skip" href="#main">Skip to content</a>
+<header class="app-header">
+  <div class="app-header-inner">
+    <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
+    <nav class="app-nav" aria-label="Main navigation">
+      <a class="app-nav-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a class="app-nav-link" href="#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg>Connections</a>
+      <span class="app-nav-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg>Play<small>Soon</small></span>
+      <span class="app-nav-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community<small>Soon</small></span>
+      <a class="app-nav-link" href="onboarding.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
+    </nav>
+    <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
+  </div>
+</header>
+<main class="home-main" id="main">
+  <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>
+  <section class="welcome-panel" aria-labelledby="welcome-title">
+    <div class="welcome-copy">
+      <p class="home-eyebrow">YOUR SPACE ON VYBE</p>
+      <h1 id="welcome-title">Omo, you’re back<span data-name-greeting></span>.</h1>
+      <p>Your next favourite person could be here. No pressure — just good people and better vibes.</p>
+    </div>
+    <a class="btn welcome-action" href="#people">Meet people <span aria-hidden="true">→</span></a>
+  </section>
+
+  <section class="home-section people-section" id="people" aria-labelledby="people-title">
+    <div class="section-title">
+      <div><p class="home-eyebrow">YOUR PEOPLE, YOUR PACE</p><h2 id="people-title">People you might click with</h2></div>
+      <p class="people-note">Real people. No pressure.</p>
+    </div>
+    <p class="section-message" data-people-message role="status" aria-live="polite">Looking for people you might click with…</p>
+    <ul class="suggestion-list" data-suggestions aria-label="Suggested VYBE members"></ul>
+  </section>
+
+  <div class="home-lower">
+    <section class="connections-section" id="connections" aria-labelledby="connections-title">
+      <div class="section-title">
+        <div><p class="home-eyebrow">WHEN IT’S MUTUAL</p><h2 id="connections-title">Your connections</h2></div>
+        <a class="text-link" href="#people">Meet people <span aria-hidden="true">→</span></a>
+      </div>
+      <p class="section-message" data-connections-message role="status" aria-live="polite">Checking your connections…</p>
+      <ul class="connection-list" data-connections aria-label="Your mutual connections"></ul>
+    </section>
+
+    <section class="conversation-card" aria-labelledby="conversation-title">
+      <p class="home-eyebrow">A LITTLE HELP WITH THE FIRST “HEY”</p>
+      <h2 id="conversation-title">Try this conversation starter</h2>
+      <p class="conversation-prompt">“What’s your biggest green flag?”</p>
+      <a class="text-link" href="#people">Find someone to ask <span aria-hidden="true">→</span></a>
+    </section>
+  </div>
+
+  <div class="coming-soon-strip" aria-label="More of VYBE coming soon">
+    <p>More of VYBE is on the way</p>
+    <span>Play <small>Coming soon</small></span>
+    <span>Community <small>Coming soon</small></span>
+  </div>
+</main>
+<nav class="app-mobile-nav" aria-label="Main navigation">
+  <a class="app-mobile-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a class="app-mobile-link" href="#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
+  <a class="app-mobile-link" href="#connections"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 12.5 5 10a3 3 0 0 1 4.2-4.2l2.3 2.3 2.3-2.3A3 3 0 0 1 18 10l-6 6-1.5-1.5"/><path d="m4 15 3-3a2 2 0 0 1 2.8 0l1.2 1.2"/><path d="m5 18 2-2"/><path d="m8 20 2-2"/></svg><span>Connect</span></a>
+  <span class="app-mobile-soon" aria-label="Play, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 3.8 5.2l-1 3.3a2 2 0 0 1-3.3.9l-2-1.9h-5l-2 1.9a2 2 0 0 1-3.3-.9l-1-3.3A4 4 0 0 1 7 8Z"/><path d="M8 10v4M6 12h4M16 11h.01M18 13h.01"/></svg><span>Play</span><small>Soon</small></span>
+  <span class="app-mobile-soon" aria-label="Community, coming soon"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span><small>Soon</small></span>
+  <a class="app-mobile-link" href="onboarding.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
+</nav>
+<script type="module" src="home.js"></script>
+</body>
+</html>
