@@ -57,11 +57,20 @@
 .app-nav-link[aria-current=page]{background:rgba(115,87,232,.08);border-color:transparent;color:#5138c5;box-shadow:inset 0 -2px 0 #7357e8}
 .app-logout{min-height:38px;padding:6px 12px;border:1px solid rgba(33,29,43,.16);border-radius:8px;background:transparent;font-size:.82rem}
 .app-logout:hover{background:#fff;color:#5138c5;border-color:rgba(115,87,232,.35)}
+.social-subnav-wrap{border-top:1px solid rgba(33,29,43,.08);background:rgba(255,250,243,.82)}
+.social-subnav{width:min(1120px,calc(100% - 40px));display:flex;align-items:center;gap:4px;margin:auto}
+.social-subnav-link{position:relative;min-height:40px;display:inline-flex;align-items:center;padding:0 12px;color:#716b79;font-size:.78rem;font-weight:700;text-decoration:none}
+.social-subnav-link::after{position:absolute;right:12px;bottom:0;left:12px;height:2px;border-radius:2px;background:#7357e8;content:'';opacity:0;transform:scaleX(.55);transition:opacity .16s ease,transform .16s ease}
+.social-subnav-link:hover{color:#5138c5}
+.social-subnav-link[aria-current=page]{color:#5138c5}
+.social-subnav-link[aria-current=page]::after{opacity:1;transform:scaleX(1)}
+.social-subnav-link:focus-visible{z-index:1;outline:3px solid rgba(115,87,232,.32);outline-offset:-3px;border-radius:7px}
 @media(max-width:900px){
   .app-header-inner{min-height:60px;width:calc(100% - 36px)}
   .app-mobile-nav{padding:5px 6px calc(5px + env(safe-area-inset-bottom));border-top:1px solid rgba(33,29,43,.12);background:rgba(255,250,243,.97);backdrop-filter:blur(10px)}
   .app-mobile-link,.app-mobile-soon{min-height:54px;border-radius:8px;font-size:.68rem;font-weight:600}
   .app-mobile-link:hover,.app-mobile-link[aria-current=page]{background:rgba(115,87,232,.1);color:#5138c5;box-shadow:inset 0 -2px 0 #7357e8}
+  .social-subnav{width:calc(100% - 36px)}
 }
 @media(max-width:600px){
   .app-header-inner{width:calc(100% - 24px);min-height:56px}
@@ -69,4 +78,7 @@
   .app-header .logo svg{width:28px;height:28px}
   .app-logout{font-size:.75rem}
   .app-mobile-link,.app-mobile-soon{min-height:51px;font-size:.63rem}
+  .social-subnav{width:calc(100% - 24px);justify-content:space-between;gap:0}
+  .social-subnav-link{min-height:39px;padding:0 10px;font-size:.76rem}
+  .social-subnav-link::after{right:10px;left:10px}
 }

@@ -63,9 +63,17 @@ function addTextChips(container, values, transform = value => value) {
   }
 }
 
+function resolveMediaUrl(value) {
+  if (!value || typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  return trimmed || '';
+}
+
 async function signedAsset(path) {
-  if (!path) return '';
-  const { data, error } = await supabase.storage.from('profile-media').createSignedUrl(path, 3600);
+  const resolved = resolveMediaUrl(path);
+  if (!resolved) return '';
+  if (/^https?:\/\//i.test(resolved) || resolved.startsWith('data:')) return resolved;
+  const { data, error } = await supabase.storage.from('profile-media').createSignedUrl(resolved, 3600);
   if (error) throw error;
   if (!data?.signedUrl) throw new Error('VYBE couldn’t load this profile photo.');
   return data.signedUrl;
@@ -76,26 +84,39 @@ async function renderPhotos() {
   const initials = $('[data-initials]');
   const cover = $('[data-cover]');
   initials.textContent = (profile.display_name || profile.username || '?').trim().slice(0, 1).toUpperCase();
+  initials.hidden = false;
   avatar.querySelector('img')?.remove();
   cover.classList.remove('has-image');
   cover.style.backgroundImage = '';
   const failures = [];
+  const avatarSource = resolveMediaUrl(profile.avatar_url || profile.avatar_path);
+  const coverSource = resolveMediaUrl(profile.cover_url || profile.cover_path);
 
-  if (profile.avatar_path) {
+  if (avatarSource) {
     try {
       const image = document.createElement('img');
-      image.src = await signedAsset(profile.avatar_path);
       image.alt = '';
-      image.addEventListener('error', () => setMessage($('[data-action-feedback]'), 'The profile photo could not be loaded.', 'error'), { once: true });
+      image.loading = 'eager';
+      image.fetchPriority = 'high';
+      image.decoding = 'async';
+      image.addEventListener('load', () => {
+        image.classList.add('is-loaded');
+        initials.hidden = true;
+      }, { once: true });
+      image.addEventListener('error', () => {
+        image.remove();
+        initials.hidden = false;
+        setMessage($('[data-action-feedback]'), 'The profile photo could not be loaded.', 'error');
+      }, { once: true });
+      image.src = await signedAsset(avatarSource);
       avatar.append(image);
-      initials.hidden = true;
     } catch (error) {
       failures.push(error.message);
     }
   }
-  if (profile.cover_path) {
+  if (coverSource) {
     try {
-      cover.style.backgroundImage = `url("${await signedAsset(profile.cover_path)}")`;
+      cover.style.backgroundImage = `url("${await signedAsset(coverSource)}")`;
       cover.classList.add('has-image');
     } catch (error) {
       failures.push(error.message);
@@ -220,6 +241,7 @@ function openEditDialog(focusField) {
   editForm.elements.namedItem('relationship_status').value = ownProfile.relationship_status || '';
   editForm.elements.namedItem('avatar').value = '';
   editForm.elements.namedItem('cover').value = '';
+  $$('[data-camera-input]').forEach(input => { input.value = ''; });
   resetCropState('avatar');
   resetCropState('cover');
   $('[data-bio-count]').textContent = String((profile.bio || '').length);
@@ -229,7 +251,9 @@ function openEditDialog(focusField) {
   editDialog.showModal();
   if (focusField) {
     requestAnimationFrame(() => {
-      const field = editForm.elements.namedItem(focusField);
+      const field = ['avatar', 'cover'].includes(focusField)
+        ? $(`[data-photo-pick="camera"][data-photo-kind="${focusField}"]`)
+        : editForm.elements.namedItem(focusField);
       field.scrollIntoView({ block: 'center' });
       field.focus({ preventScroll: true });
     });
@@ -242,12 +266,21 @@ function clampPosition(value) {
 
 function updateCropPreview(kind) {
   const state = cropState[kind];
-  const preview = $(`[data-crop-preview="${kind}"]`);
-  const image = $(`[data-crop-image="${kind}"]`);
-  preview.hidden = !state.file;
+  const positioning = $('[data-photo-positioning]');
+  const card = $(`[data-photo-position-card="${kind}"]`);
+  const preview = $(`[data-photo-preview="${kind}"]`);
+  const image = $('img', preview);
+  const horizontal = $(`[data-photo-position-axis="${kind}-x"]`);
+  const vertical = $(`[data-photo-position-axis="${kind}-y"]`);
+  card.hidden = !state.file;
+  positioning.hidden = !cropState.avatar.file && !cropState.cover.file;
+  horizontal.value = String(state.x);
+  vertical.value = String(state.y);
   if (state.file) {
-    image.src = state.url;
+    if (image.src !== state.url) image.src = state.url;
     image.style.objectPosition = `${state.x}% ${state.y}%`;
+  } else {
+    image.removeAttribute('src');
   }
 }
 
@@ -268,40 +301,57 @@ function setCropFile(kind, file) {
   state.url = file ? URL.createObjectURL(file) : '';
   state.x = 50;
   state.y = 50;
+  const selected = $(`[data-photo-selected="${kind}"]`);
+  selected.textContent = file ? `Selected: ${file.name}` : '';
+  selected.hidden = !file;
   updateCropPreview(kind);
 }
 
 function initCropControls() {
   for (const kind of ['avatar', 'cover']) {
-    const input = editForm.elements.namedItem(kind);
-    const stage = $(`[data-crop-stage="${kind}"]`);
-    input.addEventListener('change', () => setCropFile(kind, input.files[0]));
-    $(`[data-crop-reset="${kind}"]`).addEventListener('click', () => {
-      cropState[kind].x = 50;
-      cropState[kind].y = 50;
+    const inputs = [$(`[data-gallery-input="${kind}"]`), $(`[data-camera-input="${kind}"]`)];
+    inputs.forEach(input => input.addEventListener('change', () => {
+      setCropFile(kind, input.files[0]);
+    }));
+    $$(`[data-photo-pick][data-photo-kind="${kind}"]`).forEach(button => {
+      button.addEventListener('click', () => {
+        const input = button.dataset.photoPick === 'camera' ? inputs[1] : inputs[0];
+        input.click();
+      });
+    });
+    const preview = $(`[data-photo-preview="${kind}"]`);
+    const horizontal = $(`[data-photo-position-axis="${kind}-x"]`);
+    const vertical = $(`[data-photo-position-axis="${kind}-y"]`);
+    horizontal.addEventListener('input', () => {
+      cropState[kind].x = Number(horizontal.value);
       updateCropPreview(kind);
     });
-    stage.addEventListener('pointerdown', event => {
-      if (!cropState[kind].file) return;
-      stage.setPointerCapture(event.pointerId);
-      stage.dataset.dragging = 'true';
-      stage.dataset.pointerX = String(event.clientX);
-      stage.dataset.pointerY = String(event.clientY);
+    vertical.addEventListener('input', () => {
+      cropState[kind].y = Number(vertical.value);
+      updateCropPreview(kind);
     });
-    stage.addEventListener('pointermove', event => {
-      if (stage.dataset.dragging !== 'true') return;
-      const rect = stage.getBoundingClientRect();
-      const dx = event.clientX - Number(stage.dataset.pointerX);
-      const dy = event.clientY - Number(stage.dataset.pointerY);
+    preview.addEventListener('pointerdown', event => {
+      if (!cropState[kind].file) return;
+      preview.setPointerCapture(event.pointerId);
+      preview.dataset.dragging = 'true';
+      preview.dataset.pointerX = String(event.clientX);
+      preview.dataset.pointerY = String(event.clientY);
+    });
+    preview.addEventListener('pointermove', event => {
+      if (preview.dataset.dragging !== 'true') return;
+      const rect = preview.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dx = event.clientX - Number(preview.dataset.pointerX);
+      const dy = event.clientY - Number(preview.dataset.pointerY);
       cropState[kind].x = clampPosition(cropState[kind].x - (dx / rect.width) * 100);
       cropState[kind].y = clampPosition(cropState[kind].y - (dy / rect.height) * 100);
-      stage.dataset.pointerX = String(event.clientX);
-      stage.dataset.pointerY = String(event.clientY);
+      preview.dataset.pointerX = String(event.clientX);
+      preview.dataset.pointerY = String(event.clientY);
       updateCropPreview(kind);
     });
-    const stopDragging = () => { stage.dataset.dragging = 'false'; };
-    stage.addEventListener('pointerup', stopDragging);
-    stage.addEventListener('pointercancel', stopDragging);
+    const stopDragging = () => { preview.dataset.dragging = 'false'; };
+    preview.addEventListener('pointerup', stopDragging);
+    preview.addEventListener('pointercancel', stopDragging);
   }
 }
 
@@ -386,8 +436,8 @@ async function saveProfile(event) {
   progress.hidden = true;
 
   try {
-    const avatar = await cropImage(editForm.elements.namedItem('avatar').files[0], 'avatar');
-    const cover = await cropImage(editForm.elements.namedItem('cover').files[0], 'cover');
+    const avatar = await cropImage(cropState.avatar.file, 'avatar');
+    const cover = await cropImage(cropState.cover.file, 'cover');
     validateImage(avatar, 'Profile photo');
     validateImage(cover, 'Cover photo');
     const matchmakingEnabled = editForm.elements.namedItem('matchmaking_enabled').checked;
@@ -614,12 +664,14 @@ async function initialize() {
     loadInterestState().catch(error => {
       setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
     });
+    window.dispatchEvent(new Event('vybe:page-ready'));
   } catch (error) {
     status.dataset.state = 'error';
     status.textContent = ['PGRST202', 'PGRST204', 'PGRST205', '42703'].includes(error?.code)
       ? 'Student profiles aren’t enabled yet. Apply the discovery and student-profile Supabase migrations, then reload.'
       : friendlyError(error);
     status.hidden = false;
+    window.dispatchEvent(new Event('vybe:page-ready'));
   }
 
   $('[data-tab]').parentElement.addEventListener('click', event => {
