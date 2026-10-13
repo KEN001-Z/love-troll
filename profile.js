@@ -606,12 +606,14 @@ async function initialize() {
     targetId = new URLSearchParams(window.location.search).get('id') || user.id;
 
     await loadProfile();
-    await loadInterestState();
     status.hidden = true;
     page.hidden = false;
     if (targetId === currentUser.id && new URLSearchParams(window.location.search).get('edit') === 'complete') {
       openEditDialog('university');
     }
+    loadInterestState().catch(error => {
+      setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+    });
   } catch (error) {
     status.dataset.state = 'error';
     status.textContent = ['PGRST202', 'PGRST204', 'PGRST205', '42703'].includes(error?.code)
