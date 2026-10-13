@@ -1,0 +1,2 @@
+[mcp_servers.supabase]
+url = "https://mcp.supabase.com/mcp?project_ref=vhkzyasknygybugugjyl&features=docs,account,database,debugging,development,functions,branching"

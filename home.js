@@ -1,6 +1,7 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const status = $('[data-home-status]');
 const greeting = $('[data-name-greeting]');
 const profileProgress = $('[data-profile-progress]');
@@ -10,6 +11,29 @@ const suggestionList = $('[data-suggestions]');
 const connectionsMessage = $('[data-connections-message]');
 const connectionList = $('[data-connections]');
 const connectionsPhotoMessage = $('[data-connections-photo-message]');
+const feedSection = $('.feed-section');
+const feedPostList = $('[data-feed-posts]');
+const feedState = $('[data-feed-state]');
+const feedRetry = $('[data-feed-retry]');
+const feedMore = $('[data-feed-more]');
+const feedSentinel = $('[data-feed-sentinel]');
+const feedRefresh = $('[data-feed-refresh]');
+const feedFilters = $$('[data-feed-filter]');
+const homeSearch = $('[data-home-search]');
+const searchStatus = $('[data-search-status]');
+const postForm = $('[data-post-form]');
+const composerStatus = $('[data-composer-status]');
+const postContentInput = $('[name="content"]', postForm);
+const postAnonymousInput = $('[name="is_anonymous"]', postForm);
+const postCharacterCount = $('[data-post-character-count]');
+const postSubmitButton = $('[type="submit"]', postForm);
+const postMediaInput = $('[data-post-media]', postForm);
+const postMediaTrigger = $('[data-post-media-trigger]', postForm);
+const postMediaPreview = $('[data-post-media-preview]', postForm);
+const createKindButtons = $$('[data-create-kind]');
+const mobileCreateButton = $('[data-mobile-create]');
+const mobileCreateMenu = $('[data-mobile-create-menu]');
+const POST_MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime';
 const labels = {
   food: {
     indomie: 'Indomie',
@@ -56,6 +80,38 @@ let ownMatchmakingEnabled = false;
 let candidates = [];
 const pendingActions = new Set();
 const DEMO_NAME_PATTERNS = [/^test\s*user$/i, /^demo/i, /^sample/i, /^guest/i, /^user$/i];
+const FEED_PAGE_SIZE = 15;
+let feedFilter = 'all';
+let feedCursor = null;
+let feedHasMore = true;
+let feedRequest = null;
+let feedObserver = null;
+let feedAutoLoadEnabled = true;
+let composerBusy = false;
+let editingPostId = null;
+let selectedPostMedia = null;
+const postMediaUrls = new Map();
+const loadedPosts = new Map();
+
+function applyHomeSearch() {
+  const query = (homeSearch?.value || '').trim().toLocaleLowerCase();
+  let postCount = 0;
+  let peopleCount = 0;
+  feedPostList.querySelectorAll('.feed-post').forEach(item => {
+    const visible = !query || (item.dataset.searchText || item.textContent).toLocaleLowerCase().includes(query);
+    item.hidden = !visible;
+    if (visible) postCount += 1;
+  });
+  suggestionList.querySelectorAll('.suggestion-card').forEach(item => {
+    const visible = !query || (item.dataset.searchText || item.textContent).toLocaleLowerCase().includes(query);
+    item.hidden = !visible;
+    if (visible) peopleCount += 1;
+  });
+  if (searchStatus) {
+    searchStatus.hidden = !query;
+    searchStatus.textContent = query ? `${postCount} loaded post${postCount === 1 ? '' : 's'} and ${peopleCount} suggested profile${peopleCount === 1 ? '' : 's'} match “${homeSearch.value.trim()}”.` : '';
+  }
+}
 
 function sanitizeName(name) {
   const trimmed = (name || '').trim();
@@ -80,6 +136,625 @@ function setSectionMessage(element, message, state = '') {
   element.textContent = message;
   element.dataset.state = state;
   element.hidden = !message;
+}
+
+function setFeedState(message, state = '') {
+  feedState.textContent = message;
+  feedState.dataset.state = state;
+  feedState.hidden = !message;
+}
+
+function setComposerStatus(message, state = '') {
+  composerStatus.textContent = message;
+  composerStatus.dataset.state = state;
+  composerStatus.hidden = !message;
+}
+
+function explainPostBackendError(error) {
+  if (['PGRST202', 'PGRST205', '42P01', '42883'].includes(error?.code)) {
+    return 'The posts feed is not available in this Supabase project yet. Confirm the project schema and apply the matching posts migration before trying again.';
+  }
+  return error?.message || 'Please try again.';
+}
+
+function updateFeedFilters(busy = Boolean(feedRequest)) {
+  feedFilters.forEach(button => {
+    const selected = button.dataset.feedFilter === feedFilter;
+    button.setAttribute('aria-pressed', String(selected));
+    button.disabled = busy || !currentUserId;
+  });
+}
+
+function setFeedInteractionEnabled(enabled) {
+  feedRefresh.disabled = !enabled;
+  feedFilters.forEach(button => { button.disabled = !enabled; });
+  postContentInput.disabled = !enabled;
+  postAnonymousInput.disabled = !enabled;
+  postSubmitButton.disabled = !enabled;
+  postMediaInput.disabled = !enabled;
+  postMediaTrigger.disabled = !enabled || Boolean(editingPostId);
+  feedRetry.disabled = !enabled;
+  feedMore.disabled = !enabled;
+  createKindButtons.forEach(button => { button.disabled = !enabled; });
+  mobileCreateButton.disabled = !enabled;
+}
+
+function startPostCreation(kind) {
+  feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (kind === 'image' || kind === 'video') {
+    postMediaInput.accept = kind === 'image'
+      ? 'image/jpeg,image/png,image/webp,image/gif'
+      : 'video/mp4,video/webm,video/quicktime';
+    postMediaInput.click();
+    return;
+  }
+  window.setTimeout(() => postContentInput.focus({ preventScroll: true }), 180);
+}
+
+function renderPostMediaPreview() {
+  postMediaPreview.replaceChildren();
+  postMediaPreview.hidden = !selectedPostMedia;
+  if (!selectedPostMedia) return;
+  const label = makeElement('span', 'post-media-name', selectedPostMedia.file.name);
+  const remove = makeElement('button', 'post-media-remove', 'Remove');
+  remove.type = 'button';
+  remove.addEventListener('click', () => {
+    selectedPostMedia = null;
+    postMediaInput.value = '';
+    renderPostMediaPreview();
+  });
+  postMediaPreview.append(label, remove);
+}
+
+function validatePostMedia(file) {
+  if (!file) return null;
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+  if (!isImage && !isVideo) throw new Error('Choose an image or video clip.');
+  const limit = isImage ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+  if (file.size > limit) throw new Error(`${isImage ? 'Images' : 'Clips'} must be ${isImage ? '10MB' : '50MB'} or smaller.`);
+  return { file, kind: isImage ? 'image' : 'video' };
+}
+
+async function signPostMedia(posts) {
+  const paths = [...new Set(posts.map(post => post.media_path).filter(Boolean))];
+  const missing = paths.filter(path => !postMediaUrls.has(path));
+  if (!missing.length) return;
+  const { data, error } = await supabase.storage.from('post-media').createSignedUrls(missing, 3600);
+  if (error) throw error;
+  (data || []).forEach(result => { if (result.path && result.signedUrl) postMediaUrls.set(result.path, result.signedUrl); });
+}
+
+function formatPostDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const minutes = Math.round((date.getTime() - Date.now()) / 60000);
+  if (Math.abs(minutes) < 60) return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(minutes, 'minute');
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(hours, 'hour');
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+}
+
+function renderPost(post, avatarUrl = '') {
+  const item = makeElement('li', 'feed-post');
+  item.dataset.postId = post.id;
+  item.dataset.mediaKind = post.media_kind || 'text';
+  item.id = `post-${post.id}`;
+  item.dataset.searchText = `${post.content} ${post.author_display_name || ''} ${post.author_username || ''}`.toLocaleLowerCase();
+  const article = makeElement('article', 'post-card');
+
+  const header = makeElement('header', 'post-header');
+  const identity = makeElement('div', 'post-identity');
+  const avatar = makeElement('span', `post-avatar${post.is_anonymous ? ' is-anonymous' : ''}`);
+  const avatarInitial = makeElement('span', 'post-avatar-initial', post.is_anonymous ? '◉' : (sanitizeName(post.author_display_name) || 'V').slice(0, 1).toUpperCase());
+  avatar.append(avatarInitial);
+  if (avatarUrl && !post.is_anonymous) {
+    const image = makeElement('img', 'post-avatar-image');
+    image.src = avatarUrl;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.addEventListener('load', () => { avatarInitial.hidden = true; }, { once: true });
+    image.addEventListener('error', () => image.remove(), { once: true });
+    avatar.append(image);
+  }
+  if (post.author_profile_id && !post.is_anonymous) {
+    const avatarLink = makeElement('a', 'post-avatar-link');
+    avatarLink.href = `profile.html?id=${encodeURIComponent(post.author_profile_id)}`;
+    avatarLink.setAttribute('aria-label', `View ${sanitizeName(post.author_display_name) || 'member'}’s profile`);
+    avatarLink.append(avatar);
+    identity.append(avatarLink);
+  } else {
+    identity.append(avatar);
+  }
+  const author = makeElement('div', 'post-author');
+  if (post.is_anonymous) {
+    author.append(makeElement('span', 'post-anonymous-label', 'Anonymous'));
+  } else if (post.author_profile_id) {
+    const link = makeElement('a', 'post-author-link', sanitizeName(post.author_display_name) || 'VYBE member');
+    link.href = `profile.html?id=${encodeURIComponent(post.author_profile_id)}`;
+    author.append(link);
+    if (post.author_username) author.append(makeElement('span', 'post-author-handle', `@${post.author_username}`));
+  } else {
+    author.append(makeElement('span', 'post-author-name', sanitizeName(post.author_display_name) || 'VYBE member'));
+  }
+  identity.append(author);
+  header.append(identity);
+
+  const timestamp = formatPostDate(post.created_at);
+  if (timestamp) {
+    const time = makeElement('time', 'post-time', timestamp);
+    time.dateTime = post.created_at;
+    header.append(time);
+  }
+
+  if (post.can_edit) {
+    const actions = makeElement('div', 'post-owner-actions');
+    const edit = makeElement('button', 'post-owner-action', 'Edit');
+    edit.type = 'button';
+    edit.dataset.postEdit = '';
+    edit.setAttribute('aria-label', 'Edit your post');
+    const remove = makeElement('button', 'post-owner-action', 'Delete');
+    remove.type = 'button';
+    remove.dataset.postDelete = '';
+    remove.setAttribute('aria-label', 'Delete your post');
+    actions.append(edit, remove);
+    header.append(actions);
+  }
+
+  const content = makeElement('p', 'post-content', post.content);
+  article.append(header, content);
+  const mediaUrl = postMediaUrls.get(post.media_path);
+  if (mediaUrl && post.media_kind === 'image') {
+    article.classList.add('post-card-media');
+    const image = makeElement('img', 'post-media-image');
+    image.src = mediaUrl; image.alt = 'Attached image'; image.loading = 'lazy';
+    article.append(image);
+  } else if (mediaUrl && post.media_kind === 'video') {
+    article.classList.add('post-card-media');
+    const video = makeElement('video', 'post-media-video');
+    video.src = mediaUrl; video.controls = true; video.preload = 'metadata';
+    video.setAttribute('aria-label', 'Attached video clip');
+    article.append(video);
+  }
+  const actions = makeElement('div', 'post-actions');
+  const conversation = makeElement('a', 'post-action', 'Join the conversation');
+  conversation.href = 'community.html?room=campus-gist';
+  const share = makeElement('button', 'post-action post-share', 'Share');
+  share.type = 'button';
+  share.dataset.postShare = '';
+  share.setAttribute('aria-label', 'Copy a link to this post');
+  share.dataset.postUrl = `${window.location.origin}/home.html#post-${post.id}`;
+  actions.append(conversation, share);
+  article.append(actions);
+  item.append(article);
+  return item;
+}
+
+const previewPosts = [
+  { name: 'Tomi Adebayo', username: '@tomideoluw', format: 'REEL PREVIEW', type: 'reel', avatar: 'T', body: 'POV: you came for one lecture and somehow became the class rep 😭', artTop: 'CAMPUS CHRONICLES', artMain: '8:01 AM\nLECTURE', artBottom: 'UNILAG · MONDAY MORNING', likes: 218, comments: 24, time: '12 min' },
+  { name: 'Ifeoma Nwosu', username: '@ifeoncampus', format: 'PHOTO PREVIEW', type: 'photo', avatar: 'I', body: 'Small wins: making it through the week and finding the best jollof spot near campus. 📍', artTop: 'THE LUNCH BREAK', artMain: 'JOLLOF\nO’CLOCK', artBottom: 'YABA · LAGOS', likes: 96, comments: 11, time: '38 min' },
+  { name: 'Anonymous student', username: 'Campus anonymous', format: 'TEXT PREVIEW', type: 'text', avatar: '◉', body: 'The group project has 8 people but somehow I’m the whole department. Please explain. 😭', artTop: 'ANONYMOUS GIST', artMain: 'GROUP\nPROJECTS…', artBottom: 'WE KNOW THE FEELING', likes: 143, comments: 32, time: '1 hr' }
+];
+
+function renderPreviewPost(post, index) {
+  const item = makeElement('li', `feed-post demo-feed-post demo-${post.type}`);
+  item.dataset.demoPost = String(index);
+  item.id = `feed-preview-${index}`;
+  item.dataset.searchText = `${post.name} ${post.username} ${post.body} ${post.format}`.toLocaleLowerCase();
+  const article = makeElement('article', 'demo-post-card');
+  const header = makeElement('header', 'demo-post-header');
+  const identity = makeElement('div', 'demo-post-identity');
+  identity.append(makeElement('span', 'demo-post-avatar', post.avatar));
+  const byline = makeElement('span', 'demo-post-byline');
+  byline.append(makeElement('strong', '', post.name), makeElement('small', '', `${post.username} · ${post.time}`));
+  identity.append(byline);
+  header.append(identity, makeElement('span', 'demo-post-badge', post.format));
+  const visual = makeElement('div', `demo-post-visual demo-art-${post.type}`);
+  visual.setAttribute('aria-label', `${post.type} post preview artwork`);
+  visual.append(makeElement('span', 'demo-art-kicker', post.artTop));
+  visual.append(makeElement('span', 'demo-art-title', post.artMain));
+  if (post.type === 'reel') visual.append(makeElement('span', 'demo-play-mark', '▶'));
+  visual.append(makeElement('span', 'demo-art-footer', post.artBottom));
+  const caption = makeElement('p', 'demo-post-caption', post.body);
+  const actions = makeElement('div', 'demo-post-actions');
+  const like = makeElement('button', 'demo-action demo-like');
+  like.type = 'button';
+  like.dataset.demoLike = '';
+  like.setAttribute('aria-pressed', 'false');
+  like.setAttribute('aria-label', `Like sample post, ${post.likes} likes`);
+  like.append(makeElement('span', 'demo-action-icon', '♡'), makeElement('span', 'demo-action-count', String(post.likes)));
+  const comment = makeElement('button', 'demo-action');
+  comment.type = 'button';
+  comment.dataset.demoComment = '';
+  comment.setAttribute('aria-expanded', 'false');
+  comment.setAttribute('aria-label', `Show ${post.comments} sample comments`);
+  comment.append(makeElement('span', 'demo-action-icon demo-comment-icon'), makeElement('span', 'demo-action-count', String(post.comments)));
+  const share = makeElement('button', 'demo-action demo-share', 'Share');
+  share.type = 'button';
+  share.dataset.demoShare = '';
+  actions.append(like, comment, share);
+  const comments = makeElement('div', 'demo-comments');
+  comments.hidden = true;
+  comments.append(makeElement('p', 'demo-sample-comment', index === 0 ? 'Bola: The lecturer appearing before the students is wild 😂' : 'Mimi: This is too real for a Tuesday 😭'));
+  const commentForm = makeElement('form', 'demo-comment-form');
+  const input = makeElement('input');
+  input.name = 'preview_comment';
+  input.placeholder = 'Add a comment…';
+  input.maxLength = 240;
+  input.setAttribute('aria-label', 'Add a preview comment');
+  const submit = makeElement('button', '', 'Post');
+  submit.type = 'submit';
+  commentForm.append(input, submit);
+  comments.append(commentForm);
+  article.append(header, visual, caption, actions, comments);
+  item.append(article);
+  return item;
+}
+
+function renderPreviewFeed() {
+  const previews = feedFilter === 'anonymous'
+    ? previewPosts.filter(post => post.name === 'Anonymous student')
+    : previewPosts;
+  feedPostList.replaceChildren(...previews.map(renderPreviewPost));
+  applyHomeSearch();
+}
+
+async function loadFeed({ reset = false } = {}) {
+  if (feedRequest) {
+    if (!reset) return feedRequest;
+    await feedRequest;
+  }
+
+  if (reset) {
+    feedCursor = null;
+    feedHasMore = true;
+    feedAutoLoadEnabled = true;
+    feedPostList.replaceChildren();
+    loadedPosts.clear();
+    feedRetry.hidden = true;
+    feedMore.hidden = true;
+    setFeedState('Loading posts…');
+  } else if (!feedHasMore) {
+    setFeedState(feedPostList.childElementCount ? 'You’re all caught up.' : 'No posts yet. Start the gist with a post of your own.', 'empty');
+    return true;
+  } else {
+    setFeedState(feedPostList.childElementCount ? 'Loading more posts…' : 'Loading posts…');
+  }
+
+  feedRefresh.disabled = true;
+  feedMore.disabled = true;
+  updateFeedFilters(true);
+  const request = (async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_public_posts', {
+        p_before_created_at: feedCursor?.created_at || null,
+        p_before_id: feedCursor?.id || null,
+        p_filter: feedFilter,
+        p_limit: FEED_PAGE_SIZE + 1
+      });
+      if (error) throw error;
+
+      const rows = data || [];
+      const page = rows.slice(0, FEED_PAGE_SIZE);
+      await signPostMedia(page);
+      feedHasMore = rows.length > FEED_PAGE_SIZE;
+      const authorIds = [...new Set(page.filter(post => !post.is_anonymous && post.author_profile_id).map(post => post.author_profile_id))];
+      let postAvatars = new Map();
+      let previewsById = new Map();
+      if (authorIds.length) {
+        try {
+          const { data: previews, error: previewsError } = await supabase.rpc('get_profile_previews', { target_ids: authorIds });
+          if (!previewsError) {
+            const profiles = previews || [];
+            previewsById = new Map(profiles.map(profile => [profile.id, profile]));
+            const signed = await signProfileAvatars(profiles);
+            postAvatars = signed.urlsByProfileId;
+          }
+        } catch {
+          // Keep the feed available if profile photos are unavailable.
+        }
+      }
+      const existingIds = new Set([...feedPostList.children].map(item => item.dataset.postId));
+      page.forEach(post => {
+        post.author_username = previewsById.get(post.author_profile_id)?.username || '';
+        loadedPosts.set(post.id, post);
+        if (!existingIds.has(post.id)) feedPostList.append(renderPost(post, postAvatars.get(post.author_profile_id) || ''));
+      });
+      applyHomeSearch();
+      if (page.length) feedCursor = { created_at: page[page.length - 1].created_at, id: page[page.length - 1].id };
+
+      if (!feedPostList.childElementCount && !feedHasMore) {
+        renderPreviewFeed();
+        setFeedState(
+          feedFilter === 'anonymous'
+            ? 'These sample cards preview the feed. Anonymous posts will show here when the feed is connected.'
+            : 'You’re viewing sample posts. Real campus posts will appear here when the feed is connected.',
+          'preview'
+        );
+      } else if (!feedHasMore) {
+        setFeedState('You’re all caught up.', 'empty');
+      } else {
+        setFeedState('');
+      }
+      feedRetry.hidden = true;
+      feedAutoLoadEnabled = true;
+      feedMore.hidden = Boolean(feedObserver) || !feedHasMore;
+      return true;
+    } catch (error) {
+      feedAutoLoadEnabled = false;
+      if (!feedPostList.childElementCount) renderPreviewFeed();
+      setFeedState(feedPostList.querySelector('.demo-feed-post')
+        ? `Showing sample posts because the live feed isn’t connected yet. ${explainPostBackendError(error)}`
+        : `Couldn’t load more posts. ${explainPostBackendError(error)}`, 'preview');
+      feedRetry.hidden = false;
+      feedMore.hidden = true;
+      return false;
+    } finally {
+      feedRequest = null;
+      feedRefresh.disabled = false;
+      updateFeedFilters();
+      feedRetry.disabled = false;
+      feedMore.disabled = false;
+    }
+  })();
+  feedRequest = request;
+  return request;
+}
+
+function resetComposer() {
+  postForm.reset();
+  selectedPostMedia = null;
+  renderPostMediaPreview();
+  editingPostId = null;
+  postMediaTrigger.disabled = !currentUserId;
+  postSubmitButton.textContent = 'Post';
+  postCharacterCount.textContent = `0 / ${postContentInput.maxLength}`;
+  setComposerStatus('');
+}
+
+function setComposerEditing(post) {
+  editingPostId = post.id;
+  postContentInput.value = post.content;
+  postAnonymousInput.checked = post.is_anonymous;
+  postCharacterCount.textContent = `${post.content.length} / ${postContentInput.maxLength}`;
+  postSubmitButton.textContent = 'Save changes';
+  postMediaTrigger.disabled = true;
+  setComposerStatus('Editing your post.');
+  postContentInput.focus();
+  feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function submitPost(event) {
+  event.preventDefault();
+  if (composerBusy) return;
+  const content = postContentInput.value.trim();
+  if (!content) {
+    setComposerStatus('Write something before posting.', 'error');
+    postContentInput.focus();
+    return;
+  }
+
+  composerBusy = true;
+  postSubmitButton.disabled = true;
+  setComposerStatus(editingPostId ? 'Saving your changes…' : 'Publishing your post…');
+  try {
+    let postId;
+    let uploadedMediaPath = null;
+    if (editingPostId) {
+      const { data, error } = await supabase.from('posts')
+        .update({ content, is_anonymous: postAnonymousInput.checked })
+        .eq('id', editingPostId)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.id) throw new Error('VYBE could not confirm that your changes were saved.');
+      postId = data.id;
+    } else {
+      let mediaFields = { media_path: null, media_mime: null, media_kind: 'none', post_type: 'text' };
+      if (selectedPostMedia) {
+        const safeName = selectedPostMedia.file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
+        uploadedMediaPath = `${currentUserId}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('post-media').upload(uploadedMediaPath, selectedPostMedia.file, { contentType: selectedPostMedia.file.type, cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        mediaFields = { media_path: uploadedMediaPath, media_mime: selectedPostMedia.file.type, media_kind: selectedPostMedia.kind, post_type: selectedPostMedia.kind };
+      }
+      const { data, error } = await supabase.from('posts').insert({
+        author_id: currentUserId,
+        content,
+        ...mediaFields,
+        is_anonymous: postAnonymousInput.checked
+      }).select('id').single();
+      if (error) { if (uploadedMediaPath) await supabase.storage.from('post-media').remove([uploadedMediaPath]); throw error; }
+      if (!data?.id) throw new Error('VYBE could not confirm that your post was published.');
+      postId = data.id;
+    }
+
+    const wasEditing = Boolean(editingPostId);
+    resetComposer();
+    feedFilter = 'all';
+    await loadFeed({ reset: true });
+    const visible = [...feedPostList.children].some(item => item.dataset.postId === postId);
+    const savedMessage = wasEditing ? 'Your changes were saved.' : 'Your post was published.';
+    setComposerStatus(
+      visible
+        ? savedMessage
+        : `${savedMessage} The feed could not confirm it is visible yet; use Refresh feed to check.`,
+      visible ? 'success' : 'error'
+    );
+  } catch (error) {
+    setComposerStatus(`We couldn’t save your post: ${explainPostBackendError(error)}`, 'error');
+  } finally {
+    composerBusy = false;
+    postSubmitButton.disabled = false;
+  }
+}
+
+async function handlePostAction(event) {
+  const demoLike = event.target.closest('button[data-demo-like]');
+  if (demoLike) {
+    const count = $('.demo-action-count', demoLike);
+    const liked = demoLike.getAttribute('aria-pressed') !== 'true';
+    const likes = Number(count.textContent) || 0;
+    demoLike.setAttribute('aria-pressed', String(liked));
+    count.textContent = String(Math.max(0, likes + (liked ? 1 : -1)));
+    demoLike.setAttribute('aria-label', `Like sample post, ${count.textContent} likes`);
+    return;
+  }
+  const demoComment = event.target.closest('button[data-demo-comment]');
+  if (demoComment) {
+    const comments = demoComment.closest('.demo-post-card').querySelector('.demo-comments');
+    comments.hidden = !comments.hidden;
+    demoComment.setAttribute('aria-expanded', String(!comments.hidden));
+    if (!comments.hidden) $('input[name="preview_comment"]', comments).focus();
+    return;
+  }
+  const demoShare = event.target.closest('button[data-demo-share]');
+  if (demoShare) {
+    const card = demoShare.closest('[data-demo-post]');
+    const previewUrl = `${window.location.origin}${window.location.pathname}#feed-preview-${card.dataset.demoPost}`;
+    try {
+      await navigator.clipboard.writeText(previewUrl);
+      setFeedState('Sample post link copied.', 'success');
+    } catch {
+      setFeedState('Copy the page link to share this sample post.', 'preview');
+    }
+    return;
+  }
+  const button = event.target.closest('button[data-post-edit], button[data-post-delete], button[data-post-share]');
+  if (!button) return;
+  const item = button.closest('[data-post-id]');
+  const post = item && [...feedPostList.children].find(entry => entry === item);
+  if (!post) return;
+
+  if (button.hasAttribute('data-post-share')) {
+    try {
+      await navigator.clipboard.writeText(button.dataset.postUrl || window.location.href);
+      setFeedState('Post link copied. Send the gist to your people.', 'success');
+    } catch {
+      setFeedState('Your browser could not copy the post link. Try copying the page address.', 'error');
+    }
+    return;
+  }
+
+  if (button.hasAttribute('data-post-edit')) {
+    const record = loadedPosts.get(post.dataset.postId);
+    if (!record?.can_edit) {
+      setFeedState('This post is no longer available to edit. Refresh the feed and try again.', 'error');
+      return;
+    }
+    setComposerEditing(record);
+    return;
+  }
+
+  if (!window.confirm('Delete this post? This cannot be undone.')) return;
+  button.disabled = true;
+  try {
+    const record = loadedPosts.get(post.dataset.postId);
+    const { data, error } = await supabase.from('posts').delete()
+      .eq('id', post.dataset.postId)
+      .select('id')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data?.id) throw new Error('VYBE could not confirm that your post was deleted.');
+    if (record?.media_path) await supabase.storage.from('post-media').remove([record.media_path]);
+    const refreshed = await loadFeed({ reset: true });
+    setFeedState(
+      refreshed ? 'Your post was deleted.' : 'Your post was deleted, but the feed could not refresh. Try again.',
+      refreshed ? 'success' : 'error'
+    );
+  } catch (error) {
+    button.disabled = false;
+    setFeedState(error.message || 'We couldn’t delete your post. Please try again.', 'error');
+  }
+}
+
+function initializeFeedObserver() {
+  if (!('IntersectionObserver' in window)) return;
+  feedObserver = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting) && feedHasMore && feedAutoLoadEnabled && !feedRequest) {
+      loadFeed();
+    }
+  }, { rootMargin: '420px 0px' });
+  feedObserver.observe(feedSentinel);
+}
+
+function bindFeedInteractions() {
+  createKindButtons.forEach(button => button.addEventListener('click', () => startPostCreation(button.dataset.createKind)));
+  mobileCreateButton.addEventListener('click', () => {
+    const open = mobileCreateMenu.hidden;
+    mobileCreateMenu.hidden = !open;
+    mobileCreateButton.setAttribute('aria-expanded', String(open));
+  });
+  mobileCreateMenu.addEventListener('click', event => {
+    const action = event.target.closest('[data-create-kind]');
+    if (!action) return;
+    mobileCreateMenu.hidden = true;
+    mobileCreateButton.setAttribute('aria-expanded', 'false');
+    startPostCreation(action.dataset.createKind);
+  });
+  document.addEventListener('click', event => {
+    if (!mobileCreateMenu.hidden && !event.target.closest('.mobile-create-wrap')) {
+      mobileCreateMenu.hidden = true;
+      mobileCreateButton.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !mobileCreateMenu.hidden) {
+      mobileCreateMenu.hidden = true;
+      mobileCreateButton.setAttribute('aria-expanded', 'false');
+      mobileCreateButton.focus();
+    }
+  });
+  feedFilters.forEach(button => button.addEventListener('click', () => {
+    if (feedRequest || feedFilter === button.dataset.feedFilter) return;
+    feedFilter = button.dataset.feedFilter;
+    applyHomeSearch();
+    loadFeed({ reset: true });
+  }));
+  feedRefresh.addEventListener('click', () => loadFeed({ reset: true }));
+  feedRetry.addEventListener('click', () => {
+    feedAutoLoadEnabled = true;
+    loadFeed();
+  });
+  feedMore.addEventListener('click', () => loadFeed());
+  postForm.addEventListener('submit', submitPost);
+  postMediaTrigger.addEventListener('click', () => {
+    postMediaInput.accept = POST_MEDIA_ACCEPT;
+    postMediaInput.click();
+  });
+  postMediaInput.addEventListener('change', () => {
+    postMediaInput.accept = POST_MEDIA_ACCEPT;
+    try {
+      selectedPostMedia = validatePostMedia(postMediaInput.files[0]);
+      renderPostMediaPreview();
+      const mediaLabel = selectedPostMedia?.kind === 'image' ? 'Photo' : 'Clip';
+      setComposerStatus(`${mediaLabel} attached.`, 'success');
+    } catch (error) {
+      selectedPostMedia = null;
+      postMediaInput.value = '';
+      renderPostMediaPreview();
+      setComposerStatus(error.message, 'error');
+    }
+  });
+  postContentInput.addEventListener('input', () => {
+    postCharacterCount.textContent = `${postContentInput.value.length} / ${postContentInput.maxLength}`;
+  });
+  feedPostList.addEventListener('click', handlePostAction);
+  feedPostList.addEventListener('submit', handlePreviewComment);
+  homeSearch?.addEventListener('input', applyHomeSearch);
+}
+
+function handlePreviewComment(event) {
+  const form = event.target.closest('.demo-comment-form');
+  if (!form) return;
+  event.preventDefault();
+  const input = $('input[name="preview_comment"]', form);
+  const text = input.value.trim();
+  if (!text) return;
+  const comment = makeElement('p', 'demo-sample-comment');
+  comment.append(makeElement('strong', '', 'You: '), document.createTextNode(text));
+  form.before(comment);
+  input.value = '';
 }
 
 function renderProfileProgress(profile) {
@@ -167,10 +842,12 @@ function renderCandidates() {
       empty.append(profileLink);
     }
     suggestionList.append(empty);
+    applyHomeSearch();
     return;
   }
 
   visible.forEach(candidate => suggestionList.append(renderCandidate(candidate)));
+  applyHomeSearch();
 }
 
 function renderCandidate(candidate) {
@@ -221,6 +898,7 @@ function renderCandidate(candidate) {
     : labels.food[profile.food_personality]
       ? `If their personality were food: ${labels.food[profile.food_personality]}.`
       : 'Say hello and find out what you have in common.';
+  card.dataset.searchText = `${name} ${detail} ${(profile.interests || []).map(value => labels.interests[value] || value).join(' ')} ${(profile.vibe || []).map(value => labels.vibe[value] || value).join(' ')}`.toLocaleLowerCase();
   body.append(makeElement('p', 'suggestion-detail', detail));
 
   const interests = makeElement('div', 'interest-tags');
@@ -324,6 +1002,10 @@ function renderConnections(matches, profiles, urlsByProfileId) {
       : `Matched ${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)}`;
     description.append(makeElement('span', 'connection-caption', caption));
     item.append(description);
+    const messageLink = makeElement('a', 'connection-message-link', 'Message');
+    messageLink.href = `messages.html?user=${encodeURIComponent(profile.id)}`;
+    messageLink.setAttribute('aria-label', `Message ${name}`);
+    item.append(messageLink);
     connectionList.append(item);
   });
 }
@@ -405,6 +1087,7 @@ async function handleCandidateAction(button) {
 
 async function initialize() {
   const logoutButton = $('[data-logout]');
+  bindFeedInteractions();
   suggestionList.addEventListener('click', event => {
     const button = event.target.closest('button[data-skip], button[data-like]');
     if (button) handleCandidateAction(button);
@@ -434,13 +1117,21 @@ async function initialize() {
 
     const safeName = sanitizeName(profile.display_name) || sanitizeName(user.user_metadata?.display_name);
     greeting.textContent = safeName ? `, ${safeName}` : '';
-    const results = await Promise.allSettled([loadSuggestions(), loadConnections()]);
+    const profileAvatar = $('[data-profile-avatar]');
+    if (profileAvatar) profileAvatar.textContent = safeName ? safeName.slice(0, 1).toUpperCase() : 'V';
+    setFeedInteractionEnabled(true);
+    initializeFeedObserver();
+    const results = await Promise.allSettled([loadFeed({ reset: true }), loadSuggestions(), loadConnections()]);
     if (results[0].status === 'rejected') {
-      setSectionMessage(peopleMessage, `We couldn’t load people to meet: ${results[0].reason.message || 'Please try again.'}`, 'error');
-      suggestionList.replaceChildren();
+      setFeedState(`We couldn’t load posts: ${explainPostBackendError(results[0].reason)}`, 'error');
+      feedRetry.hidden = false;
     }
     if (results[1].status === 'rejected') {
-      setSectionMessage(connectionsMessage, `We couldn’t load your connections: ${results[1].reason.message || 'Please try again.'}`, 'error');
+      setSectionMessage(peopleMessage, `We couldn’t load people to meet: ${results[1].reason.message || 'Please try again.'}`, 'error');
+      suggestionList.replaceChildren();
+    }
+    if (results[2].status === 'rejected') {
+      setSectionMessage(connectionsMessage, `We couldn’t load your connections: ${results[2].reason.message || 'Please try again.'}`, 'error');
     }
   } catch (error) {
     setStatus(error.message || 'We couldn’t load your VYBE home. Please refresh and try again.');
