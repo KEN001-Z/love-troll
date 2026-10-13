@@ -146,6 +146,7 @@ function renderMessage(message, previousMessage) {
   item.dataset.messageId = message.id;
   const avatar = document.createElement('span');
   avatar.className = 'chat-avatar';
+  let profileHref = '';
   if (sameSpeaker) {
     avatar.classList.add('chat-avatar-spacer');
     avatar.setAttribute('aria-hidden', 'true');
@@ -155,6 +156,7 @@ function renderMessage(message, previousMessage) {
   } else {
     avatar.textContent = initials(message.author_display_name);
     avatar.setAttribute('aria-label', message.author_display_name || 'VYBE member');
+    if (message.author_id) profileHref = `profile.html?id=${encodeURIComponent(message.author_id)}`;
     const avatarUrl = avatarUrls.get(message.author_avatar_path);
     if (avatarUrl) {
       const image = document.createElement('img');
@@ -170,11 +172,23 @@ function renderMessage(message, previousMessage) {
   body.className = 'chat-message-body';
   const meta = document.createElement('div');
   meta.className = 'chat-message-meta';
+  let avatarTarget = avatar;
+  if (profileHref && !sameSpeaker) {
+    avatarTarget = document.createElement('a');
+    avatarTarget.className = 'chat-profile-link chat-avatar-profile-link';
+    avatarTarget.href = profileHref;
+    avatarTarget.setAttribute('aria-label', `View ${message.author_display_name || 'VYBE member'}'s profile and messaging options`);
+    avatarTarget.append(avatar);
+  }
   if (!sameSpeaker) {
     const author = message.is_anonymous ? document.createElement('span') : document.createElement('a');
     author.className = message.is_anonymous ? 'chat-author chat-author-anonymous' : 'chat-author';
     author.textContent = message.is_anonymous ? 'Anonymous' : (message.author_display_name || 'VYBE member');
-    if (!message.is_anonymous && message.author_id) author.href = `profile.html?id=${encodeURIComponent(message.author_id)}`;
+    if (profileHref) {
+      author.href = profileHref;
+      author.setAttribute('aria-label', `View ${message.author_display_name || 'VYBE member'}'s profile and messaging options`);
+      author.classList.add('chat-profile-link');
+    }
     meta.append(author);
   }
   const time = document.createElement('time');
@@ -193,7 +207,7 @@ function renderMessage(message, previousMessage) {
   reportButton.setAttribute('aria-label', 'Report this message');
   actions.append(reportButton);
   body.append(meta, content, actions);
-  item.append(avatar, body);
+  item.append(avatarTarget, body);
   return item;
 }
 

@@ -182,7 +182,11 @@ function renderProfile() {
   followButton.disabled = profile.is_owner;
   followButton.textContent = profile.is_following ? 'Following' : 'Follow';
   messageButton.hidden = profile.is_owner;
-  messageButton.disabled = profile.is_owner;
+  if (profile.is_owner) {
+    messageButton.removeAttribute('href');
+  } else {
+    messageButton.href = `messages.html?user=${encodeURIComponent(profile.id)}`;
+  }
   $('[data-more]').hidden = profile.is_owner;
   $('[data-social-note]').hidden = profile.is_owner;
 
@@ -538,8 +542,6 @@ async function loadProfile() {
 
 async function loadInterestState() {
   if (profile.id === currentUser.id) return;
-  messageButton.disabled = false;
-  messageButton.removeAttribute('title');
   const { data: match, error: matchError } = await supabase.from('matches')
     .select('id')
     .or(`and(user_a.eq.${currentUser.id},user_b.eq.${profile.id}),and(user_b.eq.${currentUser.id},user_a.eq.${profile.id})`)
@@ -639,7 +641,10 @@ async function initialize() {
     supabase = getSupabaseClient();
     const { user, recovered } = await getAuthenticatedUser(supabase);
     if (!user) {
-      window.location.replace(recovered ? 'login.html?session=expired' : 'login.html');
+      const loginUrl = new URL('login.html', window.location.href);
+      if (recovered) loginUrl.searchParams.set('session', 'expired');
+      loginUrl.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`);
+      window.location.replace(loginUrl);
       return;
     }
     currentUser = user;
@@ -699,9 +704,6 @@ async function initialize() {
   $('[data-share]').addEventListener('click', shareProfile);
   $('[data-interest]').addEventListener('click', event => expressInterest(event.currentTarget));
   followButton.addEventListener('click', toggleFollow);
-  messageButton.addEventListener('click', () => {
-    if (!messageButton.disabled && profile?.id) window.location.assign(`messages.html?user=${encodeURIComponent(profile.id)}`);
-  });
   editForm.addEventListener('submit', saveProfile);
   initCropControls();
   editForm.elements.namedItem('matchmaking_enabled').addEventListener('change', toggleIntentionFields);
