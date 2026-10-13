@@ -1,0 +1,26 @@
+/* Shared signed-in navigation: keep the VYBE app shell consistent page to page. */
+.app-header{position:sticky;top:0;z-index:20;border-bottom:1px solid #e7e1da;background:rgba(255,253,249,.97);backdrop-filter:blur(12px)}
+.app-header::after{display:block;height:2px;background:linear-gradient(90deg,#7357e8 0 45%,#ff6b61 45% 70%,#ffd166 70% 100%);content:"";opacity:.72}
+.app-header-inner{width:min(1160px,calc(100% - 48px));min-height:66px;gap:18px}
+.app-header .logo{color:#211d2b}
+.app-nav{gap:5px}
+.app-nav-link{min-height:38px;padding:7px 10px;border-radius:8px;color:#635d6a;font-size:.82rem;font-weight:650}
+.app-nav-link:hover{border-color:transparent;background:#f4f0fb;color:#34266e}
+.app-nav-link[aria-current=page]{border-color:transparent;background:#f0ecff;box-shadow:inset 0 -2px 0 #7357e8;color:#5038bd}
+.app-nav-icon{width:16px;height:16px}
+.app-logout{min-height:36px;padding:5px 10px;border-color:#e1dbd4;border-radius:8px;background:#fff;color:#615b67;font-size:.74rem}
+.app-logout:hover{border-color:#f0c6bd;background:#fff4f1;color:#963c32}
+.app-mobile-nav{border-top-color:#e3ddd6;background:rgba(255,253,249,.98);box-shadow:0 -5px 18px rgba(35,29,42,.06)}
+.app-mobile-link{color:#625c68;font-size:.63rem}
+.app-mobile-link[aria-current=page]{background:#f0ecff;color:#5138bd;box-shadow:inset 0 -2px 0 #7357e8}
+@media(max-width:900px){
+  .app-header-inner{width:calc(100% - 36px);min-height:64px}
+  .app-nav{display:none}
+  .app-mobile-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .app-header-inner{width:calc(100% - 24px);min-height:60px}
+  .app-logout{min-height:36px;padding:5px 8px;font-size:.7rem}
+  .app-mobile-link{min-height:51px;font-size:.62rem}
+  .app-mobile-link .app-nav-icon{width:18px;height:18px}
+}

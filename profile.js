@@ -35,6 +35,13 @@ let ownProfile;
 let profile;
 let targetId;
 let sendingInterest = false;
+const messageButton = $('[data-message]');
+const followButton = $('[data-follow]');
+let changingFollow = false;
+const cropState = {
+  avatar: { file: null, url: '', x: 50, y: 50 },
+  cover: { file: null, url: '', x: 50, y: 50 }
+};
 
 function setMessage(element, message, state = '') {
   element.textContent = message;
@@ -119,6 +126,9 @@ function renderProfile() {
   $('[data-about-bio]').textContent = profile.bio || 'No bio yet. A short intro is always optional.';
   $('[data-mood]').textContent = `Currently: ${profile.current_mood}`;
   $('[data-mood]').hidden = !profile.current_mood;
+  $('[data-followers]').textContent = Number(profile.follower_count || 0).toLocaleString();
+  $('[data-following]').textContent = Number(profile.following_count || 0).toLocaleString();
+  $('[data-likes]').textContent = Number(profile.like_count || 0).toLocaleString();
   $('[data-about-mood]').textContent = `Currently in the mood for: ${profile.current_mood}`;
   $('[data-about-mood]').hidden = !profile.current_mood;
   $('[data-catchphrase]').textContent = profile.catchphrase ? `“${profile.catchphrase}”` : '';
@@ -147,8 +157,11 @@ function renderProfile() {
   $('[data-edit-avatar]').hidden = !profile.is_owner;
   $('[data-edit-cover]').hidden = !profile.is_owner;
   $('[data-interest]').hidden = !profile.can_receive_interest;
-  $('[data-follow]').hidden = profile.is_owner;
-  $('[data-message]').hidden = profile.is_owner;
+  followButton.hidden = profile.is_owner;
+  followButton.disabled = profile.is_owner;
+  followButton.textContent = profile.is_following ? 'Following' : 'Follow';
+  messageButton.hidden = profile.is_owner;
+  messageButton.disabled = profile.is_owner;
   $('[data-more]').hidden = profile.is_owner;
   $('[data-social-note]').hidden = profile.is_owner;
 
@@ -207,6 +220,8 @@ function openEditDialog(focusField) {
   editForm.elements.namedItem('relationship_status').value = ownProfile.relationship_status || '';
   editForm.elements.namedItem('avatar').value = '';
   editForm.elements.namedItem('cover').value = '';
+  resetCropState('avatar');
+  resetCropState('cover');
   $('[data-bio-count]').textContent = String((profile.bio || '').length);
   renderInterestOptions(profile.interests || []);
   toggleIntentionFields();
@@ -219,6 +234,99 @@ function openEditDialog(focusField) {
       field.focus({ preventScroll: true });
     });
   }
+}
+
+function clampPosition(value) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function updateCropPreview(kind) {
+  const state = cropState[kind];
+  const preview = $(`[data-crop-preview="${kind}"]`);
+  const image = $(`[data-crop-image="${kind}"]`);
+  preview.hidden = !state.file;
+  if (state.file) {
+    image.src = state.url;
+    image.style.objectPosition = `${state.x}% ${state.y}%`;
+  }
+}
+
+function resetCropState(kind) {
+  const state = cropState[kind];
+  if (state.url) URL.revokeObjectURL(state.url);
+  state.file = null;
+  state.url = '';
+  state.x = 50;
+  state.y = 50;
+  updateCropPreview(kind);
+}
+
+function setCropFile(kind, file) {
+  const state = cropState[kind];
+  if (state.url) URL.revokeObjectURL(state.url);
+  state.file = file || null;
+  state.url = file ? URL.createObjectURL(file) : '';
+  state.x = 50;
+  state.y = 50;
+  updateCropPreview(kind);
+}
+
+function initCropControls() {
+  for (const kind of ['avatar', 'cover']) {
+    const input = editForm.elements.namedItem(kind);
+    const stage = $(`[data-crop-stage="${kind}"]`);
+    input.addEventListener('change', () => setCropFile(kind, input.files[0]));
+    $(`[data-crop-reset="${kind}"]`).addEventListener('click', () => {
+      cropState[kind].x = 50;
+      cropState[kind].y = 50;
+      updateCropPreview(kind);
+    });
+    stage.addEventListener('pointerdown', event => {
+      if (!cropState[kind].file) return;
+      stage.setPointerCapture(event.pointerId);
+      stage.dataset.dragging = 'true';
+      stage.dataset.pointerX = String(event.clientX);
+      stage.dataset.pointerY = String(event.clientY);
+    });
+    stage.addEventListener('pointermove', event => {
+      if (stage.dataset.dragging !== 'true') return;
+      const rect = stage.getBoundingClientRect();
+      const dx = event.clientX - Number(stage.dataset.pointerX);
+      const dy = event.clientY - Number(stage.dataset.pointerY);
+      cropState[kind].x = clampPosition(cropState[kind].x - (dx / rect.width) * 100);
+      cropState[kind].y = clampPosition(cropState[kind].y - (dy / rect.height) * 100);
+      stage.dataset.pointerX = String(event.clientX);
+      stage.dataset.pointerY = String(event.clientY);
+      updateCropPreview(kind);
+    });
+    const stopDragging = () => { stage.dataset.dragging = 'false'; };
+    stage.addEventListener('pointerup', stopDragging);
+    stage.addEventListener('pointercancel', stopDragging);
+  }
+}
+
+async function cropImage(file, kind) {
+  const state = cropState[kind];
+  if (!file || !state.file || state.file !== file) return file;
+  const image = new Image();
+  image.src = state.url;
+  await image.decode();
+  const width = kind === 'avatar' ? 800 : 1600;
+  const height = kind === 'avatar' ? 800 : 500;
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const renderedWidth = image.naturalWidth * scale;
+  const renderedHeight = image.naturalHeight * scale;
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  const sourceX = ((renderedWidth - width) * state.x / 100) / scale;
+  const sourceY = ((renderedHeight - height) * state.y / 100) / scale;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, file.type, .92));
+  if (!blob) throw new Error('The selected image could not be prepared.');
+  return new File([blob], file.name, { type: file.type, lastModified: Date.now() });
 }
 
 function toggleIntentionFields() {
@@ -278,8 +386,8 @@ async function saveProfile(event) {
   progress.hidden = true;
 
   try {
-    const avatar = editForm.elements.namedItem('avatar').files[0];
-    const cover = editForm.elements.namedItem('cover').files[0];
+    const avatar = await cropImage(editForm.elements.namedItem('avatar').files[0], 'avatar');
+    const cover = await cropImage(editForm.elements.namedItem('cover').files[0], 'cover');
     validateImage(avatar, 'Profile photo');
     validateImage(cover, 'Cover photo');
     const matchmakingEnabled = editForm.elements.namedItem('matchmaking_enabled').checked;
@@ -379,7 +487,9 @@ async function loadProfile() {
 }
 
 async function loadInterestState() {
-  if (!profile.can_receive_interest) return;
+  if (profile.id === currentUser.id) return;
+  messageButton.disabled = false;
+  messageButton.removeAttribute('title');
   const { data: match, error: matchError } = await supabase.from('matches')
     .select('id')
     .or(`and(user_a.eq.${currentUser.id},user_b.eq.${profile.id}),and(user_b.eq.${currentUser.id},user_a.eq.${profile.id})`)
@@ -391,6 +501,7 @@ async function loadInterestState() {
     button.disabled = true;
     return;
   }
+  if (!profile.can_receive_interest) return;
   const { data, error } = await supabase.from('discovery_likes')
     .select('target_id')
     .eq('user_id', currentUser.id)
@@ -401,6 +512,30 @@ async function loadInterestState() {
     const button = $('[data-interest]');
     button.textContent = 'Interest sent';
     button.disabled = true;
+  }
+}
+
+async function toggleFollow() {
+  if (changingFollow || profile?.is_owner) return;
+  changingFollow = true;
+  followButton.disabled = true;
+  const wasFollowing = profile.is_following;
+  followButton.textContent = wasFollowing ? 'Unfollowing…' : 'Following…';
+  try {
+    const { data, error } = await supabase.rpc('toggle_follow', { target_user: profile.id });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    profile.is_following = Boolean(result?.following);
+    profile.follower_count = result?.follower_count ?? profile.follower_count;
+    followButton.textContent = profile.is_following ? 'Following' : 'Follow';
+    $('[data-followers]').textContent = Number(profile.follower_count || 0).toLocaleString();
+    setMessage($('[data-action-feedback]'), profile.is_following ? 'You are now following this profile.' : 'You unfollowed this profile.', 'success');
+  } catch (error) {
+    followButton.textContent = wasFollowing ? 'Following' : 'Follow';
+    setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+  } finally {
+    changingFollow = false;
+    followButton.disabled = false;
   }
 }
 
@@ -509,7 +644,12 @@ async function initialize() {
   $$('[data-close-more]').forEach(button => button.addEventListener('click', () => moreDialog.close()));
   $('[data-share]').addEventListener('click', shareProfile);
   $('[data-interest]').addEventListener('click', event => expressInterest(event.currentTarget));
+  followButton.addEventListener('click', toggleFollow);
+  messageButton.addEventListener('click', () => {
+    if (!messageButton.disabled && profile?.id) window.location.assign(`messages.html?user=${encodeURIComponent(profile.id)}`);
+  });
   editForm.addEventListener('submit', saveProfile);
+  initCropControls();
   editForm.elements.namedItem('matchmaking_enabled').addEventListener('change', toggleIntentionFields);
   editForm.elements.namedItem('gender').addEventListener('change', toggleGenderDescription);
   editForm.elements.namedItem('bio').addEventListener('input', event => {

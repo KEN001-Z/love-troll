@@ -14,6 +14,8 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="app-shell.css">
 <link rel="stylesheet" href="profile.css">
+<link rel="stylesheet" href="profile-refresh.css">
+<link rel="stylesheet" href="app-shell-refresh.css">
 </head>
 <body class="profile-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -24,6 +26,7 @@
       <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
       <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
       <a class="app-nav-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
       <a class="app-nav-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
     <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
@@ -46,12 +49,12 @@
         <div class="profile-actions" data-profile-actions>
           <button class="btn alt profile-action" type="button" data-share>Share profile</button>
           <button class="btn alt profile-action" type="button" data-more aria-haspopup="dialog">More</button>
-          <button class="btn alt profile-action" type="button" data-message disabled title="Messaging is not available yet">Message</button>
-          <button class="btn profile-action" type="button" data-follow disabled title="Following is not available yet">Follow</button>
+          <button class="btn alt profile-action" type="button" data-message hidden>Message</button>
+          <button class="btn profile-action" type="button" data-follow hidden>Follow</button>
           <button class="btn profile-action" type="button" data-edit hidden>Edit profile</button>
           <button class="btn coral profile-action" type="button" data-interest hidden>Send interest</button>
         </div>
-        <p class="profile-capability-note" data-social-note hidden>Following and messaging aren’t available yet.</p>
+        <p class="profile-capability-note" data-social-note hidden>Follow this person or start a private conversation.</p>
         <div class="profile-heading">
           <p class="profile-kicker"><span aria-hidden="true">✳</span> A LITTLE CAMPUS INTRO</p>
           <h1 id="profile-name" data-name>Loading…</h1>
@@ -60,6 +63,11 @@
           <p class="profile-gender" data-gender hidden></p>
           <p class="profile-bio" data-bio></p>
           <p class="profile-mood" data-mood hidden></p>
+          <div class="profile-stats" aria-label="Profile stats">
+            <span><strong data-followers>0</strong> followers</span>
+            <span><strong data-following>0</strong> following</span>
+            <span><strong data-likes>0</strong> likes</span>
+          </div>
         </div>
         <p class="profile-feedback" data-action-feedback role="status" aria-live="polite" hidden></p>
       </div>
@@ -128,6 +136,7 @@
   <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
   <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
   <a class="app-mobile-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
+  <a class="app-mobile-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a>
   <a class="app-mobile-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
 </nav>
 
@@ -143,6 +152,20 @@
     <section class="edit-photos" aria-label="Profile photos">
       <label class="edit-field">Profile photo<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small>Leave empty to keep your current photo. JPG, PNG or WebP · up to 5 MB</small></label>
       <label class="edit-field">Cover photo<input name="cover" type="file" accept="image/jpeg,image/png,image/webp"><small>Leave empty to keep your current cover. JPG, PNG or WebP · up to 5 MB</small></label>
+      <div class="photo-positioning" data-photo-positioning hidden>
+        <p class="photo-positioning-title">Position your new photo</p>
+        <p class="photo-positioning-help">Drag the image or use the sliders to choose what people will see. Your choice is shown in the same shape as your profile.</p>
+        <div class="photo-position-cards">
+          <section class="photo-position-card" data-photo-position-card="avatar" hidden>
+            <div class="photo-position-preview photo-position-preview-avatar" data-photo-preview="avatar"><img alt="Profile photo preview" draggable="false"></div>
+            <div class="photo-position-controls"><strong>Profile photo</strong><label>Left / right<input type="range" min="0" max="100" value="50" data-photo-position-axis="avatar-x" aria-label="Profile photo left and right position"></label><label>Up / down<input type="range" min="0" max="100" value="50" data-photo-position-axis="avatar-y" aria-label="Profile photo up and down position"></label></div>
+          </section>
+          <section class="photo-position-card" data-photo-position-card="cover" hidden>
+            <div class="photo-position-preview photo-position-preview-cover" data-photo-preview="cover"><img alt="Cover photo preview" draggable="false"></div>
+            <div class="photo-position-controls"><strong>Cover photo</strong><label>Left / right<input type="range" min="0" max="100" value="50" data-photo-position-axis="cover-x" aria-label="Cover photo left and right position"></label><label>Up / down<input type="range" min="0" max="100" value="50" data-photo-position-axis="cover-y" aria-label="Cover photo up and down position"></label></div>
+          </section>
+        </div>
+      </div>
     </section>
     <label class="edit-field">Display name<input name="display_name" type="text" maxlength="80" required autocomplete="name"></label>
     <label class="edit-field">Username<input name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><small>Optional · 3–24 letters, numbers or underscores.</small></label>
