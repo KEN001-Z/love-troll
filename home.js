@@ -4,6 +4,13 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const status = $('[data-home-status]');
 const greeting = $('[data-name-greeting]');
+const homeHello = $('[data-home-hello]');
+const welcomeNote = $('[data-welcome-note]');
+const matchNote = $('[data-match-note]');
+const communityRooms = $('[data-community-rooms]');
+const communityRoomsMessage = $('[data-community-rooms-message]');
+const conversationPrompt = $('[data-conversation-prompt]');
+const nextPromptButton = $('[data-next-prompt]');
 const profileProgress = $('[data-profile-progress]');
 const peopleMessage = $('[data-people-message]');
 const peoplePhotoMessage = $('[data-people-photo-message]');
@@ -92,6 +99,17 @@ let editingPostId = null;
 let selectedPostMedia = null;
 const postMediaUrls = new Map();
 const loadedPosts = new Map();
+const CONVERSATION_PROMPTS = [
+  'What’s your biggest green flag?',
+  'What song have you had on repeat this week?',
+  'Jollof: party or pot? Defend your answer.',
+  'What’s a small joy that made your week better?',
+  'If we had two hours free, where would you drag me?',
+  'What’s a hill you’ll die on — gently?',
+  'First thing you’d eat after a long day?',
+  'What’s a hobby you wish more people asked you about?'
+];
+let promptIndex = 0;
 
 function applyHomeSearch() {
   const query = (homeSearch?.value || '').trim().toLocaleLowerCase();
@@ -464,12 +482,11 @@ async function loadFeed({ reset = false } = {}) {
       if (page.length) feedCursor = { created_at: page[page.length - 1].created_at, id: page[page.length - 1].id };
 
       if (!feedPostList.childElementCount && !feedHasMore) {
-        renderPreviewFeed();
         setFeedState(
           feedFilter === 'anonymous'
-            ? 'These sample cards preview the feed. Anonymous posts will show here when the feed is connected.'
-            : 'You’re viewing sample posts. Real campus posts will appear here when the feed is connected.',
-          'preview'
+            ? 'No anonymous posts yet. You can share one from here if you want a little cover.'
+            : 'Quiet for now. If something’s on your mind, this is a good place to start.',
+          'empty'
         );
       } else if (!feedHasMore) {
         setFeedState('You’re all caught up.', 'empty');
@@ -482,10 +499,7 @@ async function loadFeed({ reset = false } = {}) {
       return true;
     } catch (error) {
       feedAutoLoadEnabled = false;
-      if (!feedPostList.childElementCount) renderPreviewFeed();
-      setFeedState(feedPostList.querySelector('.demo-feed-post')
-        ? `Showing sample posts because the live feed isn’t connected yet. ${explainPostBackendError(error)}`
-        : `Couldn’t load more posts. ${explainPostBackendError(error)}`, 'preview');
+      setFeedState(`Couldn’t load posts. ${explainPostBackendError(error)}`, 'error');
       feedRetry.hidden = false;
       feedMore.hidden = true;
       return false;
@@ -888,7 +902,10 @@ function renderCandidate(candidate) {
   const profileHeading = makeElement('h3');
   profileHeading.append(profileLink);
   headingInfo.append(profileHeading);
-  headingInfo.append(makeElement('p', 'suggestion-intention', `Here for ${labels.lookingFor[profile.looking_for] || 'new connections'}`));
+  if (profile.username) headingInfo.append(makeElement('p', 'suggestion-handle', `@${profile.username}`));
+  const intentionBits = [`Here for ${labels.lookingFor[profile.looking_for] || 'new connections'}`];
+  if (profile.university?.trim()) intentionBits.push(profile.university.trim());
+  headingInfo.append(makeElement('p', 'suggestion-intention', intentionBits.join(' · ')));
   heading.append(headingInfo);
   body.append(heading);
 
@@ -897,8 +914,8 @@ function renderCandidate(candidate) {
     ? `A little common ground: ${shared.map(value => labels.interests[value] || value).join(', ')}.`
     : labels.food[profile.food_personality]
       ? `If their personality were food: ${labels.food[profile.food_personality]}.`
-      : 'Say hello and find out what you have in common.';
-  card.dataset.searchText = `${name} ${detail} ${(profile.interests || []).map(value => labels.interests[value] || value).join(' ')} ${(profile.vibe || []).map(value => labels.vibe[value] || value).join(' ')}`.toLocaleLowerCase();
+      : 'Open their profile, or send interest if the vibe feels right.';
+  card.dataset.searchText = `${name} ${profile.username || ''} ${profile.university || ''} ${detail} ${(profile.interests || []).map(value => labels.interests[value] || value).join(' ')} ${(profile.vibe || []).map(value => labels.vibe[value] || value).join(' ')}`.toLocaleLowerCase();
   body.append(makeElement('p', 'suggestion-detail', detail));
 
   const interests = makeElement('div', 'interest-tags');
@@ -912,17 +929,20 @@ function renderCandidate(candidate) {
   }
 
   const actions = makeElement('div', 'suggestion-actions');
-  const skip = makeElement('button', 'suggestion-skip', '×');
+  const skip = makeElement('button', 'suggestion-skip', 'Not now');
   skip.type = 'button';
   skip.dataset.skip = '';
   skip.setAttribute('aria-label', `Skip ${name}`);
-  skip.title = 'Not now';
-  const like = makeElement('button', 'suggestion-like', '♡');
+  skip.title = 'Hide this person for now. They will not be notified.';
+  const like = makeElement('button', 'suggestion-like', 'Send interest');
   like.type = 'button';
   like.dataset.like = '';
   like.setAttribute('aria-label', `Send interest to ${name}`);
-  like.title = 'Send interest';
-  actions.append(skip, like);
+  like.title = 'Let them know you’re interested. They’ll only see a match if they feel the same.';
+  const view = makeElement('a', 'suggestion-view', 'View profile');
+  view.href = profileHref;
+  view.setAttribute('aria-label', `View ${name}'s profile`);
+  actions.append(skip, like, view);
   body.append(actions);
   card.append(avatarLink, body);
   return card;
@@ -1046,6 +1066,7 @@ async function handleCandidateAction(button) {
   pendingActions.add(candidate.profile.id);
   const controls = card.querySelectorAll('button');
   controls.forEach(control => { control.disabled = true; });
+  const originalLabel = button.textContent;
   button.textContent = '…';
   setSectionMessage(peopleMessage, '');
   try {
@@ -1079,15 +1100,70 @@ async function handleCandidateAction(button) {
   } catch (error) {
     setSectionMessage(peopleMessage, error.message || 'We couldn’t send that interest. Please try again.', 'error');
     controls.forEach(control => { control.disabled = false; });
-    button.textContent = '♡';
+    button.textContent = originalLabel || 'Send interest';
   } finally {
     pendingActions.delete(candidate.profile.id);
   }
 }
 
+function hourGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Morning';
+  if (hour < 17) return 'Afternoon';
+  return 'Evening';
+}
+
+function setConversationPrompt(index) {
+  if (!conversationPrompt) return;
+  promptIndex = ((index % CONVERSATION_PROMPTS.length) + CONVERSATION_PROMPTS.length) % CONVERSATION_PROMPTS.length;
+  conversationPrompt.textContent = `“${CONVERSATION_PROMPTS[promptIndex]}”`;
+}
+
+function roomMark(slug) {
+  if (slug === 'relationships') return '♡';
+  if (slug === 'anonymous-gist') return '◉';
+  return '✳';
+}
+
+function roomTone(slug) {
+  if (slug === 'relationships') return 'room-love';
+  if (slug === 'anonymous-gist') return 'room-anon';
+  return 'room-campus';
+}
+
+function renderCommunityRooms(rooms) {
+  if (!communityRooms) return;
+  communityRooms.replaceChildren();
+  if (!rooms.length) {
+    setSectionMessage(communityRoomsMessage, 'No community rooms are set up yet. Check back when conversations open.');
+    return;
+  }
+  setSectionMessage(communityRoomsMessage, '');
+  rooms.slice(0, 4).forEach(room => {
+    const link = makeElement('a', `room-teaser ${roomTone(room.slug)}`);
+    link.href = `community.html?room=${encodeURIComponent(room.slug)}`;
+    const emoji = makeElement('span', 'room-emoji', roomMark(room.slug));
+    const copy = makeElement('span');
+    copy.append(makeElement('strong', '', room.name || room.slug));
+    copy.append(makeElement('small', '', room.description || 'Open the room and join when you’re ready.'));
+    const arrow = makeElement('span', 'room-arrow', '↗');
+    link.append(emoji, copy, arrow);
+    communityRooms.append(link);
+  });
+}
+
+async function loadCommunityRooms() {
+  if (!communityRooms) return;
+  const { data, error } = await supabase.from('community_rooms').select('slug,name,description,sort_order').order('sort_order').limit(4);
+  if (error) throw error;
+  if (data?.length) renderCommunityRooms(data);
+}
+
 async function initialize() {
   const logoutButton = $('[data-logout]');
   bindFeedInteractions();
+  setConversationPrompt(new Date().getDate() % CONVERSATION_PROMPTS.length);
+  nextPromptButton?.addEventListener('click', () => setConversationPrompt(promptIndex + 1));
   suggestionList.addEventListener('click', event => {
     const button = event.target.closest('button[data-skip], button[data-like]');
     if (button) handleCandidateAction(button);
@@ -1116,12 +1192,24 @@ async function initialize() {
     renderProfileProgress(profile);
 
     const safeName = sanitizeName(profile.display_name) || sanitizeName(user.user_metadata?.display_name);
+    if (homeHello) homeHello.textContent = hourGreeting();
     greeting.textContent = safeName ? `, ${safeName}` : '';
+    if (welcomeNote) {
+      const campus = profile.university?.trim();
+      welcomeNote.textContent = campus
+        ? `${campus} energy, plus whoever else is around. Discover people, join a room, or just see what’s happening.`
+        : 'See who’s around, join a conversation, or just catch the gist — at your own pace.';
+    }
+    if (matchNote) {
+      matchNote.textContent = ownMatchmakingEnabled
+        ? 'Send interest. They’ll only see a match if they feel the same. No score, no countdown, no pressure.'
+        : 'Interest is off on your profile right now. Switch it on when you’re ready — nobody is rushed.';
+    }
     const profileAvatar = $('[data-profile-avatar]');
     if (profileAvatar) profileAvatar.textContent = safeName ? safeName.slice(0, 1).toUpperCase() : 'V';
     setFeedInteractionEnabled(true);
     initializeFeedObserver();
-    const results = await Promise.allSettled([loadFeed({ reset: true }), loadSuggestions(), loadConnections()]);
+    const results = await Promise.allSettled([loadFeed({ reset: true }), loadSuggestions(), loadConnections(), loadCommunityRooms()]);
     if (results[0].status === 'rejected') {
       setFeedState(`We couldn’t load posts: ${explainPostBackendError(results[0].reason)}`, 'error');
       feedRetry.hidden = false;
@@ -1132,6 +1220,9 @@ async function initialize() {
     }
     if (results[2].status === 'rejected') {
       setSectionMessage(connectionsMessage, `We couldn’t load your connections: ${results[2].reason.message || 'Please try again.'}`, 'error');
+    }
+    if (results[3].status === 'rejected') {
+      setSectionMessage(communityRoomsMessage, `Rooms are listed from Community. We couldn’t refresh them: ${results[3].reason.message || 'Please try again.'}`, 'error');
     }
   } catch (error) {
     setStatus(error.message || 'We couldn’t load your VYBE home. Please refresh and try again.');

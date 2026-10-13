@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VYBE — Your people, your pace</title>
-<meta name="description" content="Meet people who share your energy and find out what is coming to VYBE.">
+<meta name="description" content="Discover people, join the gist, and find your vibe — at your own pace.">
 <meta name="theme-color" content="#FFF9F0">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -19,6 +19,9 @@
 <link rel="stylesheet" href="app-shell-refresh.css">
 <link rel="stylesheet" href="home-feed-responsive.css">
 <link rel="stylesheet" href="home-mobile-priority.css">
+<link rel="stylesheet" href="home-restored.css">
+<link rel="stylesheet" href="home-identity.css">
+<script type="module" src="page-transition.js"></script>
 </head>
 <body class="home-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -44,21 +47,42 @@
 <main class="home-main" id="main">
   <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>
 
-  <div class="home-intro">
-    <div><p class="home-greeting">Oya, welcome back<span data-name-greeting></span>.</p><h1 id="welcome-title">Catch the VYBE.</h1><p>Your people, campus gist and good conversations are right here.</p></div>
-  </div>
+  <section class="campus-hero" aria-labelledby="welcome-title">
+    <div class="campus-hero-copy">
+      <p class="home-eyebrow">YOU’RE IN</p>
+      <p class="home-greeting"><span data-home-hello>Hey</span><span data-name-greeting></span>.</p>
+      <h1 id="welcome-title">There are interesting people here.</h1>
+      <p class="campus-hero-description" data-welcome-note>See who’s around, join a conversation, or just catch the gist — at your own pace.</p>
+      <div class="campus-hero-actions">
+        <a class="btn campus-primary-action" href="#people">Meet people <span aria-hidden="true">→</span></a>
+        <a class="campus-secondary-action" href="#community-now">What’s happening</a>
+      </div>
+    </div>
+    <div class="campus-hero-art" aria-hidden="true">
+      <div class="campus-art-orbit"></div>
+      <div class="campus-art-spark">✳</div>
+      <span class="campus-sticker sticker-omo">You don land</span>
+      <span class="campus-sticker sticker-vibe">No pressure</span>
+    </div>
+  </section>
+
+  <nav class="home-next-moves" aria-label="What you can do next">
+    <a class="home-move home-move-people" href="#people"><span aria-hidden="true">👋</span><strong>Discover people</strong><small>See who you might click with</small></a>
+    <a class="home-move home-move-community" href="#community-now"><span aria-hidden="true">💬</span><strong>Join the gist</strong><small>Walk into a room that’s already talking</small></a>
+    <a class="home-move home-move-messages" href="messages.html"><span aria-hidden="true">✉️</span><strong>Keep a chat going</strong><small>Message someone you’ve matched with</small></a>
+  </nav>
   <p class="search-results-note" data-search-status role="status" aria-live="polite" hidden></p>
 
   <section class="home-section people-section" id="people" aria-labelledby="people-title">
-    <div class="section-title"><div><p class="home-eyebrow">GOOD PEOPLE, SAME FREQUENCY</p><h2 id="people-title">Find your VYBE</h2></div><a class="people-see-all" href="profile.html">Make your profile shine <span aria-hidden="true">↗</span></a></div>
+    <div class="section-title"><div><p class="home-eyebrow">WHO’S AROUND</p><h2 id="people-title">People you might click with</h2></div><p class="people-note">Real members. Skip anyone. Send interest only if you mean it.</p></div>
     <p class="section-message" data-people-message role="status" aria-live="polite">Looking for people you might click with…</p>
     <ul class="suggestion-list" data-suggestions aria-label="Suggested VYBE members"></ul>
     <p class="section-message photo-message" data-people-photo-message role="status" aria-live="polite"></p>
   </section>
 
-  <section class="match-card home-match-card" aria-labelledby="match-card-title"><div class="match-card-copy"><p class="home-eyebrow">GOOD CHEMISTRY STARTS HERE</p><h2 id="match-card-title">Find your person.</h2><p>Meet someone who shares your campus, interests and kind of energy.</p><a href="#people">Find your VYBE <span aria-hidden="true">→</span></a></div><span class="match-card-orbit" aria-hidden="true">♡</span></section>
+  <section class="match-card home-match-card" aria-labelledby="match-card-title"><div class="match-card-copy"><p class="home-eyebrow">FIND A VIBE</p><h2 id="match-card-title">If someone catches your eye</h2><p data-match-note>Send interest. They’ll only see a match if they feel the same. No score, no countdown, no pressure.</p><a href="#people">Browse people <span aria-hidden="true">→</span></a></div><span class="match-card-orbit" aria-hidden="true">♡</span></section>
 
-  <section class="share-starters" aria-labelledby="share-starters-title"><div class="share-starters-heading"><div><p class="home-eyebrow">YOUR NEXT POST</p><h2 id="share-starters-title">Put something out there</h2></div><span>Thoughts, photos, clips — your call.</span></div><div class="share-starter-list">
+  <section class="share-starters" aria-labelledby="share-starters-title"><div class="share-starters-heading"><div><p class="home-eyebrow">SAY SOMETHING</p><h2 id="share-starters-title">Put a little of yourself out there</h2></div><span>A thought, a photo, or a clip — your call.</span></div><div class="share-starter-list">
     <button class="share-starter share-starter-thought" type="button" data-create-kind="thought" disabled><span class="starter-art starter-art-thought" aria-hidden="true"><span>“</span><i>your words, your vibe</i></span><strong>Drop a thought</strong><small>Start a conversation</small></button>
     <button class="share-starter share-starter-photo" type="button" data-create-kind="image" disabled><span class="starter-art starter-art-photo" aria-hidden="true"><i>✳</i><b>little moments</b></span><strong>Share a photo</strong><small>Campus through your lens</small></button>
     <button class="share-starter share-starter-video" type="button" data-create-kind="video" disabled><span class="starter-art starter-art-video" aria-hidden="true"><i>▶</i><b>your 15 seconds</b></span><strong>Post a clip</strong><small>Bring the gist to life</small></button>
@@ -66,10 +90,10 @@
 
   <div class="home-columns">
     <section class="home-section feed-section" id="feed" aria-labelledby="feed-title">
-      <div class="section-title"><div><p class="home-eyebrow">CAMPUS GIST · MEMES · EVERYDAY LIFE</p><h2 id="feed-title">Feed</h2></div><button class="feed-refresh" type="button" data-feed-refresh disabled>Refresh</button></div>
-      <div class="feed-discovery-bar"><div class="feed-filter-row" role="group" aria-label="Choose feed posts"><button type="button" data-feed-filter="all" aria-pressed="true" disabled>For you</button><button type="button" data-feed-filter="anonymous" aria-pressed="false" disabled>Anonymous</button></div><a class="feed-community-link" href="community.html">Open the gist room <span aria-hidden="true">↗</span></a></div>
+      <div class="section-title"><div><p class="home-eyebrow">WHAT PEOPLE ARE SAYING</p><h2 id="feed-title">The gist so far</h2></div><button class="feed-refresh" type="button" data-feed-refresh disabled>Refresh</button></div>
+      <div class="feed-discovery-bar"><div class="feed-filter-row" role="group" aria-label="Choose feed posts"><button type="button" data-feed-filter="all" aria-pressed="true" disabled>For you</button><button type="button" data-feed-filter="anonymous" aria-pressed="false" disabled>Anonymous</button></div><a class="feed-community-link" href="community.html">Open Community <span aria-hidden="true">↗</span></a></div>
       <form class="post-composer" data-post-form>
-        <label class="visually-hidden" for="post-content">Write a post</label><textarea id="post-content" name="content" maxlength="2000" rows="3" required disabled placeholder="What’s happening on campus?"></textarea>
+        <label class="visually-hidden" for="post-content">Write a post</label><textarea id="post-content" name="content" maxlength="2000" rows="3" required disabled placeholder="What’s on your mind?"></textarea>
         <div class="post-composer-footer"><input class="visually-hidden" type="file" name="media" data-post-media accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" disabled><button class="post-media-button" type="button" data-post-media-trigger disabled><span aria-hidden="true">＋</span> Add photo or clip</button><label class="anonymous-toggle"><input name="is_anonymous" type="checkbox" disabled> Post anonymously</label><span class="post-character-count" data-post-character-count aria-live="polite">0 / 2000</span><button class="btn post-submit" type="submit" disabled>Post <span aria-hidden="true">↗</span></button></div>
         <div class="post-media-preview" data-post-media-preview hidden></div>
         <p class="composer-status" data-composer-status role="status" aria-live="polite" hidden></p>
@@ -99,13 +123,25 @@
     </div>
     <a class="btn profile-progress-action" href="profile.html?edit=complete">Complete profile <span aria-hidden="true">→</span></a>
       </section>
-      <section class="rail-panel community-discovery"><div class="rail-heading"><div><p class="home-eyebrow">LIVE CONVERSATIONS</p><h2>Find your room</h2></div><span class="live-dot" aria-label="Rooms are live"></span></div>
-        <a class="room-teaser room-campus" href="community.html?room=campus-gist"><span class="room-emoji">✳</span><span><strong>Campus Gist</strong><small>School life, hot takes & gist</small></span><span class="room-arrow">↗</span></a>
-        <a class="room-teaser room-love" href="community.html?room=relationships"><span class="room-emoji">♡</span><span><strong>Relationships & Love</strong><small>Soft life, real talk</small></span><span class="room-arrow">↗</span></a>
-        <a class="room-teaser room-anon" href="community.html?room=anonymous-gist"><span class="room-emoji">◉</span><span><strong>Anonymous Gist</strong><small>Say it with your chest</small></span><span class="room-arrow">↗</span></a>
+      <section class="rail-panel community-discovery" id="community-now" aria-labelledby="community-now-title"><div class="rail-heading"><div><p class="home-eyebrow">JOIN THE CONVERSATION</p><h2 id="community-now-title">Rooms you can walk into</h2></div></div>
+        <div data-community-rooms>
+          <a class="room-teaser room-campus" href="community.html?room=campus-gist"><span class="room-emoji">✳</span><span><strong>Campus Gist</strong><small>School life, hot takes & gist</small></span><span class="room-arrow">↗</span></a>
+          <a class="room-teaser room-love" href="community.html?room=relationships"><span class="room-emoji">♡</span><span><strong>Relationships & Love</strong><small>Soft life, real talk</small></span><span class="room-arrow">↗</span></a>
+          <a class="room-teaser room-anon" href="community.html?room=anonymous-gist"><span class="room-emoji">◉</span><span><strong>Anonymous Gist</strong><small>Say it with your chest</small></span><span class="room-arrow">↗</span></a>
+        </div>
+        <p class="section-message" data-community-rooms-message role="status" aria-live="polite"></p>
         <a class="room-all" href="community.html">Explore all rooms <span aria-hidden="true">→</span></a>
       </section>
       <section class="rail-panel connections-section" id="connections" aria-labelledby="connections-title"><div class="rail-heading"><div><p class="home-eyebrow">YOUR CONNECTIONS</p><h2 id="connections-title">It’s mutual <span class="mutual-heart" aria-hidden="true">♥</span></h2><p class="mutual-note">Good energy goes both ways.</p></div><a href="messages.html" aria-label="Open messages">↗</a></div><p class="section-message" data-connections-message role="status" aria-live="polite">Checking your connections…</p><ul class="connection-list" data-connections aria-label="Your mutual connections"></ul><p class="section-message photo-message" data-connections-photo-message role="status" aria-live="polite"></p></section>
+      <section class="rail-panel conversation-card" aria-labelledby="conversation-title">
+        <p class="home-eyebrow">A LITTLE HELP WITH THE FIRST “HEY”</p>
+        <h2 id="conversation-title">If you freeze on the first line</h2>
+        <p class="conversation-prompt" data-conversation-prompt>“What’s your biggest green flag?”</p>
+        <div class="conversation-actions">
+          <button class="text-link conversation-shuffle" type="button" data-next-prompt>Try another</button>
+          <a class="text-link" href="#people">Find someone to ask <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
     </aside>
   </div>
 </main>
