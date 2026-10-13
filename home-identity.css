@@ -363,3 +363,96 @@
   .home-body .home-move:hover,
   .home-body .suggestion-card:hover{transform:none}
 }
+
+@media(max-width:700px){
+  .home-body .home-main .suggestion-list,
+  .home-body .home-main>.people-section .suggestion-list{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:2px 1px 8px;
+    scroll-snap-type:x mandatory;
+    scrollbar-width:none;
+  }
+  .home-body .home-main .suggestion-list::-webkit-scrollbar,
+  .home-body .home-main>.people-section .suggestion-list::-webkit-scrollbar{display:none}
+  .home-body .home-main .suggestion-card,
+  .home-body .home-main .suggestion-card:hover,
+  .home-body .home-main>.people-section .suggestion-card,
+  .home-body .home-main>.people-section .suggestion-card:hover{
+    flex:0 0 90px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    overflow:visible;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+    text-align:center;
+    transform:none;
+    scroll-snap-align:start;
+  }
+  .home-body .home-main .suggestion-avatar-link,
+  .home-body .home-main>.people-section .suggestion-avatar-link{
+    width:72px;
+    height:72px;
+    flex:none;
+    padding:3px;
+    border:0;
+    border-radius:50%;
+    background:linear-gradient(135deg,#7357e8,#ff6b61 55%,#ffd166);
+  }
+  .home-body .home-main .suggestion-visual,
+  .home-body .home-main>.people-section .suggestion-visual{
+    width:100%;
+    height:100%;
+    border:2px solid #fff;
+    border-radius:50%;
+    background:linear-gradient(135deg,#efe7ff,#f8f5ff);
+  }
+  .home-body .home-main .suggestion-visual::before,
+  .home-body .home-main .suggestion-visual::after,
+  .home-body .home-main .suggestion-visual-note{display:none}
+  .home-body .home-main .suggestion-monogram{
+    width:100%;
+    height:100%;
+    border:0;
+    border-radius:50%;
+    background:transparent;
+    font-size:1.7rem;
+  }
+  .home-body .home-main .suggestion-avatar-image,
+  .home-body .home-main>.people-section .suggestion-avatar-image{border-radius:50%;object-fit:cover}
+  .home-body .home-main .suggestion-body,
+  .home-body .home-main>.people-section .suggestion-body{width:100%;padding:0}
+  .home-body .home-main .suggestion-heading h3{overflow:hidden}
+  .home-body .home-main .suggestion-name,
+  .home-body .home-main>.people-section .suggestion-name{
+    display:block;
+    overflow:hidden;
+    color:var(--ink);
+    font:700 .65rem/1.2 var(--body);
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .home-body .home-main .suggestion-handle,
+  .home-body .home-main .suggestion-intention,
+  .home-body .home-main .suggestion-detail,
+  .home-body .home-main .interest-tags,
+  .home-body .home-main .suggestion-vibe,
+  .home-body .home-main .suggestion-view,
+  .home-body .home-main>.people-section .suggestion-handle,
+  .home-body .home-main>.people-section .suggestion-intention,
+  .home-body .home-main>.people-section .suggestion-detail,
+  .home-body .home-main>.people-section .interest-tags,
+  .home-body .home-main>.people-section .suggestion-vibe,
+  .home-body .home-main>.people-section .suggestion-view{display:none}
+  .home-body .home-main .suggestion-actions,
+  .home-body .home-main>.people-section .suggestion-actions{display:none}
+  .home-body .home-main .people-empty,
+  .home-body .home-main>.people-section .people-empty{flex:0 0 100%}
+}
