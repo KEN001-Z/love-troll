@@ -398,20 +398,23 @@
   }
   .home-body .home-main .suggestion-avatar-link,
   .home-body .home-main>.people-section .suggestion-avatar-link{
-    width:72px;
-    height:72px;
+    width:80px;
+    height:80px;
     flex:none;
     padding:3px;
     border:0;
     border-radius:50%;
     background:linear-gradient(135deg,#7357e8,#ff6b61 55%,#ffd166);
+    box-shadow:0 2px 7px rgba(33,29,43,.16);
   }
   .home-body .home-main .suggestion-visual,
   .home-body .home-main>.people-section .suggestion-visual{
+    position:relative;
     width:100%;
     height:100%;
     border:2px solid #fff;
     border-radius:50%;
+    overflow:hidden;
     background:linear-gradient(135deg,#efe7ff,#f8f5ff);
   }
   .home-body .home-main .suggestion-visual::before,
@@ -426,7 +429,17 @@
     font-size:1.7rem;
   }
   .home-body .home-main .suggestion-avatar-image,
-  .home-body .home-main>.people-section .suggestion-avatar-image{border-radius:50%;object-fit:cover}
+  .home-body .home-main>.people-section .suggestion-avatar-image{
+    position:absolute;
+    z-index:1;
+    inset:0;
+    display:block;
+    width:100%;
+    height:100%;
+    border:0;
+    border-radius:50%;
+    object-fit:cover;
+  }
   .home-body .home-main .suggestion-body,
   .home-body .home-main>.people-section .suggestion-body{width:100%;padding:0}
   .home-body .home-main .suggestion-heading h3{overflow:hidden}
