@@ -10,12 +10,13 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/profile-CBCvGyHm.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/supabase-client-AsaZEHz4.js">
-  <link rel="stylesheet" crossorigin href="/assets/supabase-client-DnOTvXcj.css">
-  <link rel="stylesheet" crossorigin href="/assets/profile-BANvGYgM.css">
-  <link rel="stylesheet" crossorigin href="/assets/app-shell-refresh-BGOHnnIG.css">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/profile-CAup1Npw.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/supabase-client-se9m8bUX.js">
+  <link rel="stylesheet" crossorigin href="/assets/supabase-client-DiPHQWYS.css">
+  <link rel="stylesheet" crossorigin href="/assets/profile-BSNMt39c.css">
+  <link rel="stylesheet" crossorigin href="/assets/performance-CIfAUpdm.css">
+  <link rel="stylesheet" crossorigin href="/assets/app-shell-refresh-jDFe7HEe.css">
 </head>
 <body class="profile-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -39,12 +40,12 @@
     <section class="profile-card" aria-labelledby="profile-name">
       <div class="profile-cover" data-cover>
         <span class="cover-fallback" aria-hidden="true"></span>
-        <button class="cover-edit" type="button" data-edit-cover hidden>Change cover</button>
+        <button class="cover-edit" type="button" data-edit-cover hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z"/><circle cx="12" cy="13" r="3"/></svg><span>Change cover</span></button>
       </div>
       <div class="profile-identity">
         <div class="profile-avatar" data-avatar>
           <span data-initials aria-hidden="true"></span>
-          <button class="avatar-edit" type="button" data-edit-avatar hidden aria-label="Change profile photo">✎</button>
+          <button class="avatar-edit" type="button" data-edit-avatar hidden aria-label="Change profile photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z"/><circle cx="12" cy="13" r="3"/></svg></button>
         </div>
         <div class="profile-actions" data-profile-actions>
           <button class="btn alt profile-action" type="button" data-share>Share profile</button>
@@ -150,8 +151,28 @@
     <p class="profile-feedback" data-edit-feedback role="status" aria-live="polite" hidden></p>
     <progress data-upload-progress aria-label="Uploading profile photo or cover photo" hidden></progress>
     <section class="edit-photos" aria-label="Profile photos">
-      <label class="edit-field">Profile photo<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><small>Leave empty to keep your current photo. JPG, PNG or WebP · up to 5 MB</small></label>
-      <label class="edit-field">Cover photo<input name="cover" type="file" accept="image/jpeg,image/png,image/webp"><small>Leave empty to keep your current cover. JPG, PNG or WebP · up to 5 MB</small></label>
+      <section class="edit-photo-control" aria-labelledby="avatar-photo-title">
+        <div class="edit-photo-heading"><span class="edit-photo-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z"/><circle cx="12" cy="13" r="3"/></svg></span><div><h3 id="avatar-photo-title">Profile photo</h3><p>Make it easy for people to recognise you.</p></div></div>
+        <div class="edit-photo-actions">
+          <button class="photo-pick-button" type="button" data-photo-pick="camera" data-photo-kind="avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z"/><circle cx="12" cy="13" r="3"/></svg>Take a photo</button>
+          <button class="photo-pick-button secondary" type="button" data-photo-pick="gallery" data-photo-kind="avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="m20 15-4-4L7 20"/></svg>Choose from gallery</button>
+        </div>
+        <input class="photo-file-input" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" data-gallery-input="avatar" tabindex="-1" aria-hidden="true">
+        <input class="photo-file-input" type="file" accept="image/jpeg,image/png,image/webp" capture="user" data-camera-input="avatar" tabindex="-1" aria-hidden="true">
+        <small class="edit-photo-hint">JPG, PNG or WebP · up to 5 MB</small>
+        <p class="edit-photo-selected" data-photo-selected="avatar" aria-live="polite" hidden></p>
+      </section>
+      <section class="edit-photo-control" aria-labelledby="cover-photo-title">
+        <div class="edit-photo-heading"><span class="edit-photo-icon cover" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z"/><circle cx="12" cy="13" r="3"/></svg></span><div><h3 id="cover-photo-title">Cover photo</h3><p>Add a little personality to your profile.</p></div></div>
+        <div class="edit-photo-actions">
+          <button class="photo-pick-button" type="button" data-photo-pick="camera" data-photo-kind="cover"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v10H4z"/><circle cx="12" cy="13" r="3"/></svg>Take a photo</button>
+          <button class="photo-pick-button secondary" type="button" data-photo-pick="gallery" data-photo-kind="cover"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="m20 15-4-4L7 20"/></svg>Choose from gallery</button>
+        </div>
+        <input class="photo-file-input" name="cover" type="file" accept="image/jpeg,image/png,image/webp" data-gallery-input="cover" tabindex="-1" aria-hidden="true">
+        <input class="photo-file-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" data-camera-input="cover" tabindex="-1" aria-hidden="true">
+        <small class="edit-photo-hint">JPG, PNG or WebP · up to 5 MB</small>
+        <p class="edit-photo-selected" data-photo-selected="cover" aria-live="polite" hidden></p>
+      </section>
       <div class="photo-positioning" data-photo-positioning hidden>
         <p class="photo-positioning-title">Position your new photo</p>
         <p class="photo-positioning-help">Drag the image or use the sliders to choose what people will see. Your choice is shown in the same shape as your profile.</p>

@@ -314,39 +314,52 @@
   .home-body .campus-hero{padding:20px 18px 14px;border-radius:22px;box-shadow:4px 4px 0 var(--ink)}
   .home-body .campus-hero h1{max-width:12ch;font-size:clamp(1.9rem,9vw,2.5rem)}
   .home-body .campus-hero-art{min-height:150px;margin:0}
-  .home-body .home-main .suggestion-list,
   .home-body .home-main>.people-section .suggestion-list{
-    display:grid;grid-template-columns:1fr;gap:12px;overflow:visible;padding:0;
+    display:flex;flex-wrap:nowrap;gap:10px;overflow-x:auto;overflow-y:hidden;padding:4px 2px 8px;scrollbar-width:none;scroll-snap-type:x proximity;
   }
+  .home-body .home-main>.people-section .suggestion-list::-webkit-scrollbar{display:none}
   .home-body .home-main .suggestion-card,
   .home-body .home-main .suggestion-card:hover,
   .home-body .home-main>.people-section .suggestion-card,
   .home-body .home-main>.people-section .suggestion-card:hover{
-    flex:none;display:grid;grid-template-columns:96px minmax(0,1fr);align-items:stretch;
-    border-radius:18px;
+    flex:0 0 112px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;text-align:center;transform:none;scroll-snap-align:start;
   }
   .home-body .home-main .suggestion-avatar-link,
   .home-body .home-main>.people-section .suggestion-avatar-link{
-    width:100%;height:auto;min-height:100%;aspect-ratio:auto;border-radius:0;
+    width:68px;height:68px;aspect-ratio:1;padding:2px;border:2px solid rgba(255,255,255,.8);border-radius:50%;background:linear-gradient(145deg,#ffb7a7,#ffd166 52%,#7357e8);
   }
   .home-body .home-main .suggestion-visual,
-  .home-body .home-main>.people-section .suggestion-visual{border-radius:0}
+  .home-body .home-main>.people-section .suggestion-visual{
+    width:100%;height:100%;border:2px solid #fff;border-radius:50%;overflow:hidden;background:linear-gradient(145deg,#dcd4ff,#f5e5df);
+  }
+  .home-body .home-main .suggestion-monogram,
+  .home-body .home-main>.people-section .suggestion-monogram{width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.9);color:#51408f;font-size:.95rem}
   .home-body .home-main .suggestion-avatar-image,
-  .home-body .home-main>.people-section .suggestion-avatar-image{border-radius:0}
+  .home-body .home-main>.people-section .suggestion-avatar-image{border-radius:50%;object-fit:cover}
   .home-body .home-main .suggestion-body,
-  .home-body .home-main>.people-section .suggestion-body{padding:12px}
+  .home-body .home-main>.people-section .suggestion-body{width:100%;padding:0 3px}
+  .home-body .home-main .suggestion-heading,
+  .home-body .home-main>.people-section .suggestion-heading{display:block}
+  .home-body .home-main .suggestion-heading h3,
+  .home-body .home-main>.people-section .suggestion-heading h3{margin:0}
+  .home-body .home-main .suggestion-name,
+  .home-body .home-main>.people-section .suggestion-name{
+    display:-webkit-box;overflow:hidden;width:100%;color:#312b36;font-size:.7rem;line-height:1.25;text-overflow:ellipsis;white-space:normal;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  }
+  .home-body .home-main .suggestion-handle,
   .home-body .home-main .suggestion-intention,
+  .home-body .home-main>.people-section .suggestion-handle,
+  .home-body .home-main>.people-section .suggestion-intention{display:none}
   .home-body .home-main .suggestion-detail,
+  .home-body .home-main>.people-section .suggestion-detail{
+    display:-webkit-box;overflow:hidden;margin:4px 0 0;color:#6b6374;font-size:.61rem;line-height:1.3;text-overflow:ellipsis;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  }
   .home-body .home-main .interest-tags,
   .home-body .home-main .suggestion-vibe,
   .home-body .home-main .suggestion-actions,
-  .home-body .home-main>.people-section .suggestion-intention,
-  .home-body .home-main>.people-section .suggestion-detail,
   .home-body .home-main>.people-section .interest-tags,
   .home-body .home-main>.people-section .suggestion-vibe,
-  .home-body .home-main>.people-section .suggestion-actions{display:flex}
-  .home-body .home-main .suggestion-detail{display:block}
-  .home-body .home-main .suggestion-vibe{display:block}
+  .home-body .home-main>.people-section .suggestion-actions{display:none}
   .home-body .home-match-card{padding:16px 18px 16px 16px}
   .home-body .home-match-card p:not(.home-eyebrow){display:block}
   .home-body .match-card-orbit{width:48px;height:48px;right:12px;font-size:1.4rem}

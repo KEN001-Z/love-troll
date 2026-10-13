@@ -42,6 +42,13 @@
       <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
     </div>
   </div>
+  <div class="social-subnav-wrap">
+    <nav class="social-subnav" data-social-nav aria-label="Social home navigation">
+      <a class="social-subnav-link" href="home.html" data-social-destination="home" aria-current="page">Home</a>
+      <a class="social-subnav-link" href="vibe.html" data-social-destination="feed">Feed</a>
+      <a class="social-subnav-link" href="home.html#people" data-social-destination="discover">Discover</a>
+    </nav>
+  </div>
 </header>
 
 <main class="home-main" id="main">
@@ -89,7 +96,7 @@
   </div></section>
 
   <div class="home-columns">
-    <section class="home-section feed-section" id="feed" aria-labelledby="feed-title">
+    <section class="home-section feed-section" id="feed" aria-labelledby="feed-title" hidden>
       <div class="section-title"><div><p class="home-eyebrow">WHAT PEOPLE ARE SAYING</p><h2 id="feed-title">The gist so far</h2></div><button class="feed-refresh" type="button" data-feed-refresh disabled>Refresh</button></div>
       <div class="feed-discovery-bar"><div class="feed-filter-row" role="group" aria-label="Choose feed posts"><button type="button" data-feed-filter="all" aria-pressed="true" disabled>For you</button><button type="button" data-feed-filter="anonymous" aria-pressed="false" disabled>Anonymous</button></div><a class="feed-community-link" href="community.html">Open Community <span aria-hidden="true">↗</span></a></div>
       <form class="post-composer" data-post-form>

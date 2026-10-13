@@ -44,6 +44,7 @@ let reportMessageId = null;
 let avatarUrls = new Map();
 let unseenMessages = 0;
 const MAX_MESSAGE_LENGTH = 1000;
+let composerResizeFrame = 0;
 
 function setStatus(message, state = 'error') {
   status.textContent = message;
@@ -69,8 +70,11 @@ function updateComposerState() {
 }
 
 function resizeComposer() {
+  window.cancelAnimationFrame(composerResizeFrame);
+  composerResizeFrame = window.requestAnimationFrame(() => {
   messageInput.style.height = 'auto';
   messageInput.style.height = `${Math.min(Math.max(messageInput.scrollHeight, 44), 140)}px`;
+  });
 }
 
 async function resolveAvatarUrls(messages) {

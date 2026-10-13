@@ -42,6 +42,7 @@ let selectionVersion = 0;
 const avatarUrls = new Map();
 const mediaUrls = new Map();
 let selectedMedia = null;
+let composerResizeFrame = 0;
 
 function setStatus(message, state = '') {
   status.textContent = message;
@@ -289,7 +290,13 @@ async function sendMessage(event) {
   finally { sending = false; input.disabled = false; mediaInput.disabled = false; mediaTrigger.disabled = false; updateSend(); input.focus(); }
 }
 
-function resize() { input.style.height = 'auto'; input.style.height = `${Math.min(Math.max(input.scrollHeight, 44), 140)}px`; }
+function resize() {
+  window.cancelAnimationFrame(composerResizeFrame);
+  composerResizeFrame = window.requestAnimationFrame(() => {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(Math.max(input.scrollHeight, 44), 140)}px`;
+  });
+}
 function updateSend() { count.textContent = `${input.value.length} / 1000`; sendButton.disabled = !currentConversation || sending || !input.value.trim(); }
 
 async function initialize() {
