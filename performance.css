@@ -1,0 +1,90 @@
+/* Shared interaction and rendering safeguards. Kept deliberately additive so page designs stay intact. */
+:root {
+  scrollbar-gutter: stable;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: clip;
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+label[for],
+input[type='checkbox'],
+input[type='radio'],
+select {
+  touch-action: manipulation;
+}
+
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+textarea {
+  overflow-wrap: anywhere;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(115, 87, 232, .72);
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+
+  .home-main,
+  .profile-main,
+  .messages-page,
+  .community-page {
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

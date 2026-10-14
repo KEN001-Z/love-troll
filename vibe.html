@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYBE — The Vibe</title>
+<meta name="description" content="Explore posts, photos, and conversations on VYBE.">
+<meta name="theme-color" content="#FFF9F0">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="app-shell.css">
+<link rel="stylesheet" href="home.css">
+<link rel="stylesheet" href="home-redesign.css">
+<link rel="stylesheet" href="home-contrast.css">
+<link rel="stylesheet" href="app-shell-refresh.css">
+<link rel="stylesheet" href="app-presence.css">
+<link rel="stylesheet" href="home-feed-responsive.css">
+<link rel="stylesheet" href="home-mobile-priority.css">
+<link rel="stylesheet" href="home-restored.css">
+<link rel="stylesheet" href="home-identity.css">
+<link rel="stylesheet" href="vibe.css">
+<link rel="stylesheet" href="performance.css">
+<script type="module" src="page-transition.js"></script>
+<script type="module" src="app-presence.js"></script>
+</head>
+<body class="home-body vibe-body" data-page="vibe">
+<a class="skip" href="#main">Skip to content</a>
+<header class="app-header">
+  <div class="app-header-inner">
+    <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
+    <nav class="app-nav" aria-label="Main navigation">
+      <a class="app-nav-link" href="vibe.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
+      <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
+      <a class="app-nav-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
+      <a class="app-nav-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
+    </nav>
+    <div class="header-tools">
+      <label class="home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input type="search" data-home-search placeholder="Search loaded posts" aria-label="Search loaded posts"></label>
+      <a class="header-profile" href="profile.html" aria-label="Open your profile"><span class="header-avatar" data-profile-avatar>V</span><span class="header-profile-label">Profile</span></a>
+      <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
+    </div>
+  </div>
+  <div class="social-subnav-wrap">
+    <nav class="social-subnav" data-social-nav aria-label="Social home navigation">
+      <a class="social-subnav-link" href="home.html" data-social-destination="home">Home</a>
+      <a class="social-subnav-link" href="vibe.html" data-social-destination="feed" aria-current="page">Feed</a>
+      <a class="social-subnav-link" href="home.html#people" data-social-destination="discover">Discover</a>
+    </nav>
+  </div>
+</header>
+
+<main class="home-main vibe-main" id="main">
+  <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>
+  <header class="vibe-intro">
+    <div>
+      <p class="home-eyebrow">THE GIST, AS IT LANDS</p>
+      <p class="home-greeting"><span data-home-hello>Hey</span><span data-name-greeting></span>.</p>
+      <h1>What’s the vibe?</h1>
+      <p>Photos, thoughts, and the occasional hot take. Scroll, post, or tap through to the person behind it.</p>
+    </div>
+    <a class="campus-secondary-action" href="home.html">Back to Home</a>
+  </header>
+  <p class="search-results-note" data-search-status role="status" aria-live="polite" hidden></p>
+
+  <section class="home-section feed-section vibe-feed" id="feed" aria-labelledby="feed-title">
+    <div class="section-title"><div><p class="home-eyebrow">FOR YOU · ANONYMOUS</p><h2 id="feed-title">Explore</h2></div><button class="feed-refresh" type="button" data-feed-refresh disabled>Refresh</button></div>
+    <div class="feed-discovery-bar"><div class="feed-filter-row" role="group" aria-label="Choose feed posts"><button type="button" data-feed-filter="all" aria-pressed="true" disabled>For you</button><button type="button" data-feed-filter="anonymous" aria-pressed="false" disabled>Anonymous</button></div><a class="feed-community-link" href="community.html">Open Community <span aria-hidden="true">↗</span></a></div>
+    <form class="post-composer" data-post-form>
+      <label class="visually-hidden" for="post-content">Write a post</label><textarea id="post-content" name="content" maxlength="2000" rows="3" required disabled placeholder="A thought, a question, a photo — whatever’s on your mind."></textarea>
+      <div class="post-composer-footer"><input class="visually-hidden" type="file" name="media" data-post-media accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" disabled><button class="post-media-button" type="button" data-post-media-trigger disabled><span aria-hidden="true">＋</span> Add photo or clip</button><label class="anonymous-toggle"><input name="is_anonymous" type="checkbox" disabled> Post anonymously</label><span class="post-character-count" data-post-character-count aria-live="polite">0 / 2000</span><button class="btn post-submit" type="submit" disabled>Post <span aria-hidden="true">↗</span></button></div>
+      <div class="post-media-preview" data-post-media-preview hidden></div>
+      <p class="composer-status" data-composer-status role="status" aria-live="polite" hidden></p>
+    </form>
+    <div class="share-starter-list vibe-starters">
+      <button class="share-starter share-starter-thought" type="button" data-create-kind="thought" disabled><strong>Drop a thought</strong><small>No photo required</small></button>
+      <button class="share-starter share-starter-photo" type="button" data-create-kind="image" disabled><strong>Share a photo</strong><small>A moment, not a performance</small></button>
+      <button class="share-starter share-starter-video" type="button" data-create-kind="video" disabled><strong>Post a clip</strong><small>If you’ve got one</small></button>
+    </div>
+    <ol class="feed-post-list" data-feed-posts aria-label="VYBE posts"></ol>
+    <p class="feed-state" data-feed-state role="status" aria-live="polite">Loading posts…</p>
+    <button class="feed-retry" type="button" data-feed-retry disabled hidden>Try again</button>
+    <button class="feed-more" type="button" data-feed-more disabled hidden>Load more posts</button>
+    <div class="feed-sentinel" data-feed-sentinel aria-hidden="true"></div>
+  </section>
+</main>
+
+<nav class="app-mobile-nav" aria-label="Main navigation">
+  <a class="app-mobile-link" href="vibe.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
+  <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
+  <a class="app-mobile-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
+  <a class="app-mobile-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a>
+  <a class="app-mobile-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
+</nav>
+<div class="mobile-create-wrap"><div class="mobile-create-menu" id="mobile-create-menu" data-mobile-create-menu hidden><button type="button" data-create-kind="thought" disabled><span aria-hidden="true">✎</span> Write a post</button><button type="button" data-create-kind="image" disabled><span aria-hidden="true">▧</span> Add a photo</button><button type="button" data-create-kind="video" disabled><span aria-hidden="true">▶</span> Share a video</button></div><button class="mobile-create-button" type="button" data-mobile-create aria-label="Create a post" aria-expanded="false" aria-controls="mobile-create-menu" disabled><span aria-hidden="true">＋</span><span>Create</span></button></div>
+
+<script type="module" src="./home.js"></script>
+</body>
+</html>

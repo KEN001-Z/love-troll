@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Community — VYBE</title>
+<meta name="description" content="Join live conversations and topic rooms on VYBE.">
+<meta name="theme-color" content="#FFF9F0">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="app-shell.css">
+<link rel="stylesheet" href="home.css">
+<link rel="stylesheet" href="app-shell-refresh.css">
+<link rel="stylesheet" href="performance.css">
+<script type="module" src="page-transition.js"></script>
+<script type="module" src="app-presence.js"></script>
+</head>
+<body class="home-body community-body">
+<a class="skip" href="#main">Skip to content</a>
+<header class="app-header">
+  <div class="app-header-inner">
+    <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
+    <nav class="app-nav" aria-label="Main navigation">
+      <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
+      <a class="app-nav-link" href="community.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
+      <a class="app-nav-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
+      <a class="app-nav-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
+    </nav>
+    <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
+  </div>
+</header>
+
+<main class="home-main community-page" id="main">
+  <p class="home-status" data-community-status role="status" aria-live="polite" tabindex="-1" hidden></p>
+  <header class="community-header">
+    <div><p class="home-eyebrow">PUBLIC ROOMS · LIVE CHAT</p><h1>What are we talking about?</h1><p>Pick a room, read the room, and add your own two cents when you’re ready.</p></div><a class="community-dm-link" href="messages.html">Your private chats <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <div class="community-layout">
+    <aside class="community-sidebar" aria-label="Community rooms">
+      <div class="community-sidebar-heading"><div><p class="home-eyebrow">FIND YOUR ROOM</p><h2>Topic rooms</h2></div><button class="room-toggle" type="button" data-room-toggle aria-expanded="false" aria-controls="room-list">Rooms</button></div>
+      <nav class="room-list" id="room-list" data-room-list aria-label="Topic rooms"><p class="room-loading" data-room-loading>Loading rooms…</p></nav>
+      <section class="community-presence" aria-labelledby="presence-title"><div class="presence-heading"><h2 id="presence-title">Online members</h2><span class="presence-count" data-presence-count>0</span></div><p data-presence-summary>No one is showing as online yet.</p><ul class="online-member-list" data-online-members aria-label="Online members"></ul></section>
+    </aside>
+
+    <section class="community-chat" aria-labelledby="chat-title">
+      <header class="chat-header"><div><p class="home-eyebrow">NOW IN</p><h2 id="chat-title" data-chat-title>Global Chat</h2><p data-chat-description>Everybody’s here. Say hello when the room opens.</p></div><div class="chat-header-side"><span class="chat-state" data-chat-state>Preparing</span><span class="chat-member-note" data-chat-member-note>Live room</span></div></header>
+      <div class="chat-history" data-chat-history aria-live="polite"><button class="chat-more" type="button" data-chat-more hidden>Load older messages</button><button class="chat-new-messages" type="button" data-chat-new hidden>New messages</button><ol class="chat-message-list" data-chat-messages aria-label="Community messages"></ol><div class="chat-empty" data-chat-empty><span class="chat-empty-mark" aria-hidden="true">✦</span><h3>No messages yet</h3><p data-empty-copy>Community chat is ready for real conversations. Messages will appear here once the chat backend is connected.</p></div></div>
+      <form class="chat-composer" data-chat-form><label class="visually-hidden" for="chat-message">Write a message</label><textarea id="chat-message" name="message" rows="1" maxlength="1000" placeholder="Join the gist…" disabled></textarea><div class="chat-composer-footer"><label class="anonymous-toggle"><input type="checkbox" name="is_anonymous" data-anonymous-toggle disabled> Post anonymously</label><span class="composer-hint" data-composer-hint>Be kind. Share with care.</span><span class="composer-count" data-message-count>0 / 1000</span><button class="btn composer-send" type="submit" disabled><span>Send</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 8-16 8 3-8-3-8Z"/><path d="M7 12h13"/></svg></button></div><p class="composer-status" data-chat-composer-status role="status" aria-live="polite">Connecting to Community chat…</p></form>
+    </section>
+  </div>
+</main>
+
+<dialog class="community-dialog" data-report-dialog aria-labelledby="report-title">
+  <form data-report-form method="dialog">
+    <div class="dialog-heading"><div><p class="home-eyebrow">HELP KEEP VYBE SAFE</p><h2 id="report-title">Report this message</h2></div><button type="button" class="icon-close" data-close-report aria-label="Close report dialog">×</button></div>
+    <p class="report-copy">Reports are private and are only visible to the VYBE moderation team.</p>
+    <label class="edit-field">Reason<select name="reason" required><option value="">Choose a reason</option><option value="spam">Spam</option><option value="harassment">Harassment</option><option value="hate">Hate or targeted abuse</option><option value="sexual-content">Sexual content</option><option value="impersonation">Impersonation</option><option value="other">Something else</option></select></label>
+    <p class="report-status" data-report-status role="status" aria-live="polite" hidden></p>
+    <div class="edit-submit"><button class="btn alt" type="button" data-close-report>Cancel</button><button class="btn" type="submit">Submit report</button></div>
+  </form>
+</dialog>
+
+<nav class="app-mobile-nav" aria-label="Main navigation">
+  <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
+  <a class="app-mobile-link" href="community.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
+  <a class="app-mobile-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
+  <a class="app-mobile-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a>
+  <a class="app-mobile-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
+</nav>
+<script type="module" src="./community.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+/* Feed surfaces and breakpoints for compact phones through desktop. */
+.feed-section{width:min(100%,760px);min-width:0;margin:0 auto}
+.feed-section .section-title{align-items:center;gap:12px;margin-bottom:7px}
+.feed-section .section-title h2{margin:2px 0 0;font-size:clamp(1.5rem,2.8vw,2rem);line-height:1.05;letter-spacing:-.05em}
+.feed-section .section-title .home-eyebrow{font-size:.6rem;letter-spacing:.1em}
+.feed-refresh{min-height:38px;padding:7px 11px;border-radius:9px;font-size:.72rem}
+.feed-discovery-bar{min-width:0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;margin:9px 0 13px;padding-bottom:10px;border-bottom:1px solid #e8e2da}
+.feed-filter-row{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0}
+.feed-filter-row button{min-height:35px;padding:6px 10px;border-radius:8px;font-size:.7rem}
+.feed-community-link{margin-left:auto;font-size:.69rem;white-space:nowrap}
+.post-composer{display:grid;gap:8px;margin:0 0 8px;padding:13px;border:1px solid #e7e1d9;border-radius:13px;background:#fff;box-shadow:0 5px 18px rgba(39,32,48,.035)}
+.post-composer textarea{width:100%;min-height:63px;padding:8px 9px;border:0;border-bottom:1px solid #eee9e3;border-radius:0;background:transparent;color:#302b37;font:400 .88rem/1.5 var(--body);resize:vertical}
+.post-composer textarea:focus-visible{outline:0;border-color:#9e8ae7;box-shadow:0 1px 0 #7357e8}
+.post-composer-footer{min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:0}
+.post-media-button,.anonymous-toggle{min-height:36px;font-size:.7rem}
+.post-media-button{padding:6px 9px;border-radius:8px}
+.anonymous-toggle{gap:6px}
+.anonymous-toggle input{width:15px;height:15px}
+.post-character-count{margin-left:auto;font-size:.65rem;white-space:nowrap}
+.post-submit{min-height:36px;padding:7px 13px;border-radius:8px;font-size:.73rem}
+.post-media-preview{min-width:0;flex-wrap:wrap;padding:8px 10px;border-radius:8px}
+.post-media-name{min-width:0;max-width:min(70%,420px)}
+.feed-post-list{display:grid;gap:12px;margin:10px 0 0;padding:0;list-style:none}
+.feed-post{min-width:0}
+.post-card,.demo-post-card{min-width:0;padding:16px;border:1px solid #e8e2da;border-radius:14px;background:#fff;box-shadow:0 4px 17px rgba(39,32,48,.035)}
+.post-header{min-width:0;flex-wrap:wrap;gap:8px}
+.post-identity{min-width:0;flex:1 1 180px;gap:9px}
+.post-author{min-width:0;gap:5px}
+.post-time{margin-left:auto;font-size:.68rem}
+.post-owner-actions{flex:none}
+.post-content{margin:10px 0;color:#393340;font-size:.88rem;line-height:1.6;overflow-wrap:anywhere}
+.post-media-image,.post-media-video{width:100%;max-width:100%;max-height:min(72svh,620px);margin:10px 0 2px;border:1px solid #e7e1da;border-radius:11px;background:#211d2b}
+.post-media-image{object-fit:cover}
+.post-media-video{height:auto;object-fit:contain}
+.post-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 17px;margin-top:10px;padding-top:9px;border-top:1px solid #eee9e3}
+.post-action{min-height:38px;display:inline-flex;align-items:center;padding:6px 3px;font-size:.72rem}
+.post-share{margin-left:auto}
+.feed-state,.composer-status{max-width:100%;font-size:.75rem;line-height:1.5;overflow-wrap:anywhere}
+.feed-more,.feed-retry{min-height:40px;padding:8px 13px;border-radius:9px;font-size:.74rem}
+.demo-post-card{position:relative;padding:14px}
+.demo-post-header{min-width:0;flex-wrap:wrap}
+.demo-post-identity{flex:1 1 170px}
+.demo-post-badge{font-size:.54rem}
+.demo-reel .demo-post-card{width:min(100%,440px)}
+.demo-reel .demo-post-visual{width:calc(100% - 54px);height:auto;min-height:0;aspect-ratio:4/5;margin:0 auto 0 0}
+.demo-reel .demo-post-actions{right:0;top:56%}
+.demo-photo .demo-post-visual{min-height:0;aspect-ratio:4/3}
+.demo-text .demo-post-visual{min-height:190px}
+.demo-post-caption{font-size:.83rem;line-height:1.55;overflow-wrap:anywhere}
+.demo-post-actions{gap:9px}
+.demo-action{min-width:42px;min-height:42px;justify-content:center;font-size:.71rem}
+.demo-reel .demo-post-actions .demo-action{min-width:42px;min-height:48px}
+.demo-share{min-height:36px}
+.demo-comments{min-width:0;padding:10px}
+.demo-comment-form{min-width:0}
+.demo-comment-form input{min-width:0;min-height:40px;font-size:16px}
+.demo-comment-form button{min-width:48px;min-height:40px}
+.feed-state[data-state=preview]{font-size:.68rem}
+
+@media(max-width:760px){
+  .feed-section{width:min(100%,680px)}
+}
+@media(max-width:560px){
+  .feed-section{width:100%;margin-top:18px}
+  .feed-section .section-title{align-items:center;margin-bottom:5px}
+  .feed-section .section-title h2{font-size:1.55rem}
+  .feed-section .section-title .home-eyebrow{font-size:.55rem}
+  .feed-refresh{min-height:36px;padding:6px 9px}
+  .feed-discovery-bar{align-items:center;flex-wrap:nowrap;gap:5px;margin:7px 0 10px;padding-bottom:8px}
+  .feed-filter-row{flex:none;gap:2px}
+  .feed-filter-row button{min-height:34px;padding:5px 8px;font-size:.66rem}
+  .feed-community-link{max-width:45%;overflow:hidden;font-size:.62rem;text-overflow:ellipsis}
+  .post-composer{gap:7px;margin-bottom:5px;padding:10px;border-radius:11px}
+  .post-composer textarea{min-height:56px;padding:6px 4px;font-size:16px}
+  .post-composer-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 8px}
+  .post-media-button{grid-row:1;grid-column:1;justify-self:start;max-width:100%;min-height:38px;padding:6px 8px;font-size:.68rem}
+  .post-submit{grid-row:1;grid-column:2;min-width:68px;min-height:38px;padding:6px 10px}
+  .anonymous-toggle{grid-row:2;grid-column:1;min-width:0;min-height:34px;font-size:.66rem}
+  .post-character-count{grid-row:2;grid-column:2;margin-left:0;font-size:.59rem}
+  .post-media-preview{font-size:.66rem}
+  .feed-post-list{gap:9px;margin-top:9px}
+  .post-card,.demo-post-card{padding:12px;border-radius:12px}
+  .post-header{gap:6px}
+  .post-avatar{width:36px;height:36px}
+  .post-author-link,.post-author-name,.post-anonymous-label{font-size:.76rem}
+  .post-author-handle{font-size:.64rem}
+  .post-time{font-size:.62rem}
+  .post-content{margin:8px 0;font-size:.84rem;line-height:1.55}
+  .post-media-image,.post-media-video{max-height:68svh;margin-top:8px;border-radius:9px}
+  .post-actions{gap:5px 12px;margin-top:8px;padding-top:7px}
+  .post-action{min-height:42px;font-size:.68rem}
+  .demo-post-card{padding:11px}
+  .demo-post-header{gap:6px;margin-bottom:8px}
+  .demo-post-avatar{width:35px;height:35px}
+  .demo-post-byline strong{font-size:.72rem}
+  .demo-post-byline small{font-size:.61rem}
+  .demo-post-badge{padding:4px 6px;font-size:.49rem}
+  .demo-reel .demo-post-card{width:min(100%,420px)}
+  .demo-reel .demo-post-visual{width:calc(100% - 48px);aspect-ratio:4/5}
+  .demo-reel .demo-post-actions{top:55%}
+  .demo-reel .demo-post-actions .demo-action{min-width:40px;min-height:45px}
+  .demo-post-visual{padding:12px;border-radius:9px}
+  .demo-art-title{font-size:clamp(2rem,10vw,2.75rem)}
+  .demo-art-kicker,.demo-art-footer{font-size:.5rem;letter-spacing:.12em}
+  .demo-play-mark{width:42px;height:42px}
+  .demo-post-caption{margin-top:9px;font-size:.79rem;line-height:1.5}
+  .demo-post-actions{gap:5px}
+  .demo-action{min-width:39px;min-height:42px;font-size:.67rem}
+  .demo-share{min-height:36px;padding-inline:9px}
+  .demo-comments{gap:7px;margin-top:7px;padding:8px}
+  .demo-comment-form{gap:5px}
+  .demo-comment-form input{padding:7px 9px}
+  .feed-state[data-state=preview]{padding:8px 9px;font-size:.64rem}
+}
+@media(max-width:390px){
+  .feed-discovery-bar{gap:3px}
+  .feed-filter-row button{padding-inline:6px;font-size:.63rem}
+  .feed-community-link{max-width:40%;font-size:.58rem}
+  .post-composer{padding:9px}
+  .post-composer-footer{column-gap:5px}
+  .post-media-button{font-size:.64rem}
+  .anonymous-toggle{font-size:.62rem}
+  .post-character-count{font-size:.55rem}
+  .post-card,.demo-post-card{padding:10px}
+  .demo-reel .demo-post-visual{width:calc(100% - 45px)}
+  .demo-reel .demo-post-actions .demo-action{min-width:38px}
+}
+@media(max-width:340px){
+  .feed-section .section-title .home-eyebrow{max-width:25ch;line-height:1.35}
+  .feed-section .section-title h2{font-size:1.42rem}
+  .feed-filter-row button{padding-inline:5px;font-size:.6rem}
+  .feed-community-link{max-width:36%;font-size:.55rem}
+  .post-media-button{font-size:.61rem}
+  .post-submit{min-width:58px;padding-inline:7px}
+  .anonymous-toggle{font-size:.59rem}
+  .demo-post-badge{max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media(prefers-reduced-motion:reduce){.share-starter,.demo-action{transition:none}}
