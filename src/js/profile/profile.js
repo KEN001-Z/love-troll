@@ -29,6 +29,11 @@ const interestOptions = Object.keys(labels.interests);
 const editDialog = $('[data-edit-dialog]');
 const editForm = $('[data-edit-form]');
 const moreDialog = $('[data-more-dialog]');
+const reportDialog = $('[data-report-dialog]');
+const reportForm = $('[data-report-form]');
+const reportStatus = $('[data-report-status]');
+const blockProfileButton = $('[data-block-profile]');
+const unblockProfileButton = $('[data-unblock-profile]');
 const profilePostList = $('[data-profile-post-list]');
 const profilePostState = $('[data-profile-post-state]');
 const profilePostEmpty = $('[data-profile-post-empty]');
@@ -40,6 +45,8 @@ let ownProfile;
 let profile;
 let targetId;
 let sendingInterest = false;
+let changingProfileBlock = false;
+let submittingProfileReport = false;
 const PROFILE_POST_PAGE_SIZE = 16;
 const profilePostMediaUrls = new Map();
 let profilePostCursor = null;
@@ -546,12 +553,23 @@ async function loadProfile() {
   if (error) throw error;
   profile = Array.isArray(data) ? data[0] : data;
   if (!profile || profile.id !== targetId) {
+    const { data: blockedByMe, error: blockStatusError } = await supabase.rpc('is_profile_blocked_by_me', {
+      p_target_user: targetId
+    });
+    if (blockStatusError) throw blockStatusError;
+    if (blockedByMe) {
+      status.textContent = 'You blocked this profile. Unblock it to view the profile again.';
+      status.dataset.state = 'success';
+      unblockProfileButton.hidden = false;
+      return false;
+    }
     throw new Error('This profile is private or unavailable. You can still meet more people from the VYBE home page.');
   }
   if (profile.is_owner !== (targetId === currentUser.id)) {
     throw new Error('VYBE could not verify this profile’s account identity. Please reload and try again.');
   }
   renderProfile();
+  return true;
 }
 
 function profilePostMedia(post) {
@@ -862,6 +880,85 @@ async function expressInterest(button) {
   }
 }
 
+async function blockProfile() {
+  if (changingProfileBlock || !profile) return;
+  const name = profile.display_name?.trim() || 'this profile';
+  if (!window.confirm(`Block ${name}? They will no longer be able to view or contact one another.`)) return;
+
+  changingProfileBlock = true;
+  blockProfileButton.disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('set_profile_block', {
+      p_target_profile: profile.id,
+      p_block: true
+    });
+    if (error) throw error;
+    if (data !== true) throw new Error('VYBE could not confirm that this profile was blocked.');
+    moreDialog.close();
+    page.hidden = true;
+    status.dataset.state = 'success';
+    status.textContent = `You blocked ${name}. Unblock this profile to view it again.`;
+    status.hidden = false;
+    unblockProfileButton.hidden = false;
+  } catch (error) {
+    setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+  } finally {
+    changingProfileBlock = false;
+    blockProfileButton.disabled = false;
+  }
+}
+
+async function unblockProfile() {
+  if (changingProfileBlock) return;
+  changingProfileBlock = true;
+  unblockProfileButton.disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('set_profile_block', {
+      p_target_profile: targetId,
+      p_block: false
+    });
+    if (error) throw error;
+    if (data !== false) throw new Error('VYBE could not confirm that this profile was unblocked.');
+    window.location.reload();
+  } catch (error) {
+    status.dataset.state = 'error';
+    status.textContent = friendlyError(error);
+    status.hidden = false;
+  } finally {
+    changingProfileBlock = false;
+    unblockProfileButton.disabled = false;
+  }
+}
+
+async function submitProfileReport(event) {
+  event.preventDefault();
+  if (!profile || submittingProfileReport) return;
+  const formData = new FormData(reportForm);
+  const reason = String(formData.get('reason') || '');
+  const details = String(formData.get('details') || '');
+  const submitButton = reportForm.querySelector('[type="submit"]');
+  submittingProfileReport = true;
+  submitButton.disabled = true;
+  setMessage(reportStatus, '');
+  try {
+    const { data, error } = await supabase.rpc('report_profile', {
+      p_target_profile: profile.id,
+      p_reason: reason,
+      p_details: details
+    });
+    if (error) throw error;
+    if (!data) throw new Error('VYBE could not confirm that your report was submitted.');
+    reportDialog.close();
+    reportForm.reset();
+    setMessage($('[data-action-feedback]'), 'Thanks — your report was submitted privately.', 'success');
+  } catch (error) {
+    setMessage(reportStatus, friendlyError(error), 'error');
+  } finally {
+    submittingProfileReport = false;
+    submitButton.disabled = false;
+  }
+}
+
 async function shareProfile() {
   const url = new URL(`profile.html?id=${encodeURIComponent(profile.id)}`, window.location.href).toString();
   try {
@@ -902,21 +999,23 @@ async function initialize() {
     ownProfile = me;
     targetId = new URLSearchParams(window.location.search).get('id') || user.id;
 
-    await loadProfile();
-    status.hidden = true;
-    page.hidden = false;
-    loadProfilePosts({ reset: true });
-    startProfilePostRealtime();
-    window.addEventListener('pageshow', resumeProfilePostRealtime);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') refreshProfilePosts();
-    });
-    if (targetId === currentUser.id && new URLSearchParams(window.location.search).get('edit') === 'complete') {
-      openEditDialog('university');
+    const profileAvailable = await loadProfile();
+    if (profileAvailable) {
+      status.hidden = true;
+      page.hidden = false;
+      loadProfilePosts({ reset: true });
+      startProfilePostRealtime();
+      window.addEventListener('pageshow', resumeProfilePostRealtime);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshProfilePosts();
+      });
+      if (targetId === currentUser.id && new URLSearchParams(window.location.search).get('edit') === 'complete') {
+        openEditDialog('university');
+      }
+      loadInterestState().catch(error => {
+        setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+      });
     }
-    loadInterestState().catch(error => {
-      setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
-    });
     window.dispatchEvent(new Event('vybe:page-ready'));
   } catch (error) {
     status.dataset.state = 'error';
@@ -951,6 +1050,17 @@ async function initialize() {
   $('[data-cancel-edit]').addEventListener('click', () => editDialog.close());
   $('[data-more]').addEventListener('click', () => moreDialog.showModal());
   $$('[data-close-more]').forEach(button => button.addEventListener('click', () => moreDialog.close()));
+  $('[data-report-profile]').addEventListener('click', () => {
+    moreDialog.close();
+    reportForm.reset();
+    setMessage(reportStatus, '');
+    reportDialog.showModal();
+  });
+  $('[data-close-report]').addEventListener('click', () => reportDialog.close());
+  $('[data-cancel-report]').addEventListener('click', () => reportDialog.close());
+  reportForm.addEventListener('submit', submitProfileReport);
+  blockProfileButton.addEventListener('click', blockProfile);
+  unblockProfileButton.addEventListener('click', unblockProfile);
   $('[data-share]').addEventListener('click', shareProfile);
   $('[data-interest]').addEventListener('click', event => expressInterest(event.currentTarget));
   followButton.addEventListener('click', toggleFollow);

@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "VYBES",
+  "short_name": "VYBES",
+  "description": "Your people, your pace.",
+  "start_url": "/home.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFF9F0",
+  "theme_color": "#FFF9F0",
+  "icons": [
+    {
+      "src": "/img/vybes-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

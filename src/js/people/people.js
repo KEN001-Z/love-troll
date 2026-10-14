@@ -24,6 +24,7 @@ const interestLabels = {
   tech: 'Tech'
 };
 const PAGE_SIZE = 24;
+const DISCOVERY_REFRESH_INTERVAL = 60_000;
 
 let supabase;
 let currentUserId;
@@ -31,6 +32,7 @@ let ownInterests = [];
 let activeFilter = 'for-you';
 let searchTerm = '';
 let candidates = [];
+let discoveryLimited = false;
 let offset = 0;
 let hasMore = false;
 let loading = false;
@@ -93,14 +95,18 @@ function updateTabs() {
 function renderEmptyState() {
   const empty = makeElement('li', 'people-empty');
   const searching = Boolean(searchTerm);
-  const title = searching
+  const title = discoveryLimited
+    ? 'Your discovery list is limited.'
+    : searching
     ? hasMore ? 'No matches in this batch.' : 'No results for that search.'
     : activeFilter === 'following'
       ? hasMore ? 'No visible profiles in this batch.' : 'You’re not following anyone yet.'
       : activeFilter === 'new'
         ? hasMore ? 'No new faces in this batch.' : 'More new faces soon.'
         : hasMore ? 'Keep exploring.' : 'Your next connection is waiting.';
-  const copy = searching
+  const copy = discoveryLimited
+    ? 'The current database function only includes members who enabled matchmaking. Apply 20261014014300_split_profile_discovery_by_matchmaking.sql to include every campus-visible member.'
+    : searching
     ? hasMore
       ? 'There may be more matches further down. Load more people to keep looking.'
       : 'Try another name or username, or clear your search to browse everyone.'
@@ -160,7 +166,7 @@ function renderCandidate(candidate) {
   visual.append(monogram);
   const createdAt = Date.parse(profile.created_at || '');
   if (Number.isFinite(createdAt) && Date.now() - createdAt < 14 * 24 * 60 * 60 * 1000) {
-    visual.append(makeElement('span', 'people-new-badge', 'New on VYBE'));
+    visual.append(makeElement('span', 'people-new-badge', 'NEW'));
   }
 
   if (candidate.avatarUrl) {
@@ -229,6 +235,12 @@ function renderCandidate(candidate) {
 }
 
 function renderCandidates() {
+  if (suggestionList.dataset.error === 'true') {
+    suggestionList.setAttribute('aria-busy', String(loading));
+    peopleLoadMore.hidden = true;
+    return;
+  }
+
   const visible = candidates.filter(candidate => !searchTerm || searchHaystack(candidate.profile).includes(searchTerm));
   suggestionList.replaceChildren();
   suggestionList.setAttribute('aria-busy', String(loading));
@@ -270,18 +282,25 @@ async function signAvatars(profiles) {
   };
 }
 
-async function loadPeople({ reset = true } = {}) {
+async function loadPeople({ reset = true, background = false } = {}) {
   if (!reset && loading) return;
   const id = ++requestId;
   const pageOffset = reset ? 0 : offset;
+  let usingLegacyDiscovery = false;
   loading = true;
   peopleRetry.hidden = true;
+  suggestionList.dataset.error = '';
+  discoveryLimited = false;
   setMessage(peopleMessage, reset ? 'Finding people you might click with…' : 'Loading more people…');
   if (reset) {
-    candidates = [];
-    offset = 0;
-    hasMore = false;
-    renderSkeletons();
+    if (background) {
+      renderCandidates();
+    } else {
+      candidates = [];
+      offset = 0;
+      hasMore = false;
+      renderSkeletons();
+    }
   } else {
     renderCandidates();
   }
@@ -312,13 +331,23 @@ async function loadPeople({ reset = true } = {}) {
         });
       }
     } else {
-      const { data, error } = await supabase.rpc('discover_profiles', {
+      let result = await supabase.rpc('discover_profiles', {
         result_offset: pageOffset,
-        result_limit: PAGE_SIZE + 1
+        result_limit: PAGE_SIZE + 1,
+        p_matchmaking_only: false
       });
-      if (error) throw error;
+      if (result.error?.code === 'PGRST202') {
+        result = await supabase.rpc('discover_profiles', {
+          result_offset: pageOffset,
+          result_limit: PAGE_SIZE + 1
+        });
+        if (result.error) throw result.error;
+        usingLegacyDiscovery = true;
+      } else if (result.error) {
+        throw result.error;
+      }
       if (id !== requestId) return;
-      const page = data || [];
+      const page = result.data || [];
       pageHasMore = page.length > PAGE_SIZE;
       profiles = page.slice(0, PAGE_SIZE);
       if (searchTerm) {
@@ -362,20 +391,36 @@ async function loadPeople({ reset = true } = {}) {
       });
     }
 
-    const seen = new Set(candidates.map(candidate => candidate.profile.id));
-    candidates.push(...pageCandidates.filter(candidate => !seen.has(candidate.profile.id)));
+    if (background) {
+      candidates = pageCandidates;
+    } else {
+      const seen = new Set(candidates.map(candidate => candidate.profile.id));
+      candidates.push(...pageCandidates.filter(candidate => !seen.has(candidate.profile.id)));
+    }
     offset = pageOffset + PAGE_SIZE;
     hasMore = pageHasMore;
-    setMessage(peopleMessage, '');
+    discoveryLimited = usingLegacyDiscovery;
+    if (discoveryLimited) {
+      setMessage(
+        peopleMessage,
+        'Discovery is using the older database function, so members who turned off matchmaking are missing. Apply 20261014014300_split_profile_discovery_by_matchmaking.sql to show all visible members.',
+        'warning'
+      );
+    } else {
+      setMessage(peopleMessage, '');
+    }
     suggestionList.dataset.error = '';
   } catch (error) {
     if (id === requestId) {
-      suggestionList.replaceChildren();
+      if (!background) suggestionList.replaceChildren();
       suggestionList.setAttribute('aria-busy', 'false');
       suggestionList.dataset.error = 'true';
       peopleLoadMore.hidden = true;
       peopleRetry.hidden = false;
-      setMessage(peopleMessage, `We couldn’t load people to meet: ${error.message || 'Please try again.'}`, 'error');
+      const errorMessage = error?.code === 'PGRST202'
+        ? 'The VYBE discovery function is not installed yet. Apply 20261014014300_split_profile_discovery_by_matchmaking.sql in Supabase, then try again.'
+        : error.message || 'Please try again.';
+      setMessage(peopleMessage, `We couldn’t load people to meet: ${errorMessage}`, 'error');
     }
   } finally {
     if (id === requestId) {
@@ -383,6 +428,23 @@ async function loadPeople({ reset = true } = {}) {
       renderCandidates();
     }
   }
+}
+
+function refreshPeopleInBackground() {
+  if (document.visibilityState !== 'visible' || loading) return;
+  loadPeople({ background: true });
+}
+
+function startDiscoveryRefresh() {
+  const refreshTimer = window.setInterval(refreshPeopleInBackground, DISCOVERY_REFRESH_INTERVAL);
+  const refreshWhenVisible = () => refreshPeopleInBackground();
+  document.addEventListener('visibilitychange', refreshWhenVisible);
+  window.addEventListener('pageshow', refreshWhenVisible);
+  window.addEventListener('pagehide', () => {
+    window.clearInterval(refreshTimer);
+    document.removeEventListener('visibilitychange', refreshWhenVisible);
+    window.removeEventListener('pageshow', refreshWhenVisible);
+  }, { once: true });
 }
 
 function setFilter(filter) {
@@ -455,6 +517,7 @@ async function initialize() {
     $('[data-profile-avatar]').textContent = safeName ? safeName.slice(0, 1).toLocaleUpperCase() : 'V';
     updateTabs();
     await loadPeople();
+    startDiscoveryRefresh();
   } catch (error) {
     setPageStatus(error.message || 'We couldn’t load Meet People. Please refresh and try again.', 'error');
     peopleRetry.hidden = false;

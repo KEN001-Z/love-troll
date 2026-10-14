@@ -10,15 +10,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/client-DedHO0bd.js"></script>
-  <script type="module" crossorigin src="/assets/home-DLDrlVSS.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/client-DiPHQWYS.css">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/client-Dw1ysny3.js"></script>
+  <script type="module" crossorigin src="/assets/home-EH9CUIf0.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/client-DTmHN2nn.css">
   <link rel="stylesheet" crossorigin href="/assets/home-BYNIz9gN.css">
-  <link rel="stylesheet" crossorigin href="/assets/home-BF-VXSow.css">
-  <link rel="stylesheet" crossorigin href="/assets/app-shell-refresh-jDFe7HEe.css">
+  <link rel="stylesheet" crossorigin href="/assets/home-CFCkM1-J.css">
+  <link rel="stylesheet" crossorigin href="/assets/app-shell-refresh-eInVJxJf.css">
   <link rel="stylesheet" crossorigin href="/assets/home-D6NaQ0Tq.css">
-  <link rel="stylesheet" crossorigin href="/assets/home-identity-2pQ7M5nN.css">
+  <link rel="stylesheet" crossorigin href="/assets/home-identity-CbBZRp6N.css">
 </head>
 <body class="home-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -34,7 +34,7 @@
     </nav>
     <div class="header-tools">
       <label class="home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input type="search" data-home-search placeholder="Search posts & people" aria-label="Search loaded posts and suggested people"></label>
-      <button class="header-icon notification-trigger" type="button" data-notification-open aria-label="Open notifications" aria-haspopup="dialog" aria-controls="notification-drawer" aria-expanded="false" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg></button>
+      <button class="header-icon notification-trigger" type="button" data-notification-open aria-label="Open notifications" aria-haspopup="dialog" aria-controls="notification-drawer" aria-expanded="false" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notification-badge" data-notification-badge aria-hidden="true" hidden></span></button>
       <a class="header-profile" href="profile.html" aria-label="Open your profile"><span class="header-avatar" data-profile-avatar>V</span><span class="header-profile-label">Profile</span></a>
       <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
     </div>
@@ -54,13 +54,27 @@
       <div>
         <p class="notification-eyebrow">YOUR VYBE</p>
         <h2 id="notification-title">Notifications</h2>
-        <p class="notification-intro">A little signal when something needs your attention.</p>
+        <p class="notification-intro">A little signal when something needs your attention. Hold a notification to select it for actions.</p>
       </div>
       <button class="notification-close" type="button" data-notification-close aria-label="Close notifications">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
     </header>
-    <div class="notification-empty" role="status">
+    <p class="notification-status" data-notification-status role="status" aria-live="polite" hidden></p>
+    <div class="notification-toolbar" data-notification-toolbar hidden>
+      <label class="notification-select-all">
+        <input type="checkbox" data-notification-select-all>
+        <span>Select all</span>
+      </label>
+      <div class="notification-toolbar-actions">
+        <button type="button" data-notification-exit-selection>Cancel</button>
+        <button type="button" data-notification-mark-all>Mark all as read</button>
+        <button type="button" data-notification-delete-selected disabled>Delete selected</button>
+        <button type="button" data-notification-delete-all>Delete all</button>
+      </div>
+    </div>
+    <ol class="notification-list" data-notification-list aria-label="Your notifications" hidden></ol>
+    <div class="notification-empty" data-notification-empty role="status">
       <div class="notification-empty-art" aria-hidden="true">
         <span class="notification-spark notification-spark-one">✦</span>
         <span class="notification-bell">
@@ -79,6 +93,7 @@
     <p class="notification-footer">Your space, your pace. No pressure to reply right away.</p>
   </div>
 </dialog>
+<div class="notification-toast-region" data-notification-toasts aria-live="polite" aria-atomic="false"></div>
 
 <main class="home-main" id="main">
   <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>

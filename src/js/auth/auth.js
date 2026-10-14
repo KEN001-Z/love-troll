@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { navigateWithTransition } from '../app/page-transition.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -65,6 +66,7 @@ function getRequestedReturnTo() {
 
 function loginCallbackUrl() {
   const callback = new URL('login.html', window.location.href);
+  callback.searchParams.set('session', 'oauth');
   const returnTo = getRequestedReturnTo();
   if (returnTo) callback.searchParams.set('returnTo', returnTo);
   return callback.toString();
@@ -104,7 +106,7 @@ function validate(form) {
   const terms = $('[name="terms"]', form);
   const errors = new Map();
 
-  if (name && name.value.trim().length < 2) errors.set(name, 'Abeg, enter a display name of at least 2 characters.');
+  if (name && name.value.trim().length < 2) errors.set(name, 'Enter a display name with at least 2 characters.');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.value.trim())) {
     errors.set(email, 'Enter a valid email, like you@example.com.');
   }
@@ -281,7 +283,7 @@ async function submitAuthForm(form, supabase) {
         }
         const user = data.user || data.session.user;
         if (!user) throw new Error('Your session started, but we could not load your account. Please try again.');
-        window.location.replace(await getAuthenticatedDestination(supabase, user));
+        navigateWithTransition(await getAuthenticatedDestination(supabase, user), { replace: true });
       } else if (kind === 'reset') {
         const { error } = await supabase.auth.resetPasswordForEmail(
           $('[name="email"]', form).value.trim(),
@@ -353,11 +355,78 @@ async function initializeAuthForms(supabase) {
 
   const loginForm = $('form[data-form="login"]');
   if (loginForm) {
+    const returningAccount = $('[data-returning-account]');
+    const loginLoading = $('[data-login-loading]');
+    const loginSignup = $('[data-login-signup]');
+    const continueButton = $('[data-continue-account]', returningAccount);
+    continueButton.addEventListener('click', async () => {
+      const initialLabel = continueButton.textContent;
+      continueButton.disabled = true;
+      continueButton.textContent = 'Just a sec…';
+      const returningStatus = $('[data-returning-status]', returningAccount);
+      returningStatus.hidden = true;
+      try {
+        const { user } = await getAuthenticatedUser(supabase);
+        if (!user) {
+          window.location.replace('login.html?session=expired');
+          return;
+        }
+        navigateWithTransition(await getAuthenticatedDestination(supabase, user), { replace: true });
+      } catch (error) {
+        setStatus(returningStatus, friendlyError(error));
+        returningStatus.focus();
+        continueButton.disabled = false;
+        continueButton.textContent = initialLabel;
+      }
+    });
+
     const { user, recovered } = await getAuthenticatedUser(supabase);
     if (user) {
-      window.location.replace(await getAuthenticatedDestination(supabase, user));
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('session') === 'oauth') {
+        window.location.replace(await getAuthenticatedDestination(supabase, user));
+        return;
+      }
+
+      const returningStatus = $('[data-returning-status]', returningAccount);
+      const { data: profile, error: profileError } = await supabase.from('profiles')
+        .select('display_name, avatar_path')
+        .eq('id', user.id)
+        .maybeSingle();
+      const name = profile?.display_name ||
+        getUserDisplayName(user) ||
+        user.email?.split('@')[0] ||
+        'Your VYBE account';
+      const initials = name.split(/\s+/).filter(Boolean).slice(0, 2)
+        .map(part => part[0].toUpperCase()).join('') || 'V';
+      $('[data-account-name]', returningAccount).textContent = name;
+      $('[data-account-email]', returningAccount).textContent = user.email || '';
+      $('[data-account-initials]', returningAccount).textContent = initials;
+
+      if (profileError) {
+        setStatus(returningStatus, `We couldn't load your full profile: ${friendlyError(profileError)}`, 'pending');
+      } else if (profile?.avatar_path) {
+        const { data: avatar, error: avatarError } = await supabase.storage
+          .from('profile-media')
+          .createSignedUrl(profile.avatar_path, 3600);
+        if (avatarError) {
+          setStatus(returningStatus, `We couldn't load your profile photo: ${friendlyError(avatarError)}`, 'pending');
+        } else if (avatar?.signedUrl) {
+          const image = $('[data-account-avatar]', returningAccount);
+          image.src = avatar.signedUrl;
+          image.hidden = false;
+          $('[data-account-initials]', returningAccount).hidden = true;
+        }
+      }
+
+      returningAccount.hidden = false;
+      loginLoading.hidden = true;
+      loginForm.hidden = true;
+      loginSignup.hidden = true;
       return;
     }
+    loginLoading.hidden = true;
+    loginForm.hidden = false;
     if (recovered || new URLSearchParams(window.location.search).get('session') === 'expired') {
       setStatus($('.status', loginForm), 'Your saved session expired. Log in again to continue.', 'pending');
     }
@@ -597,6 +666,18 @@ async function initializeLanding(supabase) {
     userControls.forEach(element => { element.hidden = !session; });
   };
   const { user } = await getAuthenticatedUser(supabase);
+  const landingPath = window.location.pathname;
+  const isLandingPage = landingPath === '/' || landingPath.endsWith('/index.html') ||
+    landingPath.endsWith('/');
+  if (user && isLandingPage &&
+      new URLSearchParams(window.location.search).get('logout') !== 'unconfirmed') {
+    const loginUrl = new URL('login.html', window.location.href);
+    loginUrl.searchParams.set('session', 'returning');
+    const returnTo = getRequestedReturnTo();
+    if (returnTo) loginUrl.searchParams.set('returnTo', returnTo);
+    window.location.replace(loginUrl.toString());
+    return;
+  }
   applySession(user);
   supabase.auth.onAuthStateChange((_event, updatedSession) => applySession(updatedSession));
 
@@ -622,7 +703,7 @@ async function initializeLanding(supabase) {
 
 async function initialize() {
   bindPasswordToggles();
-  const status = $('.auth .status') || $('[data-onboarding] .status') || $('[data-auth-status]');
+  const status = $('form[data-form] .status') || $('[data-onboarding] .status') || $('[data-auth-status]');
 
   try {
     const supabase = getSupabaseClient();
@@ -630,6 +711,11 @@ async function initialize() {
     else if ($('form[data-form]')) await initializeAuthForms(supabase);
     else if ($('[data-auth-guest]')) await initializeLanding(supabase);
   } catch (error) {
+    const loginForm = $('form[data-form="login"]');
+    if (loginForm) {
+      loginForm.hidden = false;
+      $('[data-login-loading]').hidden = true;
+    }
     if (status) {
       setStatus(status, friendlyError(error));
       status.focus();
