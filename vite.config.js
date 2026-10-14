@@ -13,6 +13,9 @@ export default defineConfig({
         reset: page('./reset.html'),
         onboarding: page('./onboarding.html'),
         home: page('./home.html'),
+        vibe: page('./vibe.html'),
+        people: page('./people.html'),
+        crush: page('./crush.html'),
         community: page('./community.html'),
         messages: page('./messages.html'),
         profile: page('./profile.html')

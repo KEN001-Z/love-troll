@@ -1,5 +1,5 @@
-import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
-import { subscribeToAppPresence } from './app-presence.js';
+import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { subscribeToAppPresence } from '../../../app-presence.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const status = $('[data-messages-status]');

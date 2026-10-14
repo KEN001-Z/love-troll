@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase-client.js';
+import { getSupabaseClient } from './src/js/supabase/client.js';
 
 const PRESENCE_TOPIC = 'community:presence';
 const OFFLINE_GRACE_MS = 5000;

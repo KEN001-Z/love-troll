@@ -50,6 +50,28 @@ begin
   if p_media_path is not null and p_media_path not like actor::text || '/' || p_conversation_id::text || '/%' then
     raise exception 'That attachment does not belong to this chat.';
   end if;
+  if p_client_message_id is not null then
+    select message.*
+    into created_message
+    from public.direct_messages message
+    where message.author_id = actor
+      and message.conversation_id = p_conversation_id
+      and message.client_message_id = p_client_message_id;
+
+    if found then
+      if created_message.content <> clean_content
+         or created_message.media_path is distinct from p_media_path
+         or created_message.media_mime is distinct from p_media_mime
+         or created_message.media_kind <> coalesce(p_media_kind, 'none') then
+        raise exception 'That message ID has already been used for a different message.';
+      end if;
+
+      return query
+      select created_message.id, created_message.conversation_id, created_message.content, created_message.created_at,
+        created_message.media_path, created_message.media_mime, created_message.media_kind;
+      return;
+    end if;
+  end if;
   if (select count(*) from public.direct_messages message
       where message.author_id = actor and message.created_at > pg_catalog.now() - interval '1 minute') >= 10 then
     raise exception 'You are sending messages too quickly. Please wait a little.';
