@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { subscribeToAppPresence } from '../../../app-presence.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -64,6 +65,13 @@ function setMessage(element, message, state = '') {
 
 function friendlyError(error) {
   return error?.message || 'Something went wrong. Please try again.';
+}
+
+function renderProfilePresence(members) {
+  const online = members.some(member => member.user_id === targetId);
+  const status = $('[data-profile-online]');
+  status.dataset.status = online ? 'online' : 'offline';
+  $('[data-profile-online-label]').textContent = online ? 'Online' : 'Offline';
 }
 
 function addTextChips(container, values, transform = value => value) {
@@ -901,6 +909,10 @@ async function initialize() {
     }
     ownProfile = me;
     targetId = new URLSearchParams(window.location.search).get('id') || user.id;
+    subscribeToAppPresence(
+      renderProfilePresence,
+      error => setMessage($('[data-action-feedback]'), `Online status could not be updated: ${friendlyError(error)}`, 'error')
+    );
 
     await loadProfile();
     status.hidden = true;

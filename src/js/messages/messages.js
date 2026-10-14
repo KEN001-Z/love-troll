@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { subscribeToAppPresence } from '../../../app-presence.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const status = $('[data-messages-status]');
@@ -28,8 +29,21 @@ const sendButton = $('[type="submit"]', form);
 const count = $('[data-direct-count]');
 const composerStatus = $('[data-direct-composer-status]');
 const mediaFooter = $('.direct-composer-footer');
+const imagePreview = $('[data-image-preview]');
+const imagePreviewImage = $('[data-image-preview-image]');
+const imagePreviewCaption = $('[data-image-preview-caption]');
+const imagePreviewStatus = $('[data-image-preview-status]');
+const imagePreviewSend = $('[data-image-preview-send]');
+const imageViewer = $('[data-image-viewer]');
+const imageViewerImage = $('[data-image-viewer-image]');
+const imageViewerStage = $('[data-image-viewer-stage]');
+const imageViewerStatus = $('[data-image-viewer-status]');
+const imageViewerShare = $('[data-image-viewer-share]');
+const imageViewerDownload = $('[data-image-viewer-download]');
+const imageViewerCopy = $('[data-image-viewer-copy]');
 const mediaInput = document.createElement('input');
-mediaInput.type = 'file'; mediaInput.className = 'visually-hidden'; mediaInput.accept = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime'; mediaInput.disabled = true;
+const MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime';
+mediaInput.type = 'file'; mediaInput.className = 'visually-hidden'; mediaInput.accept = MEDIA_ACCEPT; mediaInput.disabled = true;
 const mediaButtonMarkup = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8.5 12.5 6.2-6.2a3.2 3.2 0 0 1 4.5 4.5l-8.1 8.1a5 5 0 0 1-7.1-7.1l8.1-8.1"></path></svg>';
 const mediaTrigger = document.createElement('button');
 mediaTrigger.type = 'button'; mediaTrigger.className = 'direct-media-button'; mediaTrigger.disabled = true; mediaTrigger.setAttribute('aria-label', 'Attach photo or video'); mediaTrigger.innerHTML = mediaButtonMarkup;
@@ -65,7 +79,6 @@ let currentUser;
 let currentConversation;
 let otherMemberLastReadAt = null;
 let channel;
-let presenceChannel;
 let messages = new Map();
 let cursor = null;
 let hasOlder = false;
@@ -76,7 +89,18 @@ let selectionVersion = 0;
 const avatarUrls = new Map();
 const mediaUrls = new Map();
 let selectedMedia = null;
+let imagePreviewUrl = '';
+let imagePreviewConfirmed = false;
 let composerResizeFrame = 0;
+let imageViewerUrl = '';
+let imageViewerScrollTop = 0;
+let imageViewerScale = 1;
+let imageViewerOffsetX = 0;
+let imageViewerOffsetY = 0;
+let imageViewerPointers = new Map();
+let imageViewerGesture = null;
+let imageViewerLastTap = 0;
+let pendingSend = null;
 
 function setStatus(message, state = '') {
   status.textContent = message;
@@ -153,6 +177,32 @@ function validateMedia(file) {
   return { file, kind: isImage ? 'image' : 'video' };
 }
 
+function clearSelectedMedia() {
+  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+  imagePreviewUrl = '';
+  selectedMedia = null;
+  imagePreviewConfirmed = false;
+  mediaInput.value = '';
+  mediaInput.accept = MEDIA_ACCEPT;
+  mediaTrigger.innerHTML = mediaButtonMarkup;
+  imagePreviewStatus.textContent = '';
+  imagePreviewImage.removeAttribute('src');
+  if (imagePreview.open) imagePreview.close();
+}
+
+function showImagePreview(media) {
+  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+  imagePreviewUrl = URL.createObjectURL(media.file);
+  imagePreviewImage.src = imagePreviewUrl;
+  imagePreviewCaption.value = input.value;
+  imagePreviewStatus.textContent = '';
+  imagePreviewConfirmed = false;
+  mediaTrigger.innerHTML = '<span aria-hidden="true">✓</span> Photo ready';
+  updateSend();
+  if (!imagePreview.open) imagePreview.showModal();
+  imagePreviewCaption.focus();
+}
+
 function setAvatar(element, name, path) {
   element.replaceChildren();
   element.textContent = initials(name);
@@ -198,8 +248,10 @@ function renderConversations(rows) {
     name.append(nameText, presence);
     const preview = document.createElement('small'); preview.textContent = row.last_message || 'Start the conversation';
     copy.append(name, preview); button.append(avatar, copy);
-    const activity = document.createElement('time'); activity.className = 'conversation-time'; activity.dateTime = row.last_message_at || ''; activity.textContent = formatConversationTime(row.last_message_at); button.append(activity);
-    if (row.unread_count) { const unread = document.createElement('b'); unread.className = 'conversation-unread'; unread.textContent = row.unread_count > 9 ? '9+' : String(row.unread_count); button.append(unread); }
+    const activity = document.createElement('span'); activity.className = 'conversation-activity';
+    const time = document.createElement('time'); time.className = 'conversation-time'; time.dateTime = row.last_message_at || ''; time.textContent = formatConversationTime(row.last_message_at); activity.append(time);
+    if (row.unread_count) { const unread = document.createElement('b'); unread.className = 'conversation-unread'; unread.textContent = row.unread_count > 9 ? '9+' : String(row.unread_count); activity.append(unread); }
+    button.append(activity);
     item.append(button); conversationList.append(item);
   });
 }
@@ -211,11 +263,9 @@ function updateCurrentPresence() {
   chatSubtitle.textContent = isOnline ? 'Online' : 'Offline';
 }
 
-function renderPresence(state) {
+function renderPresence(members) {
   onlineUserIds.clear();
-  Object.values(state).flat().forEach(member => {
-    if (member.user_id) onlineUserIds.add(member.user_id);
-  });
+  members.forEach(member => onlineUserIds.add(member.user_id));
   renderConversations(conversationRows);
   updateCurrentPresence();
   if (currentConversation) renderMessages({ preserve: true });
@@ -244,16 +294,48 @@ function renderMessages({ preserve = false } = {}) {
     }
     const item = document.createElement('li');
     const own = message.author_id === currentUser.id;
-    const same = !dayChanged && previous?.author_id === message.author_id;
+    const same = !dayChanged && previous?.author_id === message.author_id &&
+      messageDate.getTime() - previousDate.getTime() <= 5 * 60 * 1000;
     item.className = `direct-message${own ? ' is-own' : ''}${same ? ' is-grouped' : ''}`;
     const avatar = document.createElement('span'); avatar.className = `direct-avatar${same ? ' avatar-spacer' : ''}`;
     if (!same) setAvatar(avatar, message.author_display_name, message.author_avatar_path);
     const body = document.createElement('div'); body.className = 'direct-message-body';
-    const content = document.createElement('p'); content.textContent = message.content;
-    body.append(content);
     const mediaUrl = message.media_path && mediaUrls.get(message.media_path);
-    if (mediaUrl && message.media_kind === 'image') { const image = document.createElement('img'); image.className = 'direct-media-image'; image.src = mediaUrl; image.alt = 'Attached image'; image.loading = 'lazy'; body.append(image); }
-    if (mediaUrl && message.media_kind === 'video') { const video = document.createElement('video'); video.className = 'direct-media-video'; video.src = mediaUrl; video.controls = true; video.preload = 'metadata'; video.setAttribute('aria-label', 'Attached video clip'); body.append(video); }
+    if (mediaUrl) body.classList.add('has-media');
+    const content = document.createElement('p');
+    content.className = 'direct-message-text';
+    content.textContent = message.content;
+    if (mediaUrl && message.media_kind === 'image') {
+      const openImage = document.createElement('button');
+      openImage.type = 'button';
+      openImage.className = 'direct-media-open';
+      openImage.setAttribute('aria-label', 'Open attached image');
+      const image = document.createElement('img');
+      image.className = 'direct-media-image';
+      image.src = mediaUrl;
+      image.alt = 'Attached image';
+      image.loading = 'lazy';
+      image.draggable = false;
+      openImage.append(image);
+      openImage.addEventListener('click', () => openImageViewer(mediaUrl));
+      body.append(openImage);
+      if (message.content) {
+        content.classList.add('direct-media-caption');
+        body.append(content);
+      }
+    } else {
+      if (message.content) body.append(content);
+      if (mediaUrl && message.media_kind === 'video') {
+        const video = document.createElement('video');
+        video.className = 'direct-media-video';
+        video.style.gridColumn = '1 / -1';
+        video.src = mediaUrl;
+        video.controls = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-label', 'Attached video clip');
+        body.append(video);
+      }
+    }
     const meta = document.createElement('div'); meta.className = 'direct-message-meta';
     const time = document.createElement('time'); time.dateTime = message.created_at; time.textContent = formatTime(message.created_at);
     meta.append(time);
@@ -276,6 +358,130 @@ function renderMessages({ preserve = false } = {}) {
   moreButton.hidden = !hasOlder;
   if (!preserve || nearBottom) history.scrollTop = history.scrollHeight;
   else history.scrollTop += history.scrollHeight - previousHeight;
+}
+
+function updateImageViewerTransform() {
+  imageViewerImage.style.transform = `translate3d(${imageViewerOffsetX}px, ${imageViewerOffsetY}px, 0) scale(${imageViewerScale})`;
+  imageViewerImage.style.cursor = imageViewerScale > 1 ? 'grab' : 'zoom-in';
+}
+
+function clampImageViewerOffset() {
+  const image = imageViewerImage.getBoundingClientRect();
+  const stage = imageViewerStage.getBoundingClientRect();
+  const maxX = Math.max(0, (image.width - stage.width) / 2);
+  const maxY = Math.max(0, (image.height - stage.height) / 2);
+  imageViewerOffsetX = Math.max(-maxX, Math.min(maxX, imageViewerOffsetX));
+  imageViewerOffsetY = Math.max(-maxY, Math.min(maxY, imageViewerOffsetY));
+}
+
+function setImageViewerScale(scale) {
+  imageViewerScale = Math.max(1, Math.min(5, scale));
+  if (imageViewerScale === 1) {
+    imageViewerOffsetX = 0;
+    imageViewerOffsetY = 0;
+  } else {
+    clampImageViewerOffset();
+  }
+  updateImageViewerTransform();
+}
+
+function openImageViewer(url) {
+  imageViewerUrl = url;
+  imageViewerScrollTop = history.scrollTop;
+  imageViewerStatus.textContent = '';
+  imageViewerImage.src = url;
+  imageViewerImage.alt = 'Full-size attached image';
+  imageViewerDownload.hidden = typeof navigator.share === 'function';
+  imageViewerCopy.hidden = typeof navigator.share === 'function';
+  imageViewer.showModal();
+}
+
+function closeImageViewer() {
+  if (imageViewer.open) imageViewer.close();
+}
+
+function imageViewerFileName(mimeType = '') {
+  const extension = ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' })[mimeType] || 'jpg';
+  return `vybe-image.${extension}`;
+}
+
+async function downloadViewerImage() {
+  const response = await fetch(imageViewerUrl);
+  if (!response.ok) throw new Error('The image could not be downloaded.');
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = imageViewerFileName(blob.type);
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function handleImageViewerPointerDown(event) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  imageViewerImage.setPointerCapture(event.pointerId);
+  imageViewerPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (imageViewerPointers.size === 2) {
+    const [first, second] = [...imageViewerPointers.values()];
+    imageViewerGesture = {
+      type: 'pinch',
+      distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
+      scale: imageViewerScale,
+      offsetX: imageViewerOffsetX,
+      offsetY: imageViewerOffsetY,
+      centerX: (first.x + second.x) / 2,
+      centerY: (first.y + second.y) / 2
+    };
+  } else if (imageViewerScale > 1) {
+    imageViewerGesture = { type: 'pan', x: event.clientX, y: event.clientY, offsetX: imageViewerOffsetX, offsetY: imageViewerOffsetY };
+  } else {
+    imageViewerGesture = { type: 'tap', x: event.clientX, y: event.clientY };
+  }
+}
+
+function handleImageViewerPointerMove(event) {
+  if (!imageViewerPointers.has(event.pointerId)) return;
+  imageViewerPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (imageViewerPointers.size >= 2 && imageViewerGesture?.type === 'pinch') {
+    const [first, second] = [...imageViewerPointers.values()];
+    const distance = Math.hypot(second.x - first.x, second.y - first.y);
+    const centerX = (first.x + second.x) / 2;
+    const centerY = (first.y + second.y) / 2;
+    imageViewerScale = Math.max(1, Math.min(5, imageViewerGesture.scale * distance / imageViewerGesture.distance));
+    imageViewerOffsetX = imageViewerGesture.offsetX + centerX - imageViewerGesture.centerX;
+    imageViewerOffsetY = imageViewerGesture.offsetY + centerY - imageViewerGesture.centerY;
+    if (imageViewerScale === 1) imageViewerOffsetX = imageViewerOffsetY = 0;
+    else clampImageViewerOffset();
+    updateImageViewerTransform();
+  } else if (imageViewerPointers.size === 1 && imageViewerGesture?.type === 'pan') {
+    imageViewerOffsetX = imageViewerGesture.offsetX + event.clientX - imageViewerGesture.x;
+    imageViewerOffsetY = imageViewerGesture.offsetY + event.clientY - imageViewerGesture.y;
+    clampImageViewerOffset();
+    updateImageViewerTransform();
+  }
+}
+
+function handleImageViewerPointerUp(event) {
+  const point = imageViewerPointers.get(event.pointerId);
+  imageViewerPointers.delete(event.pointerId);
+  if (imageViewerPointers.size === 1) {
+    const [remaining] = imageViewerPointers.values();
+    imageViewerGesture = imageViewerScale > 1
+      ? { type: 'pan', x: remaining.x, y: remaining.y, offsetX: imageViewerOffsetX, offsetY: imageViewerOffsetY }
+      : { type: 'tap', x: remaining.x, y: remaining.y };
+    return;
+  }
+  if (event.pointerType !== 'mouse' && point && imageViewerGesture?.type === 'tap' &&
+      Math.hypot(point.x - imageViewerGesture.x, point.y - imageViewerGesture.y) < 12) {
+    const now = performance.now();
+    if (now - imageViewerLastTap < 320) {
+      setImageViewerScale(imageViewerScale > 1 ? 1 : 2.5);
+      imageViewerLastTap = 0;
+    } else {
+      imageViewerLastTap = now;
+    }
+  }
+  imageViewerGesture = null;
 }
 
 async function loadMessages({ reset = false } = {}) {
@@ -379,7 +585,7 @@ async function selectConversation(row) {
   chatSubtitle.textContent = 'Private chat';
   chatPresence.hidden = false;
   setAvatar(chatAvatar, row.other_display_name, row.other_avatar_path);
-  input.value = ''; input.disabled = false; mediaInput.disabled = false; mediaTrigger.disabled = false; selectedMedia = null; mediaInput.value = ''; mediaTrigger.innerHTML = mediaButtonMarkup; setComposer(''); resize(); updateSend();
+  input.value = ''; clearSelectedMedia(); input.disabled = false; mediaInput.disabled = false; mediaTrigger.disabled = false; setComposer(''); resize(); updateSend();
   emptyTitle.textContent = `Say hi to ${row.other_display_name || 'your connection'}`; emptyCopy.textContent = 'A simple hello is a good place to start.';
   emptyNote.hidden = true;
   emptyLink.hidden = true;
@@ -404,36 +610,47 @@ async function getConversationRows() {
   conversationRows = (data || []).sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)); await signAvatars(conversationRows); renderConversations(conversationRows); return conversationRows;
 }
 
-function initializePresence() {
-  const displayName = currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'VYBE member';
-  presenceChannel = supabase.channel('community:presence', { config: { private: true, presence: { key: currentUser.id } } });
-  presenceChannel
-    .on('presence', { event: 'sync' }, () => renderPresence(presenceChannel.presenceState()))
-    .on('presence', { event: 'join' }, () => renderPresence(presenceChannel.presenceState()))
-    .on('presence', { event: 'leave' }, () => renderPresence(presenceChannel.presenceState()))
-    .subscribe(async state => {
-      if (state !== 'SUBSCRIBED') return;
-      const trackStatus = await presenceChannel.track({ user_id: currentUser.id, display_name: displayName, online_at: new Date().toISOString() });
-      if (trackStatus !== 'ok') setStatus(`Online status could not be shared: ${trackStatus}`, 'error');
-    });
-}
-
 async function sendMessage(event) {
-  event.preventDefault(); const content = input.value.trim(); if (!content || sending || !currentConversation) return;
+  event?.preventDefault();
+  const content = input.value.trim();
+  const confirmedPhoto = selectedMedia?.kind === 'image' && imagePreviewConfirmed;
+  if ((!content && !confirmedPhoto) || sending || !currentConversation) return;
+  const mediaFile = selectedMedia?.file || null;
+  const signature = `${currentConversation.id}\u0000${content}\u0000${selectedMedia?.kind || 'none'}`;
+  if (!pendingSend || pendingSend.signature !== signature || pendingSend.mediaFile !== mediaFile) {
+    pendingSend = { id: crypto.randomUUID(), signature, mediaFile, mediaPath: null, mediaUploaded: false };
+  }
+  const sendAttempt = pendingSend;
   sending = true; sendButton.disabled = true; input.disabled = true; mediaInput.disabled = true; mediaTrigger.disabled = true; setComposer('Sending…');
-  let uploadedPath;
+  imagePreviewSend.disabled = true;
+  imagePreviewStatus.textContent = selectedMedia?.kind === 'image' ? 'Sending photo…' : '';
   try {
     let mediaFields = { p_media_path: null, p_media_mime: null, p_media_kind: 'none' };
     if (selectedMedia) {
       const safeName = selectedMedia.file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
-      uploadedPath = `${currentUser.id}/${currentConversation.id}/${crypto.randomUUID()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage.from('direct-media').upload(uploadedPath, selectedMedia.file, { contentType: selectedMedia.file.type, cacheControl: '3600', upsert: false });
-      if (uploadError) throw uploadError;
-      mediaFields = { p_media_path: uploadedPath, p_media_mime: selectedMedia.file.type, p_media_kind: selectedMedia.kind };
+      if (!sendAttempt.mediaUploaded) {
+        sendAttempt.mediaPath = `${currentUser.id}/${currentConversation.id}/${sendAttempt.id}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('direct-media').upload(sendAttempt.mediaPath, selectedMedia.file, { contentType: selectedMedia.file.type, cacheControl: '3600', upsert: false });
+        if (uploadError) {
+          sendAttempt.mediaPath = null;
+          throw uploadError;
+        }
+        sendAttempt.mediaUploaded = true;
+      }
+      mediaFields = { p_media_path: sendAttempt.mediaPath, p_media_mime: selectedMedia.file.type, p_media_kind: selectedMedia.kind };
     }
-    const { data, error } = await supabase.rpc('send_direct_message', { p_conversation_id: currentConversation.id, p_content: content, ...mediaFields });
-    if (error) { if (uploadedPath) await supabase.storage.from('direct-media').remove([uploadedPath]); throw error; }
-    input.value = ''; selectedMedia = null; mediaInput.value = ''; mediaTrigger.innerHTML = mediaButtonMarkup; resize(); updateSend(); setComposer('Message sent.', 'success');
+    const { data, error } = await supabase.rpc('send_direct_message', { p_conversation_id: currentConversation.id, p_content: content, p_client_message_id: sendAttempt.id, ...mediaFields });
+    if (error) {
+      if (error.code && sendAttempt.mediaUploaded && sendAttempt.mediaPath) {
+        const { error: cleanupError } = await supabase.storage.from('direct-media').remove([sendAttempt.mediaPath]);
+        if (cleanupError) throw new Error(`${error.message} The failed attachment could not be cleaned up: ${cleanupError.message}`);
+        sendAttempt.mediaUploaded = false;
+        sendAttempt.mediaPath = null;
+      }
+      throw error;
+    }
+    pendingSend = null;
+    input.value = ''; clearSelectedMedia(); resize(); updateSend(); setComposer('Message sent.', 'success');
     if (data?.[0]) {
       updateConversationPreview(data[0]);
       if (data[0].id) {
@@ -441,8 +658,18 @@ async function sendMessage(event) {
         catch (error) { setComposer(`Message sent, but the conversation could not be refreshed: ${error.message || 'Please try again.'}`, 'error'); }
       }
     }
-  } catch (error) { setComposer(error.message || 'Your message could not be sent.', 'error'); }
-  finally { sending = false; input.disabled = false; mediaInput.disabled = false; mediaTrigger.disabled = false; updateSend(); input.focus(); }
+  } catch (error) {
+    setComposer(error.message || 'Your message could not be sent.', 'error');
+    if (selectedMedia?.kind === 'image') imagePreviewStatus.textContent = error.message || 'Your photo could not be sent. Please try again.';
+  } finally {
+    sending = false;
+    input.disabled = false;
+    mediaInput.disabled = false;
+    mediaTrigger.disabled = false;
+    imagePreviewSend.disabled = false;
+    updateSend();
+    if (!imagePreview.open) input.focus();
+  }
 }
 
 function resize() {
@@ -452,7 +679,12 @@ function resize() {
     input.style.height = `${Math.min(Math.max(input.scrollHeight, 44), 140)}px`;
   });
 }
-function updateSend() { count.textContent = `${input.value.length} / 1000`; sendButton.disabled = !currentConversation || sending || !input.value.trim(); }
+function updateSend() {
+  count.textContent = `${input.value.length} / 1000`;
+  const confirmedPhoto = selectedMedia?.kind === 'image' && imagePreviewConfirmed;
+  sendButton.disabled = !currentConversation || sending || (!input.value.trim() && !confirmedPhoto);
+  imagePreviewSend.disabled = !currentConversation || sending || selectedMedia?.kind !== 'image';
+}
 
 async function initialize() {
   try {
@@ -466,7 +698,10 @@ async function initialize() {
       return;
     }
     currentUser = auth.user;
-    initializePresence();
+    subscribeToAppPresence(
+      renderPresence,
+      error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
+    );
     await getConversationRows();
     const params = new URLSearchParams(window.location.search); const target = params.get('user');
     let requestedConversationId = params.get('conversation');
@@ -532,9 +767,140 @@ async function initialize() {
     }
   });
   moreButton.addEventListener('click', () => loadMessages()); form.addEventListener('submit', sendMessage); input.addEventListener('input', () => { resize(); updateSend(); }); input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); if (!sendButton.disabled) form.requestSubmit(); } });
-  mediaTrigger.addEventListener('click', () => mediaInput.click()); mediaInput.addEventListener('change', () => { try { selectedMedia = validateMedia(mediaInput.files[0]); mediaTrigger.innerHTML = `<span aria-hidden="true">✓</span> ${selectedMedia.kind === 'image' ? 'Photo ready' : 'Clip ready'}`; setComposer('Attachment ready.', 'success'); updateSend(); } catch (error) { selectedMedia = null; mediaInput.value = ''; setComposer(error.message, 'error'); } });
+  mediaTrigger.addEventListener('click', () => { mediaInput.accept = MEDIA_ACCEPT; mediaInput.value = ''; mediaInput.click(); });
+  mediaInput.addEventListener('change', () => {
+    mediaInput.accept = MEDIA_ACCEPT;
+    try {
+      const media = validateMedia(mediaInput.files[0]);
+      if (!media) return;
+      selectedMedia = media;
+      setComposer('');
+      if (media.kind === 'image') {
+        showImagePreview(media);
+      } else {
+        mediaTrigger.innerHTML = '<span aria-hidden="true">✓</span> Clip ready';
+        setComposer('Attachment ready.', 'success');
+        updateSend();
+      }
+    } catch (error) {
+      mediaInput.value = '';
+      if (imagePreview.open) imagePreviewStatus.textContent = error.message;
+      else setComposer(error.message, 'error');
+    }
+  });
+  imagePreview.addEventListener('click', event => {
+    if (event.target === imagePreview) clearSelectedMedia();
+  });
+  imagePreview.addEventListener('cancel', event => {
+    event.preventDefault();
+    clearSelectedMedia();
+  });
+  $('[data-image-preview-cancel]').addEventListener('click', clearSelectedMedia);
+  $('[data-image-preview-remove]').addEventListener('click', clearSelectedMedia);
+  $('[data-image-preview-replace]').addEventListener('click', () => {
+    mediaInput.accept = 'image/jpeg,image/png,image/webp,image/gif';
+    mediaInput.value = '';
+    mediaInput.click();
+  });
+  imagePreviewCaption.addEventListener('input', () => {
+    input.value = imagePreviewCaption.value;
+    resize();
+    updateSend();
+  });
+  imagePreviewSend.addEventListener('click', () => {
+    if (selectedMedia?.kind !== 'image' || sending) return;
+    input.value = imagePreviewCaption.value;
+    imagePreviewConfirmed = true;
+    updateSend();
+    sendMessage();
+  });
+  imageViewer.addEventListener('click', event => {
+    if (event.target === imageViewer) closeImageViewer();
+  });
+  imageViewer.addEventListener('cancel', event => {
+    event.preventDefault();
+    closeImageViewer();
+  });
+  imageViewer.addEventListener('close', () => {
+    imageViewerPointers.clear();
+    imageViewerGesture = null;
+    imageViewerLastTap = 0;
+    setImageViewerScale(1);
+    window.requestAnimationFrame(() => { history.scrollTop = imageViewerScrollTop; });
+  });
+  $('[data-image-viewer-close]').addEventListener('click', closeImageViewer);
+  imageViewerImage.addEventListener('load', () => setImageViewerScale(1));
+  imageViewerImage.addEventListener('error', () => { imageViewerStatus.textContent = 'This image could not be displayed.'; });
+  imageViewerImage.addEventListener('pointerdown', handleImageViewerPointerDown);
+  imageViewerImage.addEventListener('pointermove', handleImageViewerPointerMove);
+  imageViewerImage.addEventListener('pointerup', handleImageViewerPointerUp);
+  imageViewerImage.addEventListener('pointercancel', handleImageViewerPointerUp);
+  imageViewerImage.addEventListener('dblclick', event => {
+    event.preventDefault();
+    setImageViewerScale(imageViewerScale > 1 ? 1 : 2.5);
+  });
+  imageViewerStage.addEventListener('wheel', event => {
+    event.preventDefault();
+    const rect = imageViewerStage.getBoundingClientRect();
+    const cursorX = event.clientX - rect.left - rect.width / 2;
+    const cursorY = event.clientY - rect.top - rect.height / 2;
+    const nextScale = Math.max(1, Math.min(5, imageViewerScale * (event.deltaY < 0 ? 1.2 : 1 / 1.2)));
+    const ratio = nextScale / imageViewerScale;
+    imageViewerOffsetX = (imageViewerOffsetX - cursorX) * ratio + cursorX;
+    imageViewerOffsetY = (imageViewerOffsetY - cursorY) * ratio + cursorY;
+    imageViewerScale = nextScale;
+    if (nextScale === 1) imageViewerOffsetX = imageViewerOffsetY = 0;
+    else clampImageViewerOffset();
+    updateImageViewerTransform();
+  }, { passive: false });
+  imageViewerShare.addEventListener('click', async () => {
+    if (typeof navigator.share !== 'function') {
+      imageViewerDownload.hidden = false;
+      imageViewerCopy.hidden = false;
+      imageViewerStatus.textContent = 'Sharing is unavailable here. Download the image or copy its link instead.';
+      return;
+    }
+    try {
+      let sharedFile;
+      if (navigator.canShare && typeof File === 'function') {
+        const response = await fetch(imageViewerUrl);
+        if (!response.ok) throw new Error('The image could not be prepared for sharing.');
+        const blob = await response.blob();
+        const file = new File([blob], imageViewerFileName(blob.type), { type: blob.type || 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) sharedFile = file;
+      }
+      if (sharedFile) await navigator.share({ title: 'VYBE photo', files: [sharedFile] });
+      else await navigator.share({ title: 'VYBE photo', url: imageViewerUrl });
+      imageViewerStatus.textContent = '';
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        imageViewerDownload.hidden = false;
+        imageViewerCopy.hidden = false;
+        imageViewerStatus.textContent = `The image could not be shared: ${error.message || 'Please use a fallback.'}`;
+      }
+    }
+  });
+  imageViewerDownload.addEventListener('click', async () => {
+    try {
+      await downloadViewerImage();
+      imageViewerStatus.textContent = '';
+    } catch (error) {
+      imageViewerStatus.textContent = error.message || 'The image could not be downloaded.';
+    }
+  });
+  imageViewerCopy.addEventListener('click', async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Copying links is unavailable in this browser.');
+      await navigator.clipboard.writeText(imageViewerUrl);
+      imageViewerStatus.textContent = 'Image link copied. This private link may expire.';
+    } catch (error) {
+      imageViewerStatus.textContent = error.message || 'The image link could not be copied.';
+    }
+  });
   logoutButton.addEventListener('click', async event => { event.currentTarget.disabled = true; try { const { warning } = await signOutCurrentSession(supabase); window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html'); } catch (error) { setStatus(error.message, 'error'); event.currentTarget.disabled = false; } });
 }
 
-window.addEventListener('pagehide', () => { if (channel) supabase?.removeChannel(channel); if (presenceChannel) supabase?.removeChannel(presenceChannel); });
+window.addEventListener('pagehide', () => {
+  if (channel) supabase?.removeChannel(channel);
+});
 initialize();

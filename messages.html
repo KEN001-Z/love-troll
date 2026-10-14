@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="src/css/messages.css">
 <link rel="stylesheet" href="src/css/performance.css">
 <script type="module" src="src/js/app/page-transition.js"></script>
+<script type="module" src="app-presence.js"></script>
 </head>
 <body class="home-body messages-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -80,6 +81,41 @@
     </section>
   </div>
 </main>
+<dialog class="direct-image-preview" data-image-preview aria-labelledby="image-preview-title">
+  <header class="image-preview-header">
+    <h2 id="image-preview-title">Preview photo</h2>
+    <button class="image-preview-remove" type="button" data-image-preview-remove aria-label="Remove selected photo">Remove photo</button>
+    <button class="image-preview-close" type="button" data-image-preview-cancel aria-label="Cancel photo">×</button>
+  </header>
+  <div class="image-preview-stage">
+    <img data-image-preview-image alt="Selected photo preview">
+  </div>
+  <div class="image-preview-details">
+    <label class="image-preview-caption">
+      <span>Caption</span>
+      <textarea data-image-preview-caption maxlength="1000" rows="2" placeholder="Add a caption…"></textarea>
+    </label>
+    <p class="image-preview-status" data-image-preview-status role="status" aria-live="polite"></p>
+    <div class="image-preview-actions">
+      <button class="image-preview-replace" type="button" data-image-preview-replace>Choose another</button>
+      <button class="image-preview-send" type="button" data-image-preview-send>Send photo</button>
+    </div>
+  </div>
+</dialog>
+<dialog class="direct-image-viewer" data-image-viewer aria-label="Image viewer">
+  <header class="image-viewer-header">
+    <button class="image-viewer-close" type="button" data-image-viewer-close aria-label="Close image viewer">×</button>
+    <p data-image-viewer-status role="status" aria-live="polite"></p>
+    <div class="image-viewer-actions">
+      <button type="button" data-image-viewer-share>Share</button>
+      <button type="button" data-image-viewer-download hidden>Download</button>
+      <button type="button" data-image-viewer-copy hidden>Copy link</button>
+    </div>
+  </header>
+  <div class="image-viewer-stage" data-image-viewer-stage>
+    <img data-image-viewer-image alt="Full-size attached image" draggable="false">
+  </div>
+</dialog>
 <nav class="app-mobile-nav" aria-label="Main navigation"><a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a><a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a><a class="app-mobile-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a><a class="app-mobile-link" href="messages.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a><a class="app-mobile-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a></nav>
 <script type="module" src="src/js/messages/messages.js"></script>
 </body>
