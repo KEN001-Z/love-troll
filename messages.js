@@ -100,6 +100,7 @@ let imageViewerOffsetY = 0;
 let imageViewerPointers = new Map();
 let imageViewerGesture = null;
 let imageViewerLastTap = 0;
+let pendingSend = null;
 
 function setStatus(message, state = '') {
   status.textContent = message;
@@ -614,21 +615,41 @@ async function sendMessage(event) {
   const content = input.value.trim();
   const confirmedPhoto = selectedMedia?.kind === 'image' && imagePreviewConfirmed;
   if ((!content && !confirmedPhoto) || sending || !currentConversation) return;
+  const mediaFile = selectedMedia?.file || null;
+  const signature = `${currentConversation.id}\u0000${content}\u0000${selectedMedia?.kind || 'none'}`;
+  if (!pendingSend || pendingSend.signature !== signature || pendingSend.mediaFile !== mediaFile) {
+    pendingSend = { id: crypto.randomUUID(), signature, mediaFile, mediaPath: null, mediaUploaded: false };
+  }
+  const sendAttempt = pendingSend;
   sending = true; sendButton.disabled = true; input.disabled = true; mediaInput.disabled = true; mediaTrigger.disabled = true; setComposer('Sending…');
   imagePreviewSend.disabled = true;
   imagePreviewStatus.textContent = selectedMedia?.kind === 'image' ? 'Sending photo…' : '';
-  let uploadedPath;
   try {
     let mediaFields = { p_media_path: null, p_media_mime: null, p_media_kind: 'none' };
     if (selectedMedia) {
       const safeName = selectedMedia.file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
-      uploadedPath = `${currentUser.id}/${currentConversation.id}/${crypto.randomUUID()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage.from('direct-media').upload(uploadedPath, selectedMedia.file, { contentType: selectedMedia.file.type, cacheControl: '3600', upsert: false });
-      if (uploadError) throw uploadError;
-      mediaFields = { p_media_path: uploadedPath, p_media_mime: selectedMedia.file.type, p_media_kind: selectedMedia.kind };
+      if (!sendAttempt.mediaUploaded) {
+        sendAttempt.mediaPath = `${currentUser.id}/${currentConversation.id}/${sendAttempt.id}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('direct-media').upload(sendAttempt.mediaPath, selectedMedia.file, { contentType: selectedMedia.file.type, cacheControl: '3600', upsert: false });
+        if (uploadError) {
+          sendAttempt.mediaPath = null;
+          throw uploadError;
+        }
+        sendAttempt.mediaUploaded = true;
+      }
+      mediaFields = { p_media_path: sendAttempt.mediaPath, p_media_mime: selectedMedia.file.type, p_media_kind: selectedMedia.kind };
     }
-    const { data, error } = await supabase.rpc('send_direct_message', { p_conversation_id: currentConversation.id, p_content: content, ...mediaFields });
-    if (error) { if (uploadedPath) await supabase.storage.from('direct-media').remove([uploadedPath]); throw error; }
+    const { data, error } = await supabase.rpc('send_direct_message', { p_conversation_id: currentConversation.id, p_content: content, p_client_message_id: sendAttempt.id, ...mediaFields });
+    if (error) {
+      if (error.code && sendAttempt.mediaUploaded && sendAttempt.mediaPath) {
+        const { error: cleanupError } = await supabase.storage.from('direct-media').remove([sendAttempt.mediaPath]);
+        if (cleanupError) throw new Error(`${error.message} The failed attachment could not be cleaned up: ${cleanupError.message}`);
+        sendAttempt.mediaUploaded = false;
+        sendAttempt.mediaPath = null;
+      }
+      throw error;
+    }
+    pendingSend = null;
     input.value = ''; clearSelectedMedia(); resize(); updateSend(); setComposer('Message sent.', 'success');
     if (data?.[0]) {
       updateConversationPreview(data[0]);
