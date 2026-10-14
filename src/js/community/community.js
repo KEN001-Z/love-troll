@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
+import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];

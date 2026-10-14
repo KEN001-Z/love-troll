@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
+import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -27,19 +27,24 @@ const feedSentinel = $('[data-feed-sentinel]');
 const feedRefresh = $('[data-feed-refresh]');
 const feedFilters = $$('[data-feed-filter]');
 const homeSearch = $('[data-home-search]');
+const peopleRetry = $('[data-people-retry]');
+const peopleLoadMore = $('[data-people-more]');
 const searchStatus = $('[data-search-status]');
 const postForm = $('[data-post-form]');
 const composerStatus = $('[data-composer-status]');
-const postContentInput = $('[name="content"]', postForm);
-const postAnonymousInput = $('[name="is_anonymous"]', postForm);
-const postCharacterCount = $('[data-post-character-count]');
-const postSubmitButton = $('[type="submit"]', postForm);
-const postMediaInput = $('[data-post-media]', postForm);
-const postMediaTrigger = $('[data-post-media-trigger]', postForm);
-const postMediaPreview = $('[data-post-media-preview]', postForm);
+const postContentInput = postForm ? postForm.querySelector('[name="content"]') : null;
+const postAnonymousInput = postForm ? postForm.querySelector('[name="is_anonymous"]') : null;
+const postCharacterCount = postForm ? postForm.querySelector('[data-post-character-count]') : null;
+const postSubmitButton = postForm ? postForm.querySelector('[type="submit"]') : null;
+const postMediaInput = postForm ? postForm.querySelector('[data-post-media]') : null;
+const postMediaTrigger = postForm ? postForm.querySelector('[data-post-media-trigger]') : null;
+const postMediaPreview = postForm ? postForm.querySelector('[data-post-media-preview]') : null;
 const createKindButtons = $$('[data-create-kind]');
 const mobileCreateButton = $('[data-mobile-create]');
 const mobileCreateMenu = $('[data-mobile-create-menu]');
+const notificationTrigger = $('[data-notification-open]');
+const notificationDrawer = $('[data-notification-drawer]');
+const notificationClose = $('[data-notification-close]');
 const POST_MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime';
 const labels = {
   food: {
@@ -84,8 +89,14 @@ let supabase;
 let currentUserId;
 let ownInterests = [];
 let ownMatchmakingEnabled = false;
+let activePeopleFilter = 'for-you';
 let candidates = [];
 const pendingActions = new Set();
+const PEOPLE_PAGE_SIZE = 24;
+let peopleOffset = 0;
+let peopleHasMore = false;
+let peopleRequestId = 0;
+let peopleLoading = false;
 const DEMO_NAME_PATTERNS = [/^test\s*user$/i, /^demo/i, /^sample/i, /^guest/i, /^user$/i];
 const FEED_PAGE_SIZE = 15;
 let feedFilter = 'all';
@@ -94,16 +105,24 @@ let feedHasMore = true;
 let feedRequest = null;
 let feedObserver = null;
 let feedAutoLoadEnabled = true;
+let feedChannel;
+let feedRefreshTimer;
+let feedRefreshPending = false;
+let feedRefreshingHead = false;
 let composerBusy = false;
 let editingPostId = null;
-let selectedPostMedia = null;
+let selectedPostMedia = [];
 const postMediaUrls = new Map();
 const loadedPosts = new Map();
 const isImmersiveFeed = document.body.classList.contains('vibe-body');
 let feedPlaybackObserver;
 let activeFeedVideo;
-let createDialog;
-let createDraft = { kind: 'text', file: null, previewUrl: '', caption: '', duration: 0 };
+let currentAuthor = { id: '', display_name: '', username: '', avatar_path: '' };
+const MAX_POST_MEDIA = 10;
+const POST_MEDIA_TYPES = {
+  image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  video: ['video/mp4', 'video/webm', 'video/quicktime']
+};
 const CONVERSATION_PROMPTS = [
   'What’s your biggest green flag?',
   'What song have you had on repeat this week?',
@@ -133,11 +152,32 @@ function syncSocialNavigation() {
   });
 }
 
+function bindNotificationDrawer() {
+  if (!notificationTrigger || !notificationDrawer) return;
+
+  notificationTrigger.addEventListener('click', () => {
+    if (notificationDrawer.open) {
+      notificationDrawer.close();
+      return;
+    }
+    notificationDrawer.showModal();
+    notificationTrigger.setAttribute('aria-expanded', 'true');
+  });
+  notificationClose?.addEventListener('click', () => notificationDrawer.close());
+  notificationDrawer.addEventListener('click', event => {
+    if (event.target === notificationDrawer) notificationDrawer.close();
+  });
+  notificationDrawer.addEventListener('close', () => {
+    notificationTrigger.setAttribute('aria-expanded', 'false');
+    notificationTrigger.focus();
+  });
+}
+
 function applyHomeSearch() {
   const query = (homeSearch?.value || '').trim().toLocaleLowerCase();
   let postCount = 0;
   let peopleCount = 0;
-  feedPostList.querySelectorAll('.feed-post').forEach(item => {
+  feedPostList?.querySelectorAll('.feed-post').forEach(item => {
     const visible = !query || (item.dataset.searchText || item.textContent).toLocaleLowerCase().includes(query);
     item.hidden = !visible;
     if (visible) postCount += 1;
@@ -179,12 +219,14 @@ function setSectionMessage(element, message, state = '') {
 }
 
 function setFeedState(message, state = '') {
+  if (!feedState) return;
   feedState.textContent = message;
   feedState.dataset.state = state;
   feedState.hidden = !message;
 }
 
 function setComposerStatus(message, state = '') {
+  if (!composerStatus) return;
   composerStatus.textContent = message;
   composerStatus.dataset.state = state;
   composerStatus.hidden = !message;
@@ -192,7 +234,7 @@ function setComposerStatus(message, state = '') {
 
 function explainPostBackendError(error) {
   if (['PGRST202', 'PGRST205', '42P01', '42883'].includes(error?.code)) {
-    return 'The posts feed is not available in this Supabase project yet. Confirm the project schema and apply the matching posts migration before trying again.';
+    return 'The post publishing and Feed update requires the latest VYBE posts migration. Apply the reviewed migration, then try again.';
   }
   return error?.message || 'Please try again.';
 }
@@ -206,67 +248,157 @@ function updateFeedFilters(busy = Boolean(feedRequest)) {
 }
 
 function setFeedInteractionEnabled(enabled) {
-  feedRefresh.disabled = !enabled;
+  if (feedRefresh) feedRefresh.disabled = !enabled;
   feedFilters.forEach(button => { button.disabled = !enabled; });
-  postContentInput.disabled = !enabled;
-  postAnonymousInput.disabled = !enabled;
-  postSubmitButton.disabled = !enabled;
-  postMediaInput.disabled = !enabled;
-  postMediaTrigger.disabled = !enabled || Boolean(editingPostId);
-  feedRetry.disabled = !enabled;
-  feedMore.disabled = !enabled;
+  if (postContentInput) postContentInput.disabled = !enabled;
+  if (postAnonymousInput) postAnonymousInput.disabled = !enabled;
+  if (postSubmitButton) postSubmitButton.disabled = !enabled;
+  if (postMediaInput) postMediaInput.disabled = !enabled;
+  if (postMediaTrigger) postMediaTrigger.disabled = !enabled || Boolean(editingPostId);
+  if (feedRetry) feedRetry.disabled = !enabled;
+  if (feedMore) feedMore.disabled = !enabled;
   createKindButtons.forEach(button => { button.disabled = !enabled; });
-  mobileCreateButton.disabled = !enabled;
+  if (mobileCreateButton) mobileCreateButton.disabled = !enabled;
 }
 
 function startPostCreation(kind) {
-  if (createDialog) {
-    openCreateFlow(kind);
+  if (!postForm || !feedSection) {
+    window.location.assign(`vibe.html?create=${encodeURIComponent(kind)}#feed`);
     return;
   }
+  document.body.classList.add('is-composing');
   feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   if (kind === 'image' || kind === 'video') {
-    postMediaInput.accept = kind === 'image'
-      ? 'image/jpeg,image/png,image/webp,image/gif'
-      : 'video/mp4,video/webm,video/quicktime';
+    postMediaInput.multiple = kind === 'image';
+    postMediaInput.accept = POST_MEDIA_TYPES[kind].join(',');
     postMediaInput.click();
-    return;
+  } else {
+    postContentInput.focus({ preventScroll: true });
   }
-  window.setTimeout(() => postContentInput.focus({ preventScroll: true }), 180);
+}
+
+function openComposerFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const kind = params.get('create');
+  if (!postForm || !['thought', 'image', 'video'].includes(kind)) return;
+  document.body.classList.add('is-composing');
+  window.history.replaceState(null, '', `${window.location.pathname}#feed`);
+  requestAnimationFrame(() => {
+    feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (kind === 'thought') {
+      postContentInput.focus({ preventScroll: true });
+    } else {
+      postMediaInput.multiple = kind === 'image';
+      postMediaInput.accept = POST_MEDIA_TYPES[kind].join(',');
+      postMediaTrigger.focus({ preventScroll: true });
+      setComposerStatus(kind === 'image' ? 'Choose one or more photos to attach.' : 'Choose a video clip to attach.');
+    }
+  });
 }
 
 function renderPostMediaPreview() {
   postMediaPreview.replaceChildren();
-  postMediaPreview.hidden = !selectedPostMedia;
-  if (!selectedPostMedia) return;
-  const label = makeElement('span', 'post-media-name', selectedPostMedia.file.name);
-  const remove = makeElement('button', 'post-media-remove', 'Remove');
-  remove.type = 'button';
-  remove.addEventListener('click', () => {
-    selectedPostMedia = null;
-    postMediaInput.value = '';
-    renderPostMediaPreview();
+  postMediaPreview.hidden = !selectedPostMedia.length;
+  selectedPostMedia.forEach((media, index) => {
+    const item = makeElement('span', 'post-media-item');
+    item.append(makeElement('span', 'post-media-name', media.file.name));
+    const remove = makeElement('button', 'post-media-remove', 'Remove');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', `Remove ${media.file.name}`);
+    remove.addEventListener('click', () => {
+      selectedPostMedia.splice(index, 1);
+      postMediaInput.value = '';
+      renderPostMediaPreview();
+    });
+    item.append(remove);
+    postMediaPreview.append(item);
   });
-  postMediaPreview.append(label, remove);
 }
 
 function validatePostMedia(file) {
   if (!file) return null;
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
-  if (!isImage && !isVideo) throw new Error('Choose an image or video clip.');
+  if ((!isImage && !isVideo) ||
+      (isImage && !POST_MEDIA_TYPES.image.includes(file.type)) ||
+      (isVideo && !POST_MEDIA_TYPES.video.includes(file.type))) {
+    throw new Error('Choose a supported JPG, PNG, WebP, GIF, MP4, WebM, or QuickTime file.');
+  }
   const limit = isImage ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
   if (file.size > limit) throw new Error(`${isImage ? 'Images' : 'Clips'} must be ${isImage ? '10MB' : '50MB'} or smaller.`);
   return { file, kind: isImage ? 'image' : 'video' };
 }
 
 async function signPostMedia(posts) {
-  const paths = [...new Set(posts.map(post => post.media_path).filter(Boolean))];
+  const paths = [...new Set(posts.flatMap(post => {
+    const media = Array.isArray(post.media_items) ? post.media_items : [];
+    return media.length ? media.map(item => item.path) : [post.media_path];
+  }).filter(Boolean))];
   const missing = paths.filter(path => !postMediaUrls.has(path));
   if (!missing.length) return;
   const { data, error } = await supabase.storage.from('post-media').createSignedUrls(missing, 3600);
   if (error) throw error;
   (data || []).forEach(result => { if (result.path && result.signedUrl) postMediaUrls.set(result.path, result.signedUrl); });
+  const unsigned = missing.filter(path => !postMediaUrls.has(path));
+  if (unsigned.length) throw new Error('Some post media could not be opened. Check post-media Storage read permissions.');
+}
+
+function postMediaItems(post) {
+  if (Array.isArray(post.media_items) && post.media_items.length) return post.media_items;
+  return post.media_path ? [{
+    path: post.media_path,
+    mime: post.media_mime,
+    kind: post.media_kind
+  }] : [];
+}
+
+function appendPostMedia(container, post, immersive = false) {
+  const mediaItems = postMediaItems(post);
+  if (!mediaItems.length) return false;
+  const gallery = mediaItems.length > 1
+    ? makeElement('div', immersive ? 'immersive-gallery' : 'post-media-gallery')
+    : container;
+  if (mediaItems.length > 1) {
+    gallery.setAttribute('role', 'group');
+    gallery.setAttribute('aria-label', `${mediaItems.length} photos`);
+  }
+
+  mediaItems.forEach((media, index) => {
+    const target = mediaItems.length > 1
+      ? makeElement('div', immersive ? 'immersive-gallery-slide' : 'post-media-slide')
+      : gallery;
+    const mediaUrl = postMediaUrls.get(media.path);
+    if (!mediaUrl) {
+      target.append(makeElement('p', 'post-media-unavailable', 'This post’s media could not be loaded.'));
+    } else if (media.kind === 'image') {
+      const image = makeElement('img', immersive ? 'immersive-media immersive-image' : 'post-media-image');
+      image.src = mediaUrl;
+      image.alt = mediaItems.length > 1
+        ? `Photo ${index + 1} of ${mediaItems.length}: ${post.content || 'Photo shared on VYBE'}`
+        : post.content ? `Photo post: ${post.content}` : 'Photo shared on VYBE';
+      image.loading = 'lazy';
+      target.append(image);
+    } else if (media.kind === 'video') {
+      const video = makeElement('video', immersive ? 'immersive-media immersive-video' : 'post-media-video');
+      video.src = mediaUrl;
+      video.controls = true;
+      video.preload = 'metadata';
+      if (immersive) {
+        video.muted = true;
+        video.defaultMuted = true;
+        video.playsInline = true;
+        video.setAttribute('aria-label', 'Video post. Starts muted; use native controls for sound.');
+        observeImmersiveVideo(video);
+      } else {
+        video.setAttribute('aria-label', 'Attached video clip');
+      }
+      target.append(video);
+    }
+    if (target !== gallery) gallery.append(target);
+  });
+
+  if (gallery !== container) container.append(gallery);
+  return true;
 }
 
 function formatPostDate(value) {
@@ -277,154 +409,6 @@ function formatPostDate(value) {
   const hours = Math.round(minutes / 60);
   if (Math.abs(hours) < 24) return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(hours, 'hour');
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
-}
-
-function setupCreateFlow() {
-  createDialog = document.createElement('dialog');
-  createDialog.className = 'vybe-create-dialog';
-  createDialog.setAttribute('aria-labelledby', 'create-flow-title');
-  createDialog.innerHTML = `
-    <form method="dialog" class="create-flow-shell">
-      <header class="create-flow-header"><div><p class="home-eyebrow">CREATE ON VYBE</p><h2 id="create-flow-title">Make a post</h2></div><button type="button" class="create-close" data-create-close aria-label="Close creator">×</button></header>
-      <ol class="create-progress" aria-label="Creation progress"><li data-create-step="1"><span>1</span> Choose</li><li data-create-step="2"><span>2</span> Details</li><li data-create-step="3"><span>3</span> Review</li></ol>
-      <section data-create-panel="1"><p class="create-intro">What are you putting out there?</p><div class="create-kind-grid"><button type="button" data-create-choice="text"><b>✎</b><strong>Thought</strong><small>Words, a hot take, a question</small></button><button type="button" data-create-choice="image"><b>▧</b><strong>Photo</strong><small>One photo, full focus</small></button><button type="button" data-create-choice="video"><b>▶</b><strong>Video</strong><small>One clip, up to 50 MB</small></button></div></section>
-      <section data-create-panel="2" hidden><div class="create-workspace"><div class="create-media-picker" data-create-picker><input data-create-file type="file" hidden><button type="button" class="create-dropzone" data-create-dropzone><span class="create-dropzone-icon" aria-hidden="true">+</span><strong>Add your media</strong><small>Choose a file or drop it here</small></button><div data-create-preview class="create-media-preview" hidden></div><div class="create-picker-actions"><button type="button" data-create-select>Choose another</button><button type="button" data-create-remove hidden>Remove</button></div></div><div class="create-details"><label class="create-caption">Caption<textarea data-create-caption maxlength="2000" rows="5" placeholder="Add a caption, question, or a little context."></textarea><small><span>Up to 2,000 characters</span><span data-create-count>0 / 2000</span></small></label><label class="create-anonymous"><input data-create-anonymous type="checkbox"><span><strong>Post anonymously</strong><small>Your name and profile will stay hidden.</small></span></label><p data-create-error class="create-error" role="alert" hidden></p></div></div><div class="create-nav"><button type="button" data-create-back>Back</button><button type="button" data-create-next>Review post</button></div></section>
-      <section data-create-panel="3" hidden><div data-create-review class="create-review"></div><p class="create-review-note">Your post will be published to the current VYBE feed. Media is uploaded privately and shown with a signed link.</p><p data-create-publish-status class="create-publish-status" role="status"></p><div class="create-nav"><button type="button" data-create-back>Back</button><button type="button" data-create-publish class="btn">Publish</button></div></section>
-    </form>`;
-  document.body.append(createDialog);
-  createDialog.addEventListener('click', event => { if (event.target === createDialog) closeCreateFlow(); });
-  $('[data-create-close]', createDialog).addEventListener('click', closeCreateFlow);
-  $$('[data-create-choice]', createDialog).forEach(button => button.addEventListener('click', () => chooseCreateKind(button.dataset.createChoice)));
-  $('[data-create-select]', createDialog).addEventListener('click', () => $('[data-create-file]', createDialog).click());
-  $('[data-create-dropzone]', createDialog).addEventListener('click', () => $('[data-create-file]', createDialog).click());
-  $('[data-create-remove]', createDialog).addEventListener('click', clearCreateMedia);
-  $('[data-create-file]', createDialog).addEventListener('change', handleCreateFile);
-  $('[data-create-picker]', createDialog).addEventListener('dragover', event => {
-    event.preventDefault();
-    $('[data-create-picker]', createDialog).classList.add('is-dragging');
-  });
-  $('[data-create-picker]', createDialog).addEventListener('dragleave', () => $('[data-create-picker]', createDialog).classList.remove('is-dragging'));
-  $('[data-create-picker]', createDialog).addEventListener('drop', event => {
-    event.preventDefault();
-    $('[data-create-picker]', createDialog).classList.remove('is-dragging');
-    handleCreateFile(event.dataTransfer.files[0]);
-  });
-  $('[data-create-caption]', createDialog).addEventListener('input', updateCreateCount);
-  $$('[data-create-back]', createDialog).forEach(button => button.addEventListener('click', () => setCreateStep(createDraft.kind === 'text' ? 1 : 2)));
-  $('[data-create-next]', createDialog).addEventListener('click', reviewCreatePost);
-  $('[data-create-publish]', createDialog).addEventListener('click', publishCreatePost);
-  createDialog.addEventListener('cancel', event => {
-    event.preventDefault();
-    closeCreateFlow();
-  });
-}
-
-function openCreateFlow(kind = '') { createDraft = { kind: kind === 'thought' ? 'text' : kind || 'text', file: null, previewUrl: '', caption: '' }; setCreateStep(1); createDialog.showModal(); if (kind) chooseCreateKind(createDraft.kind); }
-function closeCreateFlow() { if (createDraft.caption || createDraft.file) { if (!window.confirm('Discard this unfinished post?')) return; } clearCreateMedia(); createDialog.close(); }
-function setCreateStep(step) { $$('[data-create-panel]', createDialog).forEach(panel => { panel.hidden = Number(panel.dataset.createPanel) !== step; }); $$('[data-create-step]', createDialog).forEach(item => item.classList.toggle('is-current', Number(item.dataset.createStep) === step)); }
-async function publishCreatePost() { const publish = $('[data-create-publish]', createDialog); publish.disabled = true; $('[data-create-publish-status]', createDialog).textContent = createDraft.file ? 'Uploading media…' : 'Publishing…'; postContentInput.value = createDraft.caption.trim(); postAnonymousInput.checked = $('[data-create-anonymous]', createDialog).checked; selectedPostMedia = createDraft.file ? { file: createDraft.file, kind: createDraft.kind } : null; const published = await submitPost(new Event('submit', { cancelable: true })); if (published) { $('[data-create-publish-status]', createDialog).textContent = 'Published. Your post is now at the top of the feed.'; window.setTimeout(() => { clearCreateMedia(); createDialog.close(); feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 800); } else { $('[data-create-publish-status]', createDialog).textContent = 'Publishing failed. Your selected media and caption are still here—try again.'; publish.disabled = false; } }
-
-function formatMediaSize(size) {
-  return size < 1024 * 1024 ? `${Math.ceil(size / 1024)} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatMediaDuration(seconds) {
-  const rounded = Math.round(seconds || 0);
-  return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, '0')}`;
-}
-
-// These declarations intentionally replace the compact legacy creator handlers above.
-// The same elements and upload path remain in use.
-function chooseCreateKind(kind) {
-  createDraft.kind = kind;
-  const file = $('[data-create-file]', createDialog);
-  const picker = $('[data-create-picker]', createDialog);
-  const isImage = kind === 'image';
-  const isVideo = kind === 'video';
-  file.accept = isImage ? 'image/jpeg,image/png,image/webp,image/gif' : isVideo ? 'video/mp4,video/webm,video/quicktime' : '';
-  picker.hidden = kind === 'text';
-  picker.dataset.kind = kind;
-  if (kind !== 'text' && !createDraft.file) {
-    const preview = $('[data-create-preview]', createDialog);
-    preview.hidden = false;
-    preview.replaceChildren();
-    const prompt = makeElement('button', 'create-empty-media', '');
-    prompt.type = 'button';
-    prompt.append(makeElement('span', 'create-empty-media-mark', '+'), makeElement('strong', '', isVideo ? 'Choose a video' : 'Choose a photo'), makeElement('small', '', isVideo ? 'MP4, WEBM or MOV · up to 50 MB' : 'JPG, PNG, WEBP or GIF · up to 10 MB'));
-    prompt.addEventListener('click', () => file.click());
-    preview.append(prompt);
-  }
-  $('[data-create-caption]', createDialog).placeholder = kind === 'text'
-    ? 'What’s on your mind?'
-    : isImage ? 'Tell the story behind this moment.' : 'Set the scene for your clip.';
-  setCreateStep(2);
-  if (kind !== 'text') file.click();
-}
-
-function clearCreateMedia() {
-  if (createDraft.previewUrl) URL.revokeObjectURL(createDraft.previewUrl);
-  createDraft.file = null;
-  createDraft.previewUrl = '';
-  createDraft.duration = 0;
-  const preview = $('[data-create-preview]', createDialog);
-  preview.replaceChildren();
-  preview.hidden = true;
-  $('[data-create-remove]', createDialog).hidden = true;
-  $('[data-create-file]', createDialog).value = '';
-}
-
-function handleCreateFile(file = $('[data-create-file]', createDialog).files[0]) {
-  try {
-    const media = validatePostMedia(file);
-    if (!media || media.kind !== createDraft.kind) throw new Error(`Choose a ${createDraft.kind === 'image' ? 'photo' : 'video'} file.`);
-    clearCreateMedia();
-    createDraft.file = file;
-    createDraft.previewUrl = URL.createObjectURL(file);
-    const preview = $('[data-create-preview]', createDialog);
-    const mediaElement = document.createElement(media.kind === 'image' ? 'img' : 'video');
-    mediaElement.src = createDraft.previewUrl;
-    mediaElement.alt = media.kind === 'image' ? `Selected photo: ${file.name}` : '';
-    mediaElement.controls = media.kind === 'video';
-    mediaElement.muted = true;
-    mediaElement.playsInline = true;
-    mediaElement.addEventListener('error', () => setCreateError('That media file could not be read. Choose another one.'));
-    const meta = makeElement('p', 'create-media-meta', `${file.name} · ${formatMediaSize(file.size)}`);
-    if (media.kind === 'video') mediaElement.addEventListener('loadedmetadata', () => {
-      createDraft.duration = mediaElement.duration;
-      meta.textContent = `${file.name} · ${formatMediaDuration(mediaElement.duration)} · ${formatMediaSize(file.size)}`;
-    });
-    preview.append(mediaElement, meta);
-    preview.hidden = false;
-    $('[data-create-remove]', createDialog).hidden = false;
-    setCreateError('');
-  } catch (error) {
-    setCreateError(error.message);
-  }
-}
-
-function reviewCreatePost() {
-  updateCreateCount();
-  if (!createDraft.caption.trim()) return setCreateError('Add a caption or post text before continuing.');
-  if (createDraft.kind !== 'text' && !createDraft.file) return setCreateError('Choose media before continuing.');
-  const review = $('[data-create-review]', createDialog);
-  review.replaceChildren();
-  const card = makeElement('article', 'create-preview-card');
-  const byline = makeElement('div', 'create-preview-byline');
-  byline.append(makeElement('span', 'create-preview-avatar', $('[data-profile-avatar]')?.textContent || 'V'), makeElement('strong', '', createDraft.kind === 'text' ? 'Your VYBE thought' : 'Your VYBE post'));
-  card.append(byline);
-  if (createDraft.previewUrl) {
-    const media = document.createElement(createDraft.kind === 'image' ? 'img' : 'video');
-    media.src = createDraft.previewUrl;
-    media.controls = createDraft.kind === 'video';
-    media.muted = true;
-    media.playsInline = true;
-    card.append(media);
-  }
-  card.append(makeElement('p', 'create-review-caption', createDraft.caption));
-  review.append(card);
-  $('[data-create-publish-status]', createDialog).textContent = '';
-  setCreateError('');
-  setCreateStep(3);
 }
 
 function observeImmersiveVideo(video) {
@@ -515,18 +499,9 @@ function renderPost(post, avatarUrl = '') {
 
   const content = makeElement('p', 'post-content', post.content);
   article.append(header, content);
-  const mediaUrl = postMediaUrls.get(post.media_path);
-  if (mediaUrl && post.media_kind === 'image') {
+  if (postMediaItems(post).length) {
     article.classList.add('post-card-media');
-    const image = makeElement('img', 'post-media-image');
-    image.src = mediaUrl; image.alt = 'Attached image'; image.loading = 'lazy';
-    article.append(image);
-  } else if (mediaUrl && post.media_kind === 'video') {
-    article.classList.add('post-card-media');
-    const video = makeElement('video', 'post-media-video');
-    video.src = mediaUrl; video.controls = true; video.preload = 'metadata';
-    video.setAttribute('aria-label', 'Attached video clip');
-    article.append(video);
+    appendPostMedia(article, post);
   }
   const actions = makeElement('div', 'post-actions');
   const conversation = makeElement('a', 'post-action', 'Join the conversation');
@@ -549,27 +524,12 @@ function renderImmersivePost(post, avatarUrl = '') {
   item.id = `post-${post.id}`;
   item.dataset.searchText = `${post.content} ${post.author_display_name || ''} ${post.author_username || ''}`.toLocaleLowerCase();
   const article = makeElement('article', 'immersive-post-frame');
-  const mediaUrl = postMediaUrls.get(post.media_path);
-  const isMedia = mediaUrl && ['image', 'video'].includes(post.media_kind);
+  const mediaItems = postMediaItems(post);
+  const isMedia = mediaItems.length > 0;
 
   const visual = makeElement('div', `immersive-visual${isMedia ? '' : ' immersive-copy-visual'}`);
-  if (mediaUrl && post.media_kind === 'image') {
-    const image = makeElement('img', 'immersive-media immersive-image');
-    image.src = mediaUrl;
-    image.alt = post.content ? `Photo post: ${post.content}` : 'Photo shared on VYBE';
-    image.loading = 'lazy';
-    visual.append(image);
-  } else if (mediaUrl && post.media_kind === 'video') {
-    const video = makeElement('video', 'immersive-media immersive-video');
-    video.src = mediaUrl;
-    video.controls = true;
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-    video.preload = 'metadata';
-    video.setAttribute('aria-label', 'Video post. Starts muted; use native controls for sound.');
-    visual.append(video);
-    observeImmersiveVideo(video);
+  if (isMedia) {
+    appendPostMedia(visual, post, true);
   } else {
     const type = makeElement('span', 'immersive-text-type', post.is_anonymous ? 'ANONYMOUS GIST' : 'VYBE THOUGHT');
     const statement = makeElement('p', 'immersive-text-statement', post.content);
@@ -621,73 +581,63 @@ function renderImmersivePost(post, avatarUrl = '') {
   return item;
 }
 
-const previewPosts = [
-  { name: 'Tomi Adebayo', username: '@tomideoluw', format: 'REEL PREVIEW', type: 'reel', avatar: 'T', body: 'POV: you came for one lecture and somehow became the class rep 😭', artTop: 'CAMPUS CHRONICLES', artMain: '8:01 AM\nLECTURE', artBottom: 'UNILAG · MONDAY MORNING', likes: 218, comments: 24, time: '12 min' },
-  { name: 'Ifeoma Nwosu', username: '@ifeoncampus', format: 'PHOTO PREVIEW', type: 'photo', avatar: 'I', body: 'Small wins: making it through the week and finding the best jollof spot near campus. 📍', artTop: 'THE LUNCH BREAK', artMain: 'JOLLOF\nO’CLOCK', artBottom: 'YABA · LAGOS', likes: 96, comments: 11, time: '38 min' },
-  { name: 'Anonymous student', username: 'Campus anonymous', format: 'TEXT PREVIEW', type: 'text', avatar: '◉', body: 'The group project has 8 people but somehow I’m the whole department. Please explain. 😭', artTop: 'ANONYMOUS GIST', artMain: 'GROUP\nPROJECTS…', artBottom: 'WE KNOW THE FEELING', likes: 143, comments: 32, time: '1 hr' }
-];
+async function hydrateFeedPosts(posts) {
+  await signPostMedia(posts);
+  const authorIds = [...new Set(posts
+    .filter(post => !post.is_anonymous && post.author_profile_id)
+    .map(post => post.author_profile_id))];
+  const avatars = new Map();
+  if (!authorIds.length) return avatars;
 
-function renderPreviewPost(post, index) {
-  const item = makeElement('li', `feed-post demo-feed-post demo-${post.type}`);
-  item.dataset.demoPost = String(index);
-  item.id = `feed-preview-${index}`;
-  item.dataset.searchText = `${post.name} ${post.username} ${post.body} ${post.format}`.toLocaleLowerCase();
-  const article = makeElement('article', 'demo-post-card');
-  const header = makeElement('header', 'demo-post-header');
-  const identity = makeElement('div', 'demo-post-identity');
-  identity.append(makeElement('span', 'demo-post-avatar', post.avatar));
-  const byline = makeElement('span', 'demo-post-byline');
-  byline.append(makeElement('strong', '', post.name), makeElement('small', '', `${post.username} · ${post.time}`));
-  identity.append(byline);
-  header.append(identity, makeElement('span', 'demo-post-badge', post.format));
-  const visual = makeElement('div', `demo-post-visual demo-art-${post.type}`);
-  visual.setAttribute('aria-label', `${post.type} post preview artwork`);
-  visual.append(makeElement('span', 'demo-art-kicker', post.artTop));
-  visual.append(makeElement('span', 'demo-art-title', post.artMain));
-  if (post.type === 'reel') visual.append(makeElement('span', 'demo-play-mark', '▶'));
-  visual.append(makeElement('span', 'demo-art-footer', post.artBottom));
-  const caption = makeElement('p', 'demo-post-caption', post.body);
-  const actions = makeElement('div', 'demo-post-actions');
-  const like = makeElement('button', 'demo-action demo-like');
-  like.type = 'button';
-  like.dataset.demoLike = '';
-  like.setAttribute('aria-pressed', 'false');
-  like.setAttribute('aria-label', `Like sample post, ${post.likes} likes`);
-  like.append(makeElement('span', 'demo-action-icon', '♡'), makeElement('span', 'demo-action-count', String(post.likes)));
-  const comment = makeElement('button', 'demo-action');
-  comment.type = 'button';
-  comment.dataset.demoComment = '';
-  comment.setAttribute('aria-expanded', 'false');
-  comment.setAttribute('aria-label', `Show ${post.comments} sample comments`);
-  comment.append(makeElement('span', 'demo-action-icon demo-comment-icon'), makeElement('span', 'demo-action-count', String(post.comments)));
-  const share = makeElement('button', 'demo-action demo-share', 'Share');
-  share.type = 'button';
-  share.dataset.demoShare = '';
-  actions.append(like, comment, share);
-  const comments = makeElement('div', 'demo-comments');
-  comments.hidden = true;
-  comments.append(makeElement('p', 'demo-sample-comment', index === 0 ? 'Bola: The lecturer appearing before the students is wild 😂' : 'Mimi: This is too real for a Tuesday 😭'));
-  const commentForm = makeElement('form', 'demo-comment-form');
-  const input = makeElement('input');
-  input.name = 'preview_comment';
-  input.placeholder = 'Add a comment…';
-  input.maxLength = 240;
-  input.setAttribute('aria-label', 'Add a preview comment');
-  const submit = makeElement('button', '', 'Post');
-  submit.type = 'submit';
-  commentForm.append(input, submit);
-  comments.append(commentForm);
-  article.append(header, visual, caption, actions, comments);
-  item.append(article);
-  return item;
+  try {
+    const { data, error } = await supabase.rpc('get_profile_previews', { target_ids: authorIds });
+    if (error) throw error;
+    const profiles = data || [];
+    const previewsById = new Map(profiles.map(profile => [profile.id, profile]));
+    const signed = await signProfileAvatars(profiles);
+    posts.forEach(post => {
+      post.author_username = previewsById.get(post.author_profile_id)?.username || post.author_username || '';
+    });
+    return signed.urlsByProfileId;
+  } catch (error) {
+    console.warn('VYBE could not load some post author details:', error);
+    return avatars;
+  }
 }
 
-function renderPreviewFeed() {
-  const previews = feedFilter === 'anonymous'
-    ? previewPosts.filter(post => post.name === 'Anonymous student')
-    : previewPosts;
-  feedPostList.replaceChildren(...previews.map(renderPreviewPost));
-  applyHomeSearch();
+function unobservePostMedia(item) {
+  item.querySelectorAll('video').forEach(video => {
+    feedPlaybackObserver?.unobserve(video);
+    if (activeFeedVideo === video) activeFeedVideo = null;
+    video.pause();
+  });
+}
+
+function upsertFeedPost(post, avatarUrl = '', prepend = false) {
+  const existing = [...feedPostList.children].find(item => item.dataset.postId === post.id);
+  const rendered = renderPost(post, avatarUrl);
+  if (existing) {
+    unobservePostMedia(existing);
+    existing.replaceWith(rendered);
+  } else if (prepend) {
+    feedPostList.prepend(rendered);
+  } else {
+    feedPostList.append(rendered);
+  }
+  loadedPosts.set(post.id, post);
+}
+
+function preserveFeedPosition(operation) {
+  const feedAtTop = window.scrollY < feedSection.getBoundingClientRect().top + window.scrollY + 120;
+  const anchor = [...feedPostList.children].find(item => item.getBoundingClientRect().bottom > 0);
+  const anchorId = anchor?.dataset.postId;
+  const top = anchor?.getBoundingClientRect().top;
+  operation();
+  if (feedAtTop || !anchorId || top === undefined) return;
+  requestAnimationFrame(() => {
+    const currentAnchor = [...feedPostList.children].find(item => item.dataset.postId === anchorId);
+    if (currentAnchor) window.scrollBy(0, currentAnchor.getBoundingClientRect().top - top);
+  });
 }
 
 async function loadFeed({ reset = false } = {}) {
@@ -700,11 +650,9 @@ async function loadFeed({ reset = false } = {}) {
     feedCursor = null;
     feedHasMore = true;
     feedAutoLoadEnabled = true;
-    feedPostList.replaceChildren();
-    loadedPosts.clear();
     feedRetry.hidden = true;
     feedMore.hidden = true;
-    setFeedState('Loading posts…');
+    if (!feedPostList.childElementCount) setFeedState('Loading posts…');
   } else if (!feedHasMore) {
     setFeedState(feedPostList.childElementCount ? 'You’re all caught up.' : 'No posts yet. Start the gist with a post of your own.', 'empty');
     return true;
@@ -727,29 +675,16 @@ async function loadFeed({ reset = false } = {}) {
 
       const rows = data || [];
       const page = rows.slice(0, FEED_PAGE_SIZE);
-      await signPostMedia(page);
+      const postAvatars = await hydrateFeedPosts(page);
       feedHasMore = rows.length > FEED_PAGE_SIZE;
-      const authorIds = [...new Set(page.filter(post => !post.is_anonymous && post.author_profile_id).map(post => post.author_profile_id))];
-      let postAvatars = new Map();
-      let previewsById = new Map();
-      if (authorIds.length) {
-        try {
-          const { data: previews, error: previewsError } = await supabase.rpc('get_profile_previews', { target_ids: authorIds });
-          if (!previewsError) {
-            const profiles = previews || [];
-            previewsById = new Map(profiles.map(profile => [profile.id, profile]));
-            const signed = await signProfileAvatars(profiles);
-            postAvatars = signed.urlsByProfileId;
-          }
-        } catch {
-          // Keep the feed available if profile photos are unavailable.
-        }
+      if (reset) {
+        [...feedPostList.children].forEach(unobservePostMedia);
+        feedPostList.replaceChildren();
+        loadedPosts.clear();
       }
       const existingIds = new Set([...feedPostList.children].map(item => item.dataset.postId));
       page.forEach(post => {
-        post.author_username = previewsById.get(post.author_profile_id)?.username || '';
-        loadedPosts.set(post.id, post);
-        if (!existingIds.has(post.id)) feedPostList.append(renderPost(post, postAvatars.get(post.author_profile_id) || ''));
+        if (!existingIds.has(post.id)) upsertFeedPost(post, postAvatars.get(post.author_profile_id) || '');
       });
       applyHomeSearch();
       if (page.length) feedCursor = { created_at: page[page.length - 1].created_at, id: page[page.length - 1].id };
@@ -782,24 +717,127 @@ async function loadFeed({ reset = false } = {}) {
       updateFeedFilters();
       feedRetry.disabled = false;
       feedMore.disabled = false;
+      if (feedRefreshPending) {
+        feedRefreshPending = false;
+        refreshFeedHead();
+      }
     }
   })();
   feedRequest = request;
   return request;
 }
 
+async function refreshFeedHead() {
+  if (!feedPostList || !currentUserId || document.visibilityState !== 'visible') return;
+  if (feedRefreshingHead || feedRequest) {
+    feedRefreshPending = true;
+    return;
+  }
+  feedRefreshingHead = true;
+  try {
+    const { data, error } = await supabase.rpc('get_public_posts', {
+      p_before_created_at: null,
+      p_before_id: null,
+      p_filter: feedFilter,
+      p_limit: FEED_PAGE_SIZE
+    });
+    if (error) throw error;
+    const posts = data || [];
+    const avatars = await hydrateFeedPosts(posts);
+    const existingIds = new Set([...feedPostList.children].map(item => item.dataset.postId));
+    const newPosts = posts.filter(post => !existingIds.has(post.id));
+    preserveFeedPosition(() => {
+      posts.filter(post => existingIds.has(post.id))
+        .forEach(post => upsertFeedPost(post, avatars.get(post.author_profile_id) || ''));
+      newPosts.reverse().forEach(post => upsertFeedPost(post, avatars.get(post.author_profile_id) || '', true));
+    });
+    applyHomeSearch();
+    if (newPosts.length) {
+      setFeedState(`${newPosts.length} new post${newPosts.length === 1 ? '' : 's'} loaded.`, 'success');
+      window.setTimeout(() => {
+        if (feedState.dataset.state === 'success') setFeedState('');
+      }, 3000);
+    }
+    if (!feedPostList.childElementCount && !posts.length) {
+      setFeedState(
+        feedFilter === 'anonymous'
+          ? 'No anonymous posts yet. You can share one from here if you want a little cover.'
+          : 'Quiet for now. If something’s on your mind, this is a good place to start.',
+        'empty'
+      );
+    }
+  } catch (error) {
+    setFeedState(`Couldn’t check for new posts. ${explainPostBackendError(error)}`, 'error');
+    feedRetry.hidden = false;
+  } finally {
+    feedRefreshingHead = false;
+    if (feedRefreshPending) {
+      feedRefreshPending = false;
+      refreshFeedHead();
+    }
+  }
+}
+
+function handleFeedRealtimeChange(payload) {
+  const changedId = payload.new?.id || payload.old?.id;
+  if (payload.eventType === 'DELETE' && changedId) {
+    const item = [...feedPostList.children].find(post => post.dataset.postId === changedId);
+    if (item) {
+      unobservePostMedia(item);
+      item.remove();
+      loadedPosts.delete(changedId);
+    }
+  }
+  refreshFeedHead();
+}
+
+function startFeedRealtime() {
+  if (!feedSection || !supabase || feedChannel) return;
+  feedChannel = supabase
+    .channel(`feed:posts:${currentUserId}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'posts'
+    }, handleFeedRealtimeChange)
+    .subscribe(status => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setFeedState('Live updates are unavailable. VYBE will keep checking for new posts.', 'error');
+      }
+    });
+  feedRefreshTimer = window.setInterval(refreshFeedHead, 30000);
+  window.addEventListener('pagehide', stopFeedRealtime, { once: true });
+}
+
+function stopFeedRealtime() {
+  if (feedRefreshTimer) window.clearInterval(feedRefreshTimer);
+  feedRefreshTimer = null;
+  if (feedChannel) supabase?.removeChannel(feedChannel);
+  feedChannel = null;
+}
+
+function resumeFeedRealtime() {
+  if (!currentUserId || !feedSection) return;
+  startFeedRealtime();
+  refreshFeedHead();
+}
+
 function resetComposer() {
   postForm.reset();
-  selectedPostMedia = null;
+  selectedPostMedia = [];
   renderPostMediaPreview();
   editingPostId = null;
+  document.body.classList.remove('is-composing');
   postMediaTrigger.disabled = !currentUserId;
+  postMediaInput.multiple = true;
+  postMediaInput.accept = POST_MEDIA_ACCEPT;
   postSubmitButton.textContent = 'Post';
   postCharacterCount.textContent = `0 / ${postContentInput.maxLength}`;
   setComposerStatus('');
 }
 
 function setComposerEditing(post) {
+  document.body.classList.add('is-composing');
   editingPostId = post.id;
   postContentInput.value = post.content;
   postAnonymousInput.checked = post.is_anonymous;
@@ -813,103 +851,161 @@ function setComposerEditing(post) {
 
 async function submitPost(event) {
   event.preventDefault();
-  if (composerBusy) return false;
+  if (composerBusy) return;
   const content = postContentInput.value.trim();
-  if (!content) {
-    setComposerStatus('Write something before posting.', 'error');
+  if (!content || content.length > postContentInput.maxLength) {
+    setComposerStatus('Write a post between 1 and 2000 characters.', 'error');
     postContentInput.focus();
-    return false;
+    return;
+  }
+  if (selectedPostMedia.length > MAX_POST_MEDIA ||
+      (selectedPostMedia.length > 1 && selectedPostMedia.some(media => media.kind !== 'image'))) {
+    setComposerStatus('A post can include up to 10 photos or one video clip.', 'error');
+    return;
   }
 
-  let published = false;
   composerBusy = true;
   postSubmitButton.disabled = true;
   setComposerStatus(editingPostId ? 'Saving your changes…' : 'Publishing your post…');
+  const uploadedPaths = [];
+  let saved = false;
+  let saveStateUnconfirmed = false;
   try {
-    let postId;
-    let uploadedMediaPath = null;
+    let post;
+    const wasEditing = Boolean(editingPostId);
     if (editingPostId) {
       const { data, error } = await supabase.from('posts')
         .update({ content, is_anonymous: postAnonymousInput.checked })
         .eq('id', editingPostId)
-        .select('id')
-        .maybeSingle();
+        .select('id,author_id,content,post_type,is_anonymous,created_at,updated_at,media_path,media_mime,media_kind')
+        .single();
       if (error) throw error;
       if (!data?.id) throw new Error('VYBE could not confirm that your changes were saved.');
-      postId = data.id;
+      post = {
+        ...loadedPosts.get(data.id),
+        ...data,
+        media_items: loadedPosts.get(data.id)?.media_items || [],
+        author_display_name: currentAuthor.display_name,
+        author_profile_id: postAnonymousInput.checked ? null : currentUserId,
+        author_username: currentAuthor.username,
+        can_edit: true
+      };
     } else {
-      let mediaFields = { media_path: null, media_mime: null, media_kind: 'none', post_type: 'text' };
-      if (selectedPostMedia) {
-        const safeName = selectedPostMedia.file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
-        uploadedMediaPath = `${currentUserId}/${crypto.randomUUID()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from('post-media').upload(uploadedMediaPath, selectedPostMedia.file, { contentType: selectedPostMedia.file.type, cacheControl: '3600', upsert: false });
+      const uploadedMedia = [];
+      for (const selected of selectedPostMedia) {
+        const safeName = selected.file.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-80);
+        const path = `${currentUserId}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from('post-media').upload(path, selected.file, {
+          contentType: selected.file.type,
+          cacheControl: '3600',
+          upsert: false
+        });
         if (uploadError) throw uploadError;
-        mediaFields = { media_path: uploadedMediaPath, media_mime: selectedPostMedia.file.type, media_kind: selectedPostMedia.kind, post_type: selectedPostMedia.kind };
+        uploadedPaths.push(path);
+        uploadedMedia.push({ path, mime: selected.file.type, kind: selected.kind });
       }
-      const { data, error } = await supabase.from('posts').insert({
-        author_id: currentUserId,
-        content,
-        ...mediaFields,
-        is_anonymous: postAnonymousInput.checked
-      }).select('id').single();
-      if (error) { if (uploadedMediaPath) await supabase.storage.from('post-media').remove([uploadedMediaPath]); throw error; }
-      if (!data?.id) throw new Error('VYBE could not confirm that your post was published.');
-      postId = data.id;
+      const postId = crypto.randomUUID();
+      const { data, error } = await supabase.rpc('create_post_with_media', {
+        p_post_id: postId,
+        p_content: content,
+        p_is_anonymous: postAnonymousInput.checked,
+        p_media: uploadedMedia
+      });
+
+      if (error && ['PGRST202', '42883'].includes(error.code)) {
+        if (uploadedMedia.length > 1) {
+          throw new Error('Multiple-photo posts are not available until the reviewed Feed migration is applied.');
+        }
+        const primaryMedia = uploadedMedia[0];
+        const { data: legacyPost, error: legacyError } = await supabase.from('posts').insert({
+          author_id: currentUserId,
+          content,
+          post_type: primaryMedia?.kind || 'text',
+          is_anonymous: postAnonymousInput.checked,
+          media_path: primaryMedia?.path || null,
+          media_mime: primaryMedia?.mime || null,
+          media_kind: primaryMedia?.kind || 'none'
+        }).select('id,author_id,content,post_type,is_anonymous,created_at,updated_at,media_path,media_mime,media_kind').single();
+        if (legacyError) throw legacyError;
+        post = { ...legacyPost, media_items: uploadedMedia };
+      } else if (error) {
+        const { data: confirmedPost, error: confirmError } = await supabase.from('posts')
+          .select('id,author_id,content,post_type,is_anonymous,created_at,updated_at,media_path,media_mime,media_kind')
+          .eq('id', postId)
+          .maybeSingle();
+        if (confirmError) {
+          saveStateUnconfirmed = true;
+          throw error;
+        }
+        if (!confirmedPost) throw error;
+        post = { ...confirmedPost, media_items: uploadedMedia };
+      } else {
+        post = Array.isArray(data) ? data[0] : data;
+      }
+      if (!post?.id) throw new Error('VYBE could not confirm that your post was published.');
+      post.author_display_name = post.is_anonymous ? '' : currentAuthor.display_name;
+      post.author_profile_id = post.is_anonymous ? null : currentUserId;
+      post.author_username = post.is_anonymous ? '' : currentAuthor.username;
+      post.can_edit = true;
     }
 
-    const wasEditing = Boolean(editingPostId);
+    saved = true;
+    let displayWarning = '';
+    try {
+      await signPostMedia([post]);
+    } catch (error) {
+      displayWarning = `Your post was published, but its media could not be loaded: ${explainPostBackendError(error)}`;
+    }
+
+    const changedFilter = !wasEditing && feedFilter !== 'all';
     resetComposer();
-    feedFilter = 'all';
-    await loadFeed({ reset: true });
-    const visible = [...feedPostList.children].some(item => item.dataset.postId === postId);
-    const savedMessage = wasEditing ? 'Your changes were saved.' : 'Your post was published.';
-    setComposerStatus(
-      visible
-        ? savedMessage
-        : `${savedMessage} The feed could not confirm it is visible yet; use Refresh feed to check.`,
-      visible ? 'success' : 'error'
-    );
-    published = true;
+    if (!wasEditing) {
+      feedFilter = 'all';
+      updateFeedFilters();
+    }
+    let authorAvatarUrl = '';
+    if (currentAuthor.avatar_path) {
+      try {
+        const authorAvatar = await signProfileAvatars([currentAuthor]);
+        authorAvatarUrl = authorAvatar.urlsByProfileId.get(currentUserId) || '';
+      } catch (error) {
+        displayWarning ||= `Your post was published, but your profile photo could not be loaded: ${explainPostBackendError(error)}`;
+      }
+    }
+    upsertFeedPost(post, authorAvatarUrl, !wasEditing);
+    applyHomeSearch();
+    const savedMessage = displayWarning || (wasEditing ? 'Your changes were saved.' : 'Your post was published.');
+    setComposerStatus(savedMessage, displayWarning ? 'error' : 'success');
+    if (changedFilter) {
+      const refreshed = await loadFeed({ reset: true });
+      setFeedState(
+        refreshed ? savedMessage : `${savedMessage} The Feed could not refresh; use Refresh to retry.`,
+        refreshed && !displayWarning ? 'success' : 'error'
+      );
+    } else {
+      setFeedState(savedMessage, displayWarning ? 'error' : 'success');
+    }
+    window.setTimeout(() => {
+      if (feedState.textContent.startsWith(savedMessage)) setFeedState('');
+    }, 4000);
   } catch (error) {
-    setComposerStatus(`We couldn’t save your post: ${explainPostBackendError(error)}`, 'error');
+    let cleanupMessage = '';
+    if (!saved && !saveStateUnconfirmed && uploadedPaths.length) {
+      try {
+        const { error: cleanupError } = await supabase.storage.from('post-media').remove(uploadedPaths);
+        if (cleanupError) cleanupMessage = ` Uploaded files could not be cleaned up: ${cleanupError.message}`;
+      } catch (cleanupError) {
+        cleanupMessage = ` Uploaded files could not be cleaned up: ${cleanupError.message || 'please contact support.'}`;
+      }
+    }
+    setComposerStatus(`We couldn’t confirm the post was published: ${explainPostBackendError(error)}${cleanupMessage}`, 'error');
   } finally {
     composerBusy = false;
     postSubmitButton.disabled = false;
   }
-  return published;
 }
 
 async function handlePostAction(event) {
-  const demoLike = event.target.closest('button[data-demo-like]');
-  if (demoLike) {
-    const count = $('.demo-action-count', demoLike);
-    const liked = demoLike.getAttribute('aria-pressed') !== 'true';
-    const likes = Number(count.textContent) || 0;
-    demoLike.setAttribute('aria-pressed', String(liked));
-    count.textContent = String(Math.max(0, likes + (liked ? 1 : -1)));
-    demoLike.setAttribute('aria-label', `Like sample post, ${count.textContent} likes`);
-    return;
-  }
-  const demoComment = event.target.closest('button[data-demo-comment]');
-  if (demoComment) {
-    const comments = demoComment.closest('.demo-post-card').querySelector('.demo-comments');
-    comments.hidden = !comments.hidden;
-    demoComment.setAttribute('aria-expanded', String(!comments.hidden));
-    if (!comments.hidden) $('input[name="preview_comment"]', comments).focus();
-    return;
-  }
-  const demoShare = event.target.closest('button[data-demo-share]');
-  if (demoShare) {
-    const card = demoShare.closest('[data-demo-post]');
-    const previewUrl = `${window.location.origin}${window.location.pathname}#feed-preview-${card.dataset.demoPost}`;
-    try {
-      await navigator.clipboard.writeText(previewUrl);
-      setFeedState('Sample post link copied.', 'success');
-    } catch {
-      setFeedState('Copy the page link to share this sample post.', 'preview');
-    }
-    return;
-  }
   const button = event.target.closest('button[data-post-edit], button[data-post-delete], button[data-post-share]');
   if (!button) return;
   const item = button.closest('[data-post-id]');
@@ -952,12 +1048,18 @@ async function handlePostAction(event) {
       .maybeSingle();
     if (error) throw error;
     if (!data?.id) throw new Error('VYBE could not confirm that your post was deleted.');
-    if (record?.media_path) await supabase.storage.from('post-media').remove([record.media_path]);
-    const refreshed = await loadFeed({ reset: true });
-    setFeedState(
-      refreshed ? 'Your post was deleted.' : 'Your post was deleted, but the feed could not refresh. Try again.',
-      refreshed ? 'success' : 'error'
-    );
+    const mediaPaths = postMediaItems(record || {}).map(media => media.path);
+    unobservePostMedia(item);
+    item.remove();
+    loadedPosts.delete(post.dataset.postId);
+    const mediaCleanup = mediaPaths.length
+      ? await supabase.storage.from('post-media').remove(mediaPaths)
+      : { error: null };
+    if (mediaCleanup.error) {
+      setFeedState(`Your post was deleted, but its media could not be cleaned up: ${mediaCleanup.error.message}`, 'error');
+      return;
+    }
+    setFeedState('Your post was deleted.', 'success');
   } catch (error) {
     button.disabled = false;
     setFeedState(error.message || 'We couldn’t delete your post. Please try again.', 'error');
@@ -965,7 +1067,7 @@ async function handlePostAction(event) {
 }
 
 function initializeFeedObserver() {
-  if (!('IntersectionObserver' in window)) return;
+  if (!feedSentinel || !('IntersectionObserver' in window)) return;
   feedObserver = new IntersectionObserver(entries => {
     if (entries.some(entry => entry.isIntersecting) && feedHasMore && feedAutoLoadEnabled && !feedRequest) {
       loadFeed();
@@ -976,12 +1078,12 @@ function initializeFeedObserver() {
 
 function bindFeedInteractions() {
   createKindButtons.forEach(button => button.addEventListener('click', () => startPostCreation(button.dataset.createKind)));
-  mobileCreateButton.addEventListener('click', () => {
+  mobileCreateButton?.addEventListener('click', () => {
     const open = mobileCreateMenu.hidden;
     mobileCreateMenu.hidden = !open;
     mobileCreateButton.setAttribute('aria-expanded', String(open));
   });
-  mobileCreateMenu.addEventListener('click', event => {
+  mobileCreateMenu?.addEventListener('click', event => {
     const action = event.target.closest('[data-create-kind]');
     if (!action) return;
     mobileCreateMenu.hidden = true;
@@ -1001,56 +1103,48 @@ function bindFeedInteractions() {
       mobileCreateButton.focus();
     }
   });
+  if (!feedSection) return;
   feedFilters.forEach(button => button.addEventListener('click', () => {
     if (feedRequest || feedFilter === button.dataset.feedFilter) return;
     feedFilter = button.dataset.feedFilter;
     applyHomeSearch();
     loadFeed({ reset: true });
   }));
-  feedRefresh.addEventListener('click', () => loadFeed({ reset: true }));
-  feedRetry.addEventListener('click', () => {
+  feedRefresh?.addEventListener('click', () => loadFeed({ reset: true }));
+  feedRetry?.addEventListener('click', () => {
     feedAutoLoadEnabled = true;
-    loadFeed();
+    loadFeed({ reset: true });
   });
-  feedMore.addEventListener('click', () => loadFeed());
-  postForm.addEventListener('submit', submitPost);
-  postMediaTrigger.addEventListener('click', () => {
-    postMediaInput.accept = POST_MEDIA_ACCEPT;
-    postMediaInput.click();
-  });
-  postMediaInput.addEventListener('change', () => {
-    postMediaInput.accept = POST_MEDIA_ACCEPT;
+  feedMore?.addEventListener('click', () => loadFeed());
+  postForm?.addEventListener('submit', submitPost);
+  postMediaTrigger?.addEventListener('click', () => postMediaInput.click());
+  postMediaInput?.addEventListener('change', () => {
     try {
-      selectedPostMedia = validatePostMedia(postMediaInput.files[0]);
+      const files = [...postMediaInput.files];
+      const validated = files.map(validatePostMedia).filter(Boolean);
+      if (validated.length > MAX_POST_MEDIA) throw new Error('Add no more than 10 photos to one post.');
+      if (validated.length > 1 && validated.some(media => media.kind !== 'image')) {
+        throw new Error('A post can include multiple photos or one video clip, not both.');
+      }
+      selectedPostMedia = validated;
       renderPostMediaPreview();
-      const mediaLabel = selectedPostMedia?.kind === 'image' ? 'Photo' : 'Clip';
-      setComposerStatus(`${mediaLabel} attached.`, 'success');
+      const mediaLabel = selectedPostMedia.length > 1 ? `${selectedPostMedia.length} photos`
+        : selectedPostMedia[0]?.kind === 'image' ? 'Photo' : 'Clip';
+      setComposerStatus(selectedPostMedia.length ? `${mediaLabel} attached.` : '');
     } catch (error) {
-      selectedPostMedia = null;
+      selectedPostMedia = [];
       postMediaInput.value = '';
       renderPostMediaPreview();
       setComposerStatus(error.message, 'error');
     }
+    postMediaInput.accept = POST_MEDIA_ACCEPT;
+    postMediaInput.multiple = true;
   });
-  postContentInput.addEventListener('input', () => {
+  postContentInput?.addEventListener('input', () => {
     postCharacterCount.textContent = `${postContentInput.value.length} / ${postContentInput.maxLength}`;
   });
-  feedPostList.addEventListener('click', handlePostAction);
-  feedPostList.addEventListener('submit', handlePreviewComment);
+  feedPostList?.addEventListener('click', handlePostAction);
   homeSearch?.addEventListener('input', applyHomeSearch);
-}
-
-function handlePreviewComment(event) {
-  const form = event.target.closest('.demo-comment-form');
-  if (!form) return;
-  event.preventDefault();
-  const input = $('input[name="preview_comment"]', form);
-  const text = input.value.trim();
-  if (!text) return;
-  const comment = makeElement('p', 'demo-sample-comment');
-  comment.append(makeElement('strong', '', 'You: '), document.createTextNode(text));
-  form.before(comment);
-  input.value = '';
 }
 
 function renderProfileProgress(profile) {
@@ -1139,43 +1233,59 @@ function renderTags(container, values, dictionary) {
   values.forEach(value => container.append(makeElement('span', 'interest-tag', dictionary[value] || value)));
 }
 
-function renderCandidates() {
-  const visible = candidates.filter(candidate => !candidate.skipped && !candidate.liked);
+function renderPeopleSkeletons() {
   suggestionList.replaceChildren();
+  for (let index = 0; index < 6; index += 1) {
+    const skeleton = makeElement('li', 'people-skeleton');
+    skeleton.setAttribute('aria-hidden', 'true');
+    suggestionList.append(skeleton);
+  }
+  suggestionList.setAttribute('aria-busy', 'true');
+}
+
+function searchHaystack(profile) {
+  return [
+    profile.display_name,
+    profile.username,
+    profile.university,
+    profile.bio,
+    ...(profile.interests || []),
+    ...(profile.hobbies || [])
+  ].filter(Boolean).join(' ').toLocaleLowerCase();
+}
+
+function renderCandidates() {
+  const visible = candidates;
+  suggestionList.replaceChildren();
+  suggestionList.setAttribute('aria-busy', String(peopleLoading));
 
   if (!visible.length) {
-    setSectionMessage(peopleMessage, '');
     const empty = makeElement('li', 'people-empty');
-    const campusText = !ownMatchmakingEnabled
-      ? 'Matchmaking is off. You can switch it on from your profile whenever you’re ready to meet people.'
-      : candidates.length
-        ? 'You’ve seen everyone in this batch. Check back later as more people join.'
-        : 'The campus is quiet for now, but the vibe is still alive. Come back for the next wave of people and moments.';
-    const title = !ownMatchmakingEnabled
-      ? 'Your call, no pressure.'
-      : candidates.length ? 'You’re all caught up.' : 'Your VYBE story starts here.';
+    const title = peopleHasMore ? 'Keep exploring.' : 'Your next connection is waiting.';
+    const copy = peopleHasMore
+      ? 'Browse recent members, with shared interests highlighted when you have them in common.'
+      : 'People who turn on matchmaking will show up here as they join VYBE.';
     empty.append(
-      makeElement('p', 'home-eyebrow', !ownMatchmakingEnabled ? 'YOUR PEOPLE, YOUR PACE' : candidates.length ? 'THAT’S EVERYONE FOR NOW' : 'YOUR PEOPLE, YOUR PACE'),
+      makeElement('p', 'home-eyebrow', 'YOUR PEOPLE, YOUR PACE'),
       makeElement('h3', '', title),
-      makeElement('p', '', campusText)
+      makeElement('p', '', copy)
     );
-    if (!ownMatchmakingEnabled) {
-      const profileLink = makeElement('a', 'text-link', 'Update your profile →');
-      profileLink.href = 'profile.html';
-      empty.append(profileLink);
-    }
     suggestionList.append(empty);
-    applyHomeSearch();
-    return;
+  } else {
+    visible.forEach(candidate => suggestionList.append(renderCandidate(candidate)));
   }
 
-  visible.forEach(candidate => suggestionList.append(renderCandidate(candidate)));
+  peopleLoadMore.hidden = !peopleHasMore;
+  peopleLoadMore.disabled = peopleLoading;
+  peopleLoadMore.textContent = peopleLoading && peopleOffset ? 'Loading more…' : 'Load more people';
+  peopleRetry.hidden = false;
+  peopleRetry.hidden = !suggestionList.dataset.error;
   applyHomeSearch();
 }
 
 function renderCandidate(candidate) {
   const profile = candidate.profile;
-  const name = sanitizeName(profile.display_name) || 'VYBE member';
+  const name = sanitizeName(profile.display_name) || profile.username || 'VYBE member';
   const card = makeElement('li', 'suggestion-card');
   card.dataset.profileId = profile.id;
 
@@ -1186,9 +1296,8 @@ function renderCandidate(candidate) {
 
   const visual = makeElement('div', 'suggestion-visual');
   visual.setAttribute('aria-hidden', 'true');
-  const monogram = makeElement('span', 'suggestion-monogram', name.slice(0, 1).toUpperCase());
+  const monogram = makeElement('span', 'suggestion-monogram', name.slice(0, 1).toLocaleUpperCase());
   visual.append(monogram);
-  visual.append(makeElement('span', 'suggestion-visual-note', 'A new face on VYBE'));
   if (candidate.avatarUrl) {
     const image = makeElement('img', 'suggestion-avatar-image');
     image.src = candidate.avatarUrl;
@@ -1209,79 +1318,166 @@ function renderCandidate(candidate) {
   const headingInfo = makeElement('div');
   const profileLink = makeElement('a', 'suggestion-name', name);
   profileLink.href = profileHref;
+  profileLink.title = name;
   const profileHeading = makeElement('h3');
   profileHeading.append(profileLink);
   headingInfo.append(profileHeading);
-  if (profile.username) headingInfo.append(makeElement('p', 'suggestion-handle', `@${profile.username}`));
-  const intentionBits = [`Here for ${labels.lookingFor[profile.looking_for] || 'new connections'}`];
-  if (profile.university?.trim()) intentionBits.push(profile.university.trim());
-  headingInfo.append(makeElement('p', 'suggestion-intention', intentionBits.join(' · ')));
   heading.append(headingInfo);
   body.append(heading);
 
   const shared = (profile.interests || []).filter(interest => ownInterests.includes(interest));
-  const detail = shared.length
-    ? `A little common ground: ${shared.map(value => labels.interests[value] || value).join(', ')}.`
-    : labels.food[profile.food_personality]
-      ? `If their personality were food: ${labels.food[profile.food_personality]}.`
-      : 'Open their profile, or send interest if the vibe feels right.';
-  card.dataset.searchText = `${name} ${profile.username || ''} ${profile.university || ''} ${detail} ${(profile.interests || []).map(value => labels.interests[value] || value).join(' ')} ${(profile.vibe || []).map(value => labels.vibe[value] || value).join(' ')}`.toLocaleLowerCase();
-  body.append(makeElement('p', 'suggestion-detail', detail));
-
-  const interests = makeElement('div', 'interest-tags');
-  renderTags(interests, (profile.interests || []).slice(0, 4), labels.interests);
-  if (interests.childElementCount) body.append(interests);
-
-  const vibeValues = (profile.vibe || []).map(value => labels.vibe[value] || value);
-  if (vibeValues.length) {
-    const vibe = makeElement('p', 'suggestion-vibe', `Their vibe: ${vibeValues.slice(0, 2).join(' · ')}`);
-    body.append(vibe);
-  }
+  const shortDetail = profile.username
+    ? `@${profile.username}`
+    : shared[0]
+      ? labels.interests[shared[0]] || shared[0]
+      : profile.university?.trim() || 'Open to meet';
+  body.append(makeElement('p', 'suggestion-handle', shortDetail));
 
   const actions = makeElement('div', 'suggestion-actions');
-  const skip = makeElement('button', 'suggestion-skip', 'Not now');
-  skip.type = 'button';
-  skip.dataset.skip = '';
-  skip.setAttribute('aria-label', `Skip ${name}`);
-  skip.title = 'Hide this person for now. They will not be notified.';
-  const like = makeElement('button', 'suggestion-like', 'Send interest');
-  like.type = 'button';
-  like.dataset.like = '';
-  like.setAttribute('aria-label', `Send interest to ${name}`);
-  like.title = 'Let them know you’re interested. They’ll only see a match if they feel the same.';
+  const follow = makeElement('button', 'suggestion-follow', candidate.following ? 'Following' : 'Follow');
+  follow.type = 'button';
+  follow.dataset.follow = '';
+  follow.disabled = candidate.followStatusAvailable === false;
+  if (follow.disabled) follow.title = 'Follow status is temporarily unavailable.';
+  follow.setAttribute('aria-label', `${candidate.following ? 'Unfollow' : 'Follow'} ${name}`);
+  follow.setAttribute('aria-pressed', String(Boolean(candidate.following)));
+
   const view = makeElement('a', 'suggestion-view', 'View profile');
   view.href = profileHref;
   view.setAttribute('aria-label', `View ${name}'s profile`);
-  actions.append(skip, like, view);
+
+  actions.append(follow, view);
   body.append(actions);
+
+  card.dataset.searchText = searchHaystack(profile);
   card.append(avatarLink, body);
   return card;
 }
 
-async function loadSuggestions() {
-  if (!ownMatchmakingEnabled) {
+async function loadSuggestions({ reset = true } = {}) {
+  if (!reset && peopleLoading) return;
+  const requestId = ++peopleRequestId;
+  const filter = activePeopleFilter || 'for-you';
+  const offset = reset ? 0 : peopleOffset;
+  peopleLoading = true;
+  peopleRetry.hidden = true;
+  suggestionList.dataset.error = '';
+  setSectionMessage(peopleMessage, reset ? 'Finding people you might click with…' : 'Loading more people…');
+  if (reset) {
+    peopleOffset = 0;
+    peopleHasMore = false;
     candidates = [];
+    renderPeopleSkeletons();
+  } else {
+    renderCandidates();
+  }
+
+  try {
+    let profiles = [];
+    let nextOffset = offset + PEOPLE_PAGE_SIZE;
+    if (filter === 'following') {
+      const { data: follows, error: followsError } = await supabase.from('follows')
+        .select('following_id,created_at')
+        .eq('follower_id', currentUserId)
+        .order('created_at', { ascending: false })
+        .order('following_id', { ascending: true })
+        .range(offset, offset + PEOPLE_PAGE_SIZE);
+      if (followsError) throw followsError;
+      if (requestId !== peopleRequestId) return;
+      const page = follows || [];
+      peopleHasMore = page.length > PEOPLE_PAGE_SIZE;
+      const followPage = page.slice(0, PEOPLE_PAGE_SIZE);
+      const ids = [...new Set(followPage.map(row => row.following_id).filter(Boolean))];
+      if (ids.length) {
+        let profileQuery = supabase.from('profiles')
+          .select('id,display_name,username,bio,interests,hobbies,avatar_path,university,created_at')
+          .in('id', ids)
+          .eq('onboarding_completed', true)
+          .eq('matchmaking_enabled', true)
+          .eq('profile_visibility', 'campus');
+        const { data, error } = await profileQuery;
+        if (error) throw error;
+        const byId = new Map((data || []).map(profile => [profile.id, profile]));
+        profiles = followPage.flatMap(row => {
+          const profile = byId.get(row.following_id);
+          return profile ? [{ ...profile, followed_at: row.created_at }] : [];
+        });
+      }
+    } else {
+      const { data, error } = await supabase.rpc('discover_profiles', {
+        result_offset: offset,
+        result_limit: PEOPLE_PAGE_SIZE + 1
+      });
+      if (error) throw error;
+      if (requestId !== peopleRequestId) return;
+      const page = data || [];
+      peopleHasMore = page.length > PEOPLE_PAGE_SIZE;
+      profiles = page.slice(0, PEOPLE_PAGE_SIZE);
+    }
+    if (requestId !== peopleRequestId) return;
+
+    const ids = profiles.map(profile => profile.id);
+    let followedIds = new Set(ids);
+    let followStatusUnavailable = false;
+    if (filter !== 'following' && ids.length) {
+      const { data: followData, error: followError } = await supabase.from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUserId)
+        .in('following_id', ids);
+      if (followError?.code === '42501') {
+        followStatusUnavailable = true;
+      } else {
+        if (followError) throw followError;
+        if (requestId !== peopleRequestId) return;
+        followedIds = new Set((followData || []).map(follow => follow.following_id));
+      }
+    }
+    const { urlsByProfileId, warning } = await signProfileAvatars(profiles);
+    if (requestId !== peopleRequestId) return;
+    const notices = [
+      warning,
+      followStatusUnavailable ? 'Profile discovery and follow controls need the latest Supabase migration.' : ''
+    ].filter(Boolean);
+    setSectionMessage(peoplePhotoMessage, notices.join(' '), notices.length ? 'error' : '');
+
+    let nextCandidates = profiles.map(profile => ({
+      profile,
+      avatarUrl: urlsByProfileId.get(profile.id),
+      following: followedIds.has(profile.id),
+      followStatusAvailable: !followStatusUnavailable
+    }));
+    if (filter === 'for-you') {
+      nextCandidates.sort((first, second) => {
+        const firstShared = (first.profile.interests || []).filter(item => ownInterests.includes(item)).length;
+        const secondShared = (second.profile.interests || []).filter(item => ownInterests.includes(item)).length;
+        return secondShared - firstShared ||
+          new Date(second.profile.created_at).getTime() - new Date(first.profile.created_at).getTime() ||
+          first.profile.id.localeCompare(second.profile.id);
+      });
+    }
+    const uniqueIds = new Set(candidates.map(candidate => candidate.profile.id));
+    candidates.push(...nextCandidates.filter(candidate => !uniqueIds.has(candidate.profile.id)));
+    peopleOffset = nextOffset;
     setSectionMessage(peopleMessage, '');
     renderCandidates();
-    return;
+  } catch (error) {
+    if (requestId === peopleRequestId) {
+      suggestionList.replaceChildren();
+      suggestionList.setAttribute('aria-busy', 'false');
+      suggestionList.dataset.error = 'true';
+      peopleLoadMore.hidden = true;
+      peopleRetry.hidden = false;
+      setSectionMessage(peopleMessage, `We couldn’t load people to meet: ${error.message || 'Please try again.'}`, 'error');
+    }
+    throw error;
+  } finally {
+    if (requestId === peopleRequestId) {
+      peopleLoading = false;
+      suggestionList.setAttribute('aria-busy', 'false');
+      peopleLoadMore.disabled = false;
+      renderCandidates();
+    }
   }
-  setSectionMessage(peopleMessage, 'Finding people you might click with…');
-  const { data, error } = await supabase.rpc('discover_profiles');
-  if (error) throw error;
-
-  const profiles = (data || []).filter(profile =>
-    sanitizeName(profile.display_name) && profile.id !== currentUserId
-  );
-  const { urlsByProfileId, warning } = await signProfileAvatars(profiles);
-  setSectionMessage(peoplePhotoMessage, warning, warning ? 'error' : '');
-  candidates = profiles.map(profile => ({
-    profile,
-    avatarUrl: urlsByProfileId.get(profile.id),
-    skipped: false,
-    liked: false
-  }));
-  setSectionMessage(peopleMessage, '');
-  renderCandidates();
 }
 
 function renderConnections(matches, profiles, urlsByProfileId) {
@@ -1370,6 +1566,42 @@ async function handleCandidateAction(button) {
     candidate.skipped = true;
     setSectionMessage(peopleMessage, '');
     renderCandidates();
+    return;
+  }
+
+  if (button.hasAttribute('data-follow')) {
+    pendingActions.add(candidate.profile.id);
+    const controls = card.querySelectorAll('button');
+    controls.forEach(control => { control.disabled = true; });
+    const originalLabel = button.textContent;
+    button.textContent = candidate.following ? 'Unfollowing…' : 'Following…';
+    setSectionMessage(peopleMessage, '');
+    try {
+      const { data, error } = await supabase.rpc('toggle_follow', { target_user: candidate.profile.id });
+      if (error) throw error;
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result || typeof result.following !== 'boolean') {
+        throw new Error('VYBE could not confirm that follow change. Please try again.');
+      }
+      candidate.following = Boolean(result.following);
+      if (activePeopleFilter === 'following' && !candidate.following) {
+        candidates = candidates.filter(item => item.profile.id !== candidate.profile.id);
+      }
+      setSectionMessage(
+        peopleMessage,
+        candidate.following
+          ? `You’re now following ${sanitizeName(candidate.profile.display_name) || 'this VYBE member'}.`
+          : `You unfollowed ${sanitizeName(candidate.profile.display_name) || 'this VYBE member'}.`,
+        'success'
+      );
+      renderCandidates();
+    } catch (error) {
+      setSectionMessage(peopleMessage, error.message || 'We couldn’t update your follow. Please try again.', 'error');
+      controls.forEach(control => { control.disabled = false; });
+      button.textContent = originalLabel || 'Follow';
+    } finally {
+      pendingActions.delete(candidate.profile.id);
+    }
     return;
   }
 
@@ -1472,14 +1704,14 @@ async function loadCommunityRooms() {
 async function initialize() {
   const logoutButton = $('[data-logout]');
   syncSocialNavigation();
+  bindNotificationDrawer();
   window.addEventListener('hashchange', syncSocialNavigation);
   window.addEventListener('popstate', syncSocialNavigation);
-  setupCreateFlow();
   bindFeedInteractions();
   setConversationPrompt(new Date().getDate() % CONVERSATION_PROMPTS.length);
   nextPromptButton?.addEventListener('click', () => setConversationPrompt(promptIndex + 1));
   suggestionList?.addEventListener('click', event => {
-    const button = event.target.closest('button[data-skip], button[data-like]');
+    const button = event.target.closest('button[data-skip], button[data-follow]');
     if (button) handleCandidateAction(button);
   });
 
@@ -1493,7 +1725,7 @@ async function initialize() {
     currentUserId = user.id;
 
     const { data: profile, error: profileError } = await supabase.from('profiles')
-      .select('display_name, interests, matchmaking_enabled, onboarding_completed, university, gender')
+      .select('display_name,username,avatar_path,interests,matchmaking_enabled,onboarding_completed,university,gender')
       .eq('id', user.id)
       .maybeSingle();
     if (profileError) throw profileError;
@@ -1501,6 +1733,12 @@ async function initialize() {
       window.location.replace('onboarding.html');
       return;
     }
+    currentAuthor = {
+      id: user.id,
+      display_name: profile.display_name || user.user_metadata?.display_name || '',
+      username: profile.username || '',
+      avatar_path: profile.avatar_path || ''
+    };
     ownInterests = profile.interests || [];
     ownMatchmakingEnabled = Boolean(profile.matchmaking_enabled);
     if (profileProgress) renderProfileProgress(profile);
@@ -1522,14 +1760,20 @@ async function initialize() {
     const profileAvatar = $('[data-profile-avatar]');
     if (profileAvatar) profileAvatar.textContent = safeName ? safeName.slice(0, 1).toUpperCase() : 'V';
     setFeedInteractionEnabled(true);
+    openComposerFromUrl();
     initializeFeedObserver();
+    startFeedRealtime();
+    window.addEventListener('pageshow', resumeFeedRealtime);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshFeedHead();
+    });
     const results = await Promise.allSettled([
-      loadFeed({ reset: true }),
+      feedSection ? loadFeed({ reset: true }) : Promise.resolve(true),
       suggestionList ? loadSuggestions() : Promise.resolve(),
       connectionList ? loadConnections() : Promise.resolve(),
       communityRooms ? loadCommunityRooms() : Promise.resolve()
     ]);
-    if (results[0].status === 'rejected') {
+    if (feedSection && results[0].status === 'rejected') {
       setFeedState(`We couldn’t load posts: ${explainPostBackendError(results[0].reason)}`, 'error');
       feedRetry.hidden = false;
     }

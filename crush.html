@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VYBE Crush — No pressure, just vibes</title>
+<meta name="description" content="Explore VYBE Crush: tell us your vibe, preview your profile, and discover what is ready to play.">
+<meta name="theme-color" content="#fffaf3">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/css/style.css">
+<link rel="stylesheet" href="src/css/app-shell.css">
+<link rel="stylesheet" href="src/css/app-shell-refresh.css">
+<link rel="stylesheet" href="src/css/home.css">
+<link rel="stylesheet" href="src/css/performance.css">
+<link rel="stylesheet" href="src/css/crush.css">
+<script type="module" src="src/js/app/page-transition.js"></script>
+</head>
+<body class="home-body crush-body">
+<a class="skip" href="#main">Skip to content</a>
+<header class="app-header">
+  <div class="app-header-inner">
+    <a class="logo" href="home.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
+    <nav class="app-nav" aria-label="Main navigation">
+      <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
+      <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
+      <a class="app-nav-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
+      <a class="app-nav-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
+    </nav>
+    <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
+  </div>
+</header>
+
+<main class="crush-main" id="main">
+  <p class="crush-status" data-crush-status role="status" aria-live="polite" tabindex="-1" hidden></p>
+  <section class="crush-hero" aria-labelledby="crush-title">
+    <div class="crush-hero-copy">
+      <p class="crush-eyebrow"><span></span> VYBE CRUSH · SOCIAL DISCOVERY</p>
+      <h1 id="crush-title">Your next good chat is probably already in this room. <em>👀</em></h1>
+      <p class="crush-lede">Tell us your vibe, keep it light, and let the room do the rest. No pressure, no awkward performances, just real people and a little bit of curiosity.</p>
+      <div class="crush-hero-actions">
+        <button class="crush-button" type="button" data-start-flow>Find My Crush <span aria-hidden="true">→</span></button>
+        <a class="crush-quiet-link" href="#crush-hub">Just looking around <span aria-hidden="true">↓</span></a>
+      </div>
+      <p class="crush-footnote"><span aria-hidden="true">↳</span> Your settings stay yours. Nothing gets posted to your feed from here.</p>
+    </div>
+    <div class="crush-hero-art" aria-hidden="true">
+      <div class="crush-orbit orbit-a"></div><div class="crush-orbit orbit-b"></div>
+      <div class="crush-note note-a">same wavelength?</div>
+      <div class="crush-note note-b">👀</div>
+      <div class="crush-signal"><span>V</span><i></i><b>?</b></div>
+      <span class="crush-art-label">PLOT TWIST<br>LOADING...</span>
+    </div>
+  </section>
+
+  <section class="crush-hub" id="crush-hub" aria-labelledby="hub-title">
+    <div class="crush-section-heading"><div><p class="crush-eyebrow">PICK YOUR PLOT</p><h2 id="hub-title">Pick the vibe that feels right.</h2></div><p>Start easy. You can always switch lanes later.</p></div>
+    <article class="crush-main-card">
+      <div class="crush-main-card-copy"><span class="crush-card-index">01 / THE MAIN EVENT</span><h3>Find My Crush</h3><p>Tell us your type, keep it honest, and we’ll use the VYBE profile you already have to set the energy.</p><button class="crush-button" type="button" data-start-flow>Let’s find them <span aria-hidden="true">→</span></button><small>Your profile stays yours. Review it before saving anything.</small></div>
+      <div class="crush-main-visual" aria-hidden="true"><div class="visual-ticket"><span>VYBE CRUSH</span><strong>Good chat.<br>Good energy.</strong><i>↗</i></div><span class="visual-spark">✳</span><span class="visual-caption">NO AUDITIONS.<br>JUST A LITTLE CURIOSITY.</span></div>
+    </article>
+    <p class="crush-existing-link">Already opted into matchmaking? This flow leaves your setting alone. <a href="profile.html">Visit your profile if you want to switch it off <span aria-hidden="true">→</span></a></p>
+    <article class="crush-realtime-card"><div class="realtime-symbol" aria-hidden="true">⚡</div><div><span class="feature-state">02 / COMING SOON</span><h3>Real-Time Match</h3><p>Same room, same energy, same little spark. The live queue isn’t connected yet, so this stays honest.</p></div><button type="button" disabled>Queue not open yet</button></article>
+    <div class="crush-card-grid">
+      <article class="crush-feature-card feature-soon"><div class="feature-top"><span class="feature-symbol" aria-hidden="true">◉</span><span class="feature-state">COMING SOON</span></div><h3>Secret Crush</h3><p>Got someone on your mind? Keep it private until the feeling is mutual — no accidental exposure, no drama.</p><button type="button" disabled>Explore when it’s ready</button></article>
+      <article class="crush-feature-card feature-soon"><div class="feature-top"><span class="feature-symbol" aria-hidden="true">✳</span><span class="feature-state">COMING SOON</span></div><h3>FaceMash</h3><p>Two vibes. One playful pick. We only rank people who’ve actually chosen to be in the room.</p><button type="button" disabled>Play when it’s ready</button></article>
+      <article class="crush-feature-card feature-community"><div class="feature-top"><span class="feature-symbol" aria-hidden="true">“</span><span class="feature-state">COMMUNITY IS LIVE</span></div><h3>Crush Confessions</h3><p>Anonymous butterflies, awkward situations, and stories we need to hear. Read them in the right room.</p><a href="community.html?room=anonymous-gist">Read anonymous gist <span aria-hidden="true">→</span></a><small>Community rules, reporting, and moderation still apply.</small></article>
+    </div>
+  </section>
+
+  <section class="crush-flow" data-flow hidden aria-labelledby="flow-title">
+    <div class="flow-heading"><a href="#crush-hub" class="flow-back" data-cancel-flow><span aria-hidden="true">←</span> Back to Crush</a><p class="crush-eyebrow">FIND MY CRUSH · <span data-step-label>STEP 1 OF 3</span></p><h2 id="flow-title">First things first... who’s your type?</h2><p data-flow-intro>Give us something to work with. Keep it you; this is not a job interview 😭</p><div class="flow-progress" aria-label="Setup progress"><span data-progress-fill></span></div></div>
+    <form class="crush-form" data-crush-form novalidate>
+      <div class="flow-step" data-flow-step="0" tabindex="-1">
+        <label class="crush-field">Your intro <span>Optional, but a little context helps</span><textarea name="bio" maxlength="280" rows="4" placeholder="Funny, good conversation, loves music. Bonus points if they can defend their favourite football club 😭"></textarea><small>This updates your existing VYBE bio; your current profile visibility rules still apply. It won’t create a Feed post.</small></label>
+        <fieldset class="crush-field interest-field"><legend>What are you into? <span>Pick at least one</span></legend><div class="interest-picks" data-interest-picks>
+          <label><input type="checkbox" name="interests" value="music"><span>Music</span></label><label><input type="checkbox" name="interests" value="movies"><span>Films & shows</span></label><label><input type="checkbox" name="interests" value="food"><span>Food debates</span></label><label><input type="checkbox" name="interests" value="games"><span>Games</span></label><label><input type="checkbox" name="interests" value="gist"><span>Good gist</span></label><label><input type="checkbox" name="interests" value="football"><span>Football</span></label><label><input type="checkbox" name="interests" value="fashion"><span>Fashion</span></label><label><input type="checkbox" name="interests" value="travel"><span>Travel</span></label><label><input type="checkbox" name="interests" value="books"><span>Books</span></label><label><input type="checkbox" name="interests" value="tech"><span>Tech</span></label>
+        </div><small data-interest-error hidden>One small thing first: pick at least one interest.</small></fieldset>
+        <div class="crush-field-row"><label class="crush-field">Open to<select name="looking_for" required><option value="">Choose one</option><option value="romance">Romance</option><option value="friendships">Friendship</option><option value="just-vibes">Just vibes</option></select></label><label class="crush-field">Your status<select name="relationship_status" required><option value="">Choose one</option><option value="single">Single</option><option value="complicated">It’s complicated</option><option value="cruise">Here for cruise</option></select></label></div>
+        <p class="flow-error" data-step-error role="alert" tabindex="-1" hidden></p>
+        <div class="flow-actions"><button class="crush-button" type="button" data-next-step>Preview my profile <span aria-hidden="true">→</span></button></div>
+      </div>
+      <div class="flow-step" data-flow-step="1" tabindex="-1" hidden>
+        <div class="profile-preview-label"><span>YOUR PREVIEW</span><span>JUST FOR YOU</span></div>
+        <article class="profile-preview"><div class="preview-avatar" data-preview-avatar aria-hidden="true">V</div><div class="preview-copy"><p class="preview-eyebrow">A VYBE MEMBER · <span data-preview-intention></span></p><h3 data-preview-name>Your name</h3><p data-preview-bio></p><div class="preview-tags" data-preview-tags></div></div></article>
+        <p class="preview-privacy"><strong>Before this goes anywhere:</strong> saving updates the bio and interests on your existing VYBE profile. Your profile photo is not changed and nothing is posted to the Feed. Matching remains off unless you already turned it on in your Profile settings.</p>
+        <p class="flow-error" data-step-error role="alert" tabindex="-1" hidden></p>
+        <div class="flow-actions flow-actions-split"><button class="flow-text-button" type="button" data-prev-step>← Edit my vibe</button><button class="crush-button" type="button" data-next-step>Looks like me <span aria-hidden="true">→</span></button></div>
+      </div>
+      <div class="flow-step" data-flow-step="2" tabindex="-1" hidden>
+        <div class="queue-closed-mark" aria-hidden="true">✳</div><p class="crush-eyebrow">A SMALL PAUSE FOR SAFETY</p><h3 class="queue-title">Your setup is ready. The match queue isn’t.</h3>
+        <p class="queue-copy">The sign-up form checks 18+ in your browser, but VYBE doesn’t retain age or verify it server-side for both people. We can’t safely activate romantic matching until the backend can enforce age eligibility.</p>
+        <div class="queue-requirement"><strong>No fake queue. No mystery profiles.</strong><span>This flow won’t turn matchmaking on. Any existing matchmaking setting stays as-is; visit your Profile if you want to switch it off.</span><a href="profile.html">Review your Profile settings <span aria-hidden="true">→</span></a></div>
+        <p class="flow-error" data-step-error role="alert" tabindex="-1" hidden></p>
+        <div class="flow-actions flow-actions-split"><button class="flow-text-button" type="button" data-prev-step>← Review again</button><button class="crush-button" type="button" data-save-setup>Save my setup <span aria-hidden="true">✓</span></button></div>
+        <button class="queue-cancel" type="button" data-cancel-flow>Not now — back to Crush</button>
+      </div>
+    </form>
+    <p class="flow-dismiss-note">Your changes aren’t saved until you choose to save. You can leave at any time.</p>
+  </section>
+</main>
+
+<nav class="app-mobile-nav" aria-label="Main navigation">
+  <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
+  <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
+  <a class="app-mobile-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>People</span></a>
+  <a class="app-mobile-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a>
+  <a class="app-mobile-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
+</nav>
+<script type="module" src="src/js/crush/crush.js"></script>
+</body>
+</html>

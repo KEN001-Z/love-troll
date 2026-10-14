@@ -10,13 +10,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/home-BT_PkYXG.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/supabase-client-se9m8bUX.js">
-  <link rel="stylesheet" crossorigin href="/assets/supabase-client-DiPHQWYS.css">
-  <link rel="stylesheet" crossorigin href="/assets/home-Dt3g-Ts1.css">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/client-DedHO0bd.js"></script>
+  <script type="module" crossorigin src="/assets/home-DLDrlVSS.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/client-DiPHQWYS.css">
+  <link rel="stylesheet" crossorigin href="/assets/home-BYNIz9gN.css">
+  <link rel="stylesheet" crossorigin href="/assets/home-BF-VXSow.css">
   <link rel="stylesheet" crossorigin href="/assets/app-shell-refresh-jDFe7HEe.css">
-  <link rel="stylesheet" crossorigin href="/assets/home-Dac1E_zy.css">
+  <link rel="stylesheet" crossorigin href="/assets/home-D6NaQ0Tq.css">
+  <link rel="stylesheet" crossorigin href="/assets/home-identity-2pQ7M5nN.css">
 </head>
 <body class="home-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -26,13 +28,13 @@
     <nav class="app-nav" aria-label="Main navigation">
       <a class="app-nav-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
       <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
-      <a class="app-nav-link" href="#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
       <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
       <a class="app-nav-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
     <div class="header-tools">
       <label class="home-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input type="search" data-home-search placeholder="Search posts & people" aria-label="Search loaded posts and suggested people"></label>
-      <a class="header-icon" href="#connections" aria-label="Your connections" title="Your connections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg></a>
+      <button class="header-icon notification-trigger" type="button" data-notification-open aria-label="Open notifications" aria-haspopup="dialog" aria-controls="notification-drawer" aria-expanded="false" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg></button>
       <a class="header-profile" href="profile.html" aria-label="Open your profile"><span class="header-avatar" data-profile-avatar>V</span><span class="header-profile-label">Profile</span></a>
       <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
     </div>
@@ -41,10 +43,42 @@
     <nav class="social-subnav" data-social-nav aria-label="Social home navigation">
       <a class="social-subnav-link" href="home.html" data-social-destination="home" aria-current="page">Home</a>
       <a class="social-subnav-link" href="vibe.html" data-social-destination="feed">Feed</a>
-      <a class="social-subnav-link" href="home.html#people" data-social-destination="discover">Discover</a>
+      <a class="social-subnav-link" href="people.html" data-social-destination="discover">Discover</a>
     </nav>
   </div>
 </header>
+
+<dialog class="notification-drawer" id="notification-drawer" data-notification-drawer aria-labelledby="notification-title">
+  <div class="notification-drawer-inner">
+    <header class="notification-header">
+      <div>
+        <p class="notification-eyebrow">YOUR VYBE</p>
+        <h2 id="notification-title">Notifications</h2>
+        <p class="notification-intro">A little signal when something needs your attention.</p>
+      </div>
+      <button class="notification-close" type="button" data-notification-close aria-label="Close notifications">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+    <div class="notification-empty" role="status">
+      <div class="notification-empty-art" aria-hidden="true">
+        <span class="notification-spark notification-spark-one">✦</span>
+        <span class="notification-bell">
+          <svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg>
+        </span>
+        <span class="notification-spark notification-spark-two">✧</span>
+      </div>
+      <p class="notification-empty-label">ALL CAUGHT UP</p>
+      <h3>No new notifications</h3>
+      <p>When there’s new activity, you’ll find it here. In the meantime, there are people and conversations waiting for you.</p>
+      <div class="notification-shortcuts">
+        <a href="people.html">Meet people <span aria-hidden="true">→</span></a>
+        <a href="messages.html">Open messages <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
+    <p class="notification-footer">Your space, your pace. No pressure to reply right away.</p>
+  </div>
+</dialog>
 
 <main class="home-main" id="main">
   <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>
@@ -56,7 +90,7 @@
       <h1 id="welcome-title">There are interesting people here.</h1>
       <p class="campus-hero-description" data-welcome-note>See who’s around, join a conversation, or just catch the gist — at your own pace.</p>
       <div class="campus-hero-actions">
-        <a class="btn campus-primary-action" href="#people">Meet people <span aria-hidden="true">→</span></a>
+        <a class="btn campus-primary-action" href="people.html">Meet people <span aria-hidden="true">→</span></a>
         <a class="campus-secondary-action" href="#community-now">What’s happening</a>
       </div>
     </div>
@@ -69,20 +103,48 @@
   </section>
 
   <nav class="home-next-moves" aria-label="What you can do next">
-    <a class="home-move home-move-people" href="#people"><span aria-hidden="true">👋</span><strong>Discover people</strong><small>See who you might click with</small></a>
+    <a class="home-move home-move-people" href="people.html"><span aria-hidden="true">👋</span><strong>Discover people</strong><small>See who you might click with</small></a>
     <a class="home-move home-move-community" href="#community-now"><span aria-hidden="true">💬</span><strong>Join the gist</strong><small>Walk into a room that’s already talking</small></a>
     <a class="home-move home-move-messages" href="messages.html"><span aria-hidden="true">✉️</span><strong>Keep a chat going</strong><small>Message someone you’ve matched with</small></a>
   </nav>
   <p class="search-results-note" data-search-status role="status" aria-live="polite" hidden></p>
 
   <section class="home-section people-section" id="people" aria-labelledby="people-title">
-    <div class="section-title"><div><p class="home-eyebrow">WHO’S AROUND</p><h2 id="people-title">People you might click with</h2></div><p class="people-note">Real members. Skip anyone. Send interest only if you mean it.</p></div>
+    <div class="section-title"><div><p class="home-eyebrow">WHO’S AROUND</p><h2 id="people-title">Meet your next favourite person.</h2></div><p class="people-note">New people, new connections, new vibes.</p></div>
     <p class="section-message" data-people-message role="status" aria-live="polite">Looking for people you might click with…</p>
-    <ul class="suggestion-list" data-suggestions aria-label="Suggested VYBE members"></ul>
+    <ul class="suggestion-list people-discovery-grid" id="people-grid" data-suggestions aria-label="VYBE people" aria-busy="true"></ul>
     <p class="section-message photo-message" data-people-photo-message role="status" aria-live="polite"></p>
+    <button class="people-retry" type="button" data-people-retry hidden>Try again</button>
+    <button class="people-load-more" type="button" data-people-more hidden>Load more people</button>
   </section>
 
-  <section class="match-card home-match-card" aria-labelledby="match-card-title"><div class="match-card-copy"><p class="home-eyebrow">FIND A VIBE</p><h2 id="match-card-title">If someone catches your eye</h2><p data-match-note>Send interest. They’ll only see a match if they feel the same. No score, no countdown, no pressure.</p><a href="#people">Browse people <span aria-hidden="true">→</span></a></div><span class="match-card-orbit" aria-hidden="true">♡</span></section>
+  <section class="match-card home-match-card" aria-labelledby="match-card-title">
+    <div class="match-card-copy">
+      <p class="home-eyebrow">YOUR NEXT HELLO</p>
+      <h2 id="match-card-title">If someone catches your eye</h2>
+      <p data-match-note>Send a little interest. You’ll match when it’s mutual — always at your pace.</p>
+      <a class="match-card-cta" href="crush.html">Find My Crush <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="match-card-orbit" aria-hidden="true">
+      <span class="match-card-spark match-card-spark-one">✦</span>
+      <span class="match-card-spark match-card-spark-two">✧</span>
+      <svg class="match-card-heart" viewBox="0 0 120 120" focusable="false">
+        <defs>
+          <linearGradient id="crush-heart-fill" x1="24" y1="15" x2="91" y2="98" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#fff0a8"/>
+            <stop offset=".48" stop-color="#ff9a9e"/>
+            <stop offset="1" stop-color="#ff5d88"/>
+          </linearGradient>
+          <filter id="crush-heart-shadow" x="8" y="7" width="104" height="108" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+            <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#21152f" flood-opacity=".24"/>
+          </filter>
+        </defs>
+        <path d="M60 101 19.8 62.4C2.2 45.5 6.4 21.3 23 13.8c13.9-6.3 29.1.2 37 14.5 7.9-14.3 23.1-20.8 37-14.5 16.6 7.5 20.8 31.7 3.2 48.6L60 101Z" fill="url(#crush-heart-fill)" filter="url(#crush-heart-shadow)"/>
+        <path d="M25 31c2.8-5.5 8.2-8.7 14-8.2" fill="none" stroke="#fff" stroke-linecap="round" stroke-opacity=".85" stroke-width="4"/>
+      </svg>
+      <span class="match-card-heart-dot"></span>
+    </div>
+  </section>
 
   <section class="share-starters" aria-labelledby="share-starters-title"><div class="share-starters-heading"><div><p class="home-eyebrow">SAY SOMETHING</p><h2 id="share-starters-title">Put a little of yourself out there</h2></div><span>A thought, a photo, or a clip — your call.</span></div><div class="share-starter-list">
     <button class="share-starter share-starter-thought" type="button" data-create-kind="thought" disabled><span class="starter-art starter-art-thought" aria-hidden="true"><span>“</span><i>your words, your vibe</i></span><strong>Drop a thought</strong><small>Start a conversation</small></button>
@@ -91,19 +153,6 @@
   </div></section>
 
   <div class="home-columns">
-    <section class="home-section feed-section" id="feed" aria-labelledby="feed-title" hidden>
-      <div class="section-title"><div><p class="home-eyebrow">WHAT PEOPLE ARE SAYING</p><h2 id="feed-title">The gist so far</h2></div><button class="feed-refresh" type="button" data-feed-refresh disabled>Refresh</button></div>
-      <div class="feed-discovery-bar"><div class="feed-filter-row" role="group" aria-label="Choose feed posts"><button type="button" data-feed-filter="all" aria-pressed="true" disabled>For you</button><button type="button" data-feed-filter="anonymous" aria-pressed="false" disabled>Anonymous</button></div><a class="feed-community-link" href="community.html">Open Community <span aria-hidden="true">↗</span></a></div>
-      <form class="post-composer" data-post-form>
-        <label class="visually-hidden" for="post-content">Write a post</label><textarea id="post-content" name="content" maxlength="2000" rows="3" required disabled placeholder="What’s on your mind?"></textarea>
-        <div class="post-composer-footer"><input class="visually-hidden" type="file" name="media" data-post-media accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" disabled><button class="post-media-button" type="button" data-post-media-trigger disabled><span aria-hidden="true">＋</span> Add photo or clip</button><label class="anonymous-toggle"><input name="is_anonymous" type="checkbox" disabled> Post anonymously</label><span class="post-character-count" data-post-character-count aria-live="polite">0 / 2000</span><button class="btn post-submit" type="submit" disabled>Post <span aria-hidden="true">↗</span></button></div>
-        <div class="post-media-preview" data-post-media-preview hidden></div>
-        <p class="composer-status" data-composer-status role="status" aria-live="polite" hidden></p>
-      </form>
-      <ol class="feed-post-list" data-feed-posts aria-label="VYBE posts"></ol><p class="feed-state" data-feed-state role="status" aria-live="polite">Loading posts…</p>
-      <button class="feed-retry" type="button" data-feed-retry disabled hidden>Try again</button><button class="feed-more" type="button" data-feed-more disabled hidden>Load more posts</button><div class="feed-sentinel" data-feed-sentinel aria-hidden="true"></div>
-    </section>
-
     <aside class="home-rail" aria-label="Discover VYBE">
       <section class="rail-panel profile-progress-card" data-profile-progress hidden aria-labelledby="profile-progress-title">
     <div class="profile-progress-gauge" data-profile-progress-gauge role="img" aria-label="Profile completion: 0%">
@@ -141,7 +190,7 @@
         <p class="conversation-prompt" data-conversation-prompt>“What’s your biggest green flag?”</p>
         <div class="conversation-actions">
           <button class="text-link conversation-shuffle" type="button" data-next-prompt>Try another</button>
-          <a class="text-link" href="#people">Find someone to ask <span aria-hidden="true">→</span></a>
+          <a class="text-link" href="people.html">Find someone to ask <span aria-hidden="true">→</span></a>
         </div>
       </section>
     </aside>
@@ -151,7 +200,7 @@
 <nav class="app-mobile-nav" aria-label="Main navigation">
   <a class="app-mobile-link" href="home.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
   <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
-  <a class="app-mobile-link" href="#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
+  <a class="app-mobile-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
   <a class="app-mobile-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a>
   <a class="app-mobile-link" href="profile.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
 </nav>

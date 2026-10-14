@@ -1,0 +1,44 @@
+.home-body .notification-trigger{padding:0;color:var(--ink);cursor:pointer}
+.home-body .notification-trigger:focus-visible,.notification-close:focus-visible,.notification-shortcuts a:focus-visible{outline:3px solid rgba(115,87,232,.55);outline-offset:3px}
+.notification-drawer{
+  position:fixed;inset:0 0 0 auto;width:min(440px,100%);max-width:none;height:100vh;height:100dvh;max-height:none;
+  margin:0;padding:0;border:0;border-left:1px solid rgba(33,29,43,.1);background:#fffaf3;color:#211d2b;
+  box-shadow:-18px 0 55px rgba(33,29,43,.16);overflow:auto;overscroll-behavior:contain
+}
+.notification-drawer[open]{display:block;animation:notification-drawer-in .22s cubic-bezier(.2,.7,.2,1) both}
+.notification-drawer::backdrop{background:rgba(24,20,32,.4);backdrop-filter:blur(3px);animation:notification-backdrop-in .18s ease both}
+.notification-drawer-inner{min-height:100%;display:flex;flex-direction:column;padding:30px 28px 22px}
+.notification-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:22px;border-bottom:1px solid #ebe5dd}
+.notification-eyebrow,.notification-empty-label{margin:0;color:#6047d0;font-size:.67rem;font-weight:800;letter-spacing:.14em}
+.notification-header h2{margin:6px 0 5px;font:800 1.85rem/1.1 var(--display);letter-spacing:-.055em}
+.notification-intro{max-width:31ch;margin:0;color:#716b79;font-size:.83rem;line-height:1.5}
+.notification-close{width:40px;height:40px;display:grid;place-items:center;flex:none;border:1.5px solid #e5ded5;border-radius:13px;background:#fff;color:#4f4956;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.notification-close:hover{transform:rotate(5deg);border-color:#d4c8ef;background:#f4f0ff}
+.notification-close svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.notification-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 6px;text-align:center}
+.notification-empty-art{position:relative;width:124px;height:124px;display:grid;place-items:center;margin-bottom:23px;border:1px solid rgba(115,87,232,.16);border-radius:42% 58% 52% 48%;background:linear-gradient(145deg,#f0ebff,#fff0e8 78%);transform:rotate(-5deg)}
+.notification-bell{width:64px;height:64px;display:grid;place-items:center;border:2px solid #211d2b;border-radius:22px;background:#fff;box-shadow:4px 4px 0 #211d2b;transform:rotate(5deg)}
+.notification-bell svg{width:30px;height:30px;fill:none;stroke:#6047d0;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.notification-spark{position:absolute;color:#6047d0;font-size:1.55rem}
+.notification-spark-one{top:6px;right:11px}
+.notification-spark-two{bottom:8px;left:9px;color:#e77d67}
+.notification-empty-label{font-size:.62rem}
+.notification-empty h3{margin:8px 0 7px;font:800 1.42rem/1.15 var(--display);letter-spacing:-.045em}
+.notification-empty>p:not(.notification-empty-label){max-width:34ch;margin:0;color:#716b79;font-size:.84rem;line-height:1.65}
+.notification-shortcuts{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:22px}
+.notification-shortcuts a{min-height:41px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;border:1.5px solid #211d2b;border-radius:999px;background:#fff;color:#211d2b;font-size:.78rem;font-weight:750;text-decoration:none;box-shadow:2px 2px 0 #211d2b;transition:transform .15s ease,box-shadow .15s ease}
+.notification-shortcuts a:first-child{background:#ffd166}
+.notification-shortcuts a:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #211d2b}
+.notification-footer{margin:0;padding-top:17px;border-top:1px solid #ebe5dd;color:#817a86;font-size:.72rem;text-align:center}
+@keyframes notification-drawer-in{from{opacity:.75;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes notification-backdrop-in{from{opacity:0}to{opacity:1}}
+@media(max-width:560px){
+  .home-body .notification-trigger{width:36px;height:36px;min-height:36px}
+  .notification-drawer{border-left:0}
+  .notification-drawer-inner{padding:23px 20px calc(18px + env(safe-area-inset-bottom))}
+  .notification-empty{padding:34px 0}
+}
+@media(prefers-reduced-motion:reduce){
+  .notification-drawer[open],.notification-drawer::backdrop{animation:none}
+  .notification-close,.notification-shortcuts a{transition:none}
+}
