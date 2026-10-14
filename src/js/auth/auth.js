@@ -42,7 +42,32 @@ async function getAuthenticatedDestination(supabase, user) {
     .eq('id', user.id)
     .maybeSingle();
   if (error) throw error;
-  return profile?.onboarding_completed ? 'home.html' : 'onboarding.html';
+  if (!profile?.onboarding_completed) return 'onboarding.html';
+  return getRequestedReturnTo() || 'home.html';
+}
+
+function getRequestedReturnTo() {
+  const requested = new URLSearchParams(window.location.search).get('returnTo');
+  if (!requested) return '';
+
+  let destination;
+  try {
+    destination = new URL(requested, window.location.href);
+  } catch {
+    return '';
+  }
+  const allowedPaths = ['messages.html', 'profile.html']
+    .map(page => new URL(page, window.location.href).pathname);
+  if (destination.origin !== window.location.origin ||
+      !allowedPaths.includes(destination.pathname)) return '';
+  return `${destination.pathname}${destination.search}${destination.hash}`;
+}
+
+function loginCallbackUrl() {
+  const callback = new URL('login.html', window.location.href);
+  const returnTo = getRequestedReturnTo();
+  if (returnTo) callback.searchParams.set('returnTo', returnTo);
+  return callback.toString();
 }
 
 async function ensureUserProfile(supabase, user) {
@@ -191,10 +216,9 @@ function bindGoogleAuth(form, supabase) {
     button.setAttribute('aria-busy', 'true');
     label.textContent = 'Connecting to Google…';
     try {
-      const redirectTo = new URL(
-        form.dataset.form === 'signup' ? 'onboarding.html' : 'login.html',
-        window.location.href
-      ).toString();
+      const redirectTo = form.dataset.form === 'signup'
+        ? new URL('onboarding.html', window.location.href).toString()
+        : loginCallbackUrl();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo }

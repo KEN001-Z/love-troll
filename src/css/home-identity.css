@@ -498,3 +498,126 @@
   .home-body .home-move:hover,
   .home-body .suggestion-card:hover{transform:none}
 }
+
+@media(max-width:700px){
+  .home-body .home-main .suggestion-list,
+  .home-body .home-main>.people-section .suggestion-list{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:2px 1px 8px;
+    scroll-snap-type:x mandatory;
+    scrollbar-width:none;
+  }
+  .home-body .home-main .suggestion-list::-webkit-scrollbar,
+  .home-body .home-main>.people-section .suggestion-list::-webkit-scrollbar{display:none}
+  .home-body .home-main .suggestion-card,
+  .home-body .home-main .suggestion-card:hover,
+  .home-body .home-main>.people-section .suggestion-card,
+  .home-body .home-main>.people-section .suggestion-card:hover{
+    flex:0 0 90px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    overflow:visible;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+    text-align:center;
+    transform:none;
+    scroll-snap-align:start;
+  }
+  .home-body .home-main .suggestion-avatar-link,
+  .home-body .home-main>.people-section .suggestion-avatar-link{
+    width:80px;
+    height:80px;
+    min-width:80px;
+    min-height:80px;
+    flex:0 0 80px;
+    box-sizing:border-box;
+    aspect-ratio:1;
+    padding:3px;
+    border:0;
+    border-radius:50%;
+    background:linear-gradient(135deg,#7357e8,#ff6b61 55%,#ffd166);
+    box-shadow:0 2px 7px rgba(33,29,43,.16);
+  }
+  .home-body .home-main .suggestion-visual,
+  .home-body .home-main>.people-section .suggestion-visual{
+    position:relative;
+    width:100%;
+    height:100%;
+    aspect-ratio:1;
+    box-sizing:border-box;
+    border:2px solid #fff;
+    border-radius:50%;
+    overflow:hidden;
+    background:linear-gradient(135deg,#efe7ff,#f8f5ff);
+  }
+  .home-body .home-main .suggestion-visual::before,
+  .home-body .home-main .suggestion-visual::after,
+  .home-body .home-main .suggestion-visual-note{display:none}
+  .home-body .home-main .suggestion-monogram{
+    width:100%;
+    height:100%;
+    border:0;
+    border-radius:50%;
+    background:transparent;
+    font-size:1.7rem;
+  }
+  .home-body .home-main .suggestion-avatar-image,
+  .home-body .home-main>.people-section .suggestion-avatar-image{
+    position:absolute;
+    z-index:1;
+    inset:0;
+    display:block;
+    width:100%;
+    height:100%;
+    border:0;
+    border-radius:50%;
+    object-fit:cover;
+  }
+  .home-body .home-main .suggestion-body,
+  .home-body .home-main>.people-section .suggestion-body{width:100%;padding:0}
+  .home-body .home-main .suggestion-heading h3{overflow:hidden}
+  .home-body .home-main .suggestion-name,
+  .home-body .home-main>.people-section .suggestion-name{
+    display:block;
+    overflow:hidden;
+    color:var(--ink);
+    font:700 .78rem/1.25 var(--body);
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .home-body .home-main .suggestion-handle,
+  .home-body .home-main .suggestion-detail,
+  .home-body .home-main .interest-tags,
+  .home-body .home-main .suggestion-vibe,
+  .home-body .home-main .suggestion-view,
+  .home-body .home-main>.people-section .suggestion-handle,
+  .home-body .home-main>.people-section .suggestion-detail,
+  .home-body .home-main>.people-section .interest-tags,
+  .home-body .home-main>.people-section .suggestion-vibe,
+  .home-body .home-main>.people-section .suggestion-view{display:none}
+  .home-body .home-main .suggestion-intention,
+  .home-body .home-main>.people-section .suggestion-intention{
+    display:-webkit-box;
+    overflow:hidden;
+    margin:3px 0 0;
+    color:#686171;
+    font-size:.65rem;
+    line-height:1.3;
+    text-overflow:ellipsis;
+    white-space:normal;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+  }
+  .home-body .home-main .suggestion-actions,
+  .home-body .home-main>.people-section .suggestion-actions{display:none}
+  .home-body .home-main .people-empty,
+  .home-body .home-main>.people-section .people-empty{flex:0 0 100%}
+}
