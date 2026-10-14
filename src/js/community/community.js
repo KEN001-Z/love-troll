@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { subscribeToAppPresence } from '../../../app-presence.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -34,7 +35,6 @@ let supabase;
 let currentUser;
 let currentRoom;
 let roomChannel;
-let presenceChannel;
 let roomMessages = new Map();
 let messageCursor = null;
 let hasOlderMessages = false;
@@ -116,15 +116,10 @@ function renderRoomList(rooms) {
   });
 }
 
-function renderPresence(state) {
-  const members = Object.values(state).flat().reduce((all, presence) => {
-    const id = presence.user_id;
-    if (id && !all.some(member => member.user_id === id)) all.push(presence);
-    return all;
-  }, []);
+function renderPresence(members) {
   presenceCount.textContent = String(members.length);
-  chatMemberNote.textContent = members.length ? `${members.length} here now` : 'Live room';
-  presenceSummary.textContent = members.length ? `${members.length} ${members.length === 1 ? 'member is' : 'members are'} here now.` : 'No one is showing as online yet.';
+  chatMemberNote.textContent = members.length ? `${members.length} online now` : 'Live room';
+  presenceSummary.textContent = members.length ? `${members.length} ${members.length === 1 ? 'member is' : 'members are'} online now.` : 'No one is showing as online yet.';
   onlineMembers.replaceChildren();
   members.slice(0, 8).forEach(member => {
     const item = document.createElement('li');
@@ -379,17 +374,6 @@ async function submitReport(event) {
   }
 }
 
-async function initializePresence() {
-  const displayName = currentUser.user_metadata?.display_name || currentUser.email?.split('@')[0] || 'VYBE member';
-  presenceChannel = supabase.channel('community:presence', { config: { private: true, presence: { key: currentUser.id } } });
-  presenceChannel.on('presence', { event: 'sync' }, () => renderPresence(presenceChannel.presenceState()));
-  presenceChannel.on('presence', { event: 'join' }, () => renderPresence(presenceChannel.presenceState()));
-  presenceChannel.on('presence', { event: 'leave' }, () => renderPresence(presenceChannel.presenceState()));
-  presenceChannel.subscribe(async channelStatus => {
-    if (channelStatus === 'SUBSCRIBED') await presenceChannel.track({ user_id: currentUser.id, display_name: displayName, online_at: new Date().toISOString() });
-  });
-}
-
 async function initialize() {
   try {
     supabase = getSupabaseClient();
@@ -399,6 +383,10 @@ async function initialize() {
       return;
     }
     currentUser = auth.user;
+    subscribeToAppPresence(
+      renderPresence,
+      error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
+    );
     const { data: rooms, error } = await supabase.from('community_rooms').select('slug,name,description,sort_order').order('sort_order');
     if (error) throw error;
     if (!rooms?.length) throw new Error('No Community rooms are configured.');
@@ -406,7 +394,6 @@ async function initialize() {
     const requestedRoom = new URLSearchParams(window.location.search).get('room');
     const firstRoom = rooms.some(room => room.slug === requestedRoom) ? requestedRoom : rooms[0].slug;
     await selectRoom(firstRoom);
-    await initializePresence();
     messageInput.disabled = false;
     sendButton.disabled = false;
     updateAnonymousToggle();
@@ -460,7 +447,6 @@ async function initialize() {
     logoutButton.disabled = true;
     try {
       if (roomChannel) await supabase.removeChannel(roomChannel);
-      if (presenceChannel) await supabase.removeChannel(presenceChannel);
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
@@ -472,7 +458,6 @@ async function initialize() {
 
 window.addEventListener('pagehide', () => {
   if (roomChannel) supabase?.removeChannel(roomChannel);
-  if (presenceChannel) supabase?.removeChannel(presenceChannel);
 });
 
 initialize();

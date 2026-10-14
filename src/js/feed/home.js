@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { subscribeToAppPresence } from '../../../app-presence.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -106,6 +107,7 @@ const selectedNotificationIds = new Set();
 let notificationActionsBusy = false;
 let notificationSelectionMode = false;
 let notificationLongPressTriggered = false;
+const onlineUserIds = new Set();
 let ownInterests = [];
 let ownMatchmakingEnabled = false;
 let activePeopleFilter = 'for-you';
@@ -671,6 +673,28 @@ function setStatus(message, state = '') {
   status.textContent = message;
   status.dataset.state = state;
   status.hidden = !message;
+}
+
+function createProfilePresence(userId) {
+  const status = makeElement('span', 'app-presence-status');
+  status.dataset.profilePresenceId = userId;
+  const online = onlineUserIds.has(userId);
+  status.dataset.status = online ? 'online' : 'offline';
+  status.append(
+    makeElement('span', 'app-presence-dot'),
+    makeElement('span', '', online ? 'Online' : 'Offline')
+  );
+  return status;
+}
+
+function renderAppPresence(members) {
+  onlineUserIds.clear();
+  members.forEach(member => onlineUserIds.add(member.user_id));
+  document.querySelectorAll('[data-profile-presence-id]').forEach(status => {
+    const online = onlineUserIds.has(status.dataset.profilePresenceId);
+    status.dataset.status = online ? 'online' : 'offline';
+    status.lastElementChild.textContent = online ? 'Online' : 'Offline';
+  });
 }
 
 function setSectionMessage(element, message, state = '') {
@@ -1792,6 +1816,11 @@ function renderCandidate(candidate) {
   const profileHeading = makeElement('h3');
   profileHeading.append(profileLink);
   headingInfo.append(profileHeading);
+  headingInfo.append(createProfilePresence(profile.id));
+  if (profile.username) headingInfo.append(makeElement('p', 'suggestion-handle', `@${profile.username}`));
+  const intentionBits = [`Here for ${labels.lookingFor[profile.looking_for] || 'new connections'}`];
+  if (profile.university?.trim()) intentionBits.push(profile.university.trim());
+  headingInfo.append(makeElement('p', 'suggestion-intention', intentionBits.join(' · ')));
   heading.append(headingInfo);
   body.append(heading);
 
@@ -2035,6 +2064,7 @@ function renderConnections(matches, profiles, urlsByProfileId) {
     item.append(avatar);
     const description = makeElement('span', 'connection-description');
     description.append(makeElement('span', 'connection-name', name));
+    description.append(createProfilePresence(profile.id));
     const date = new Date(createdAt);
     const caption = Number.isNaN(date.getTime())
       ? 'The feeling is mutual'
@@ -2238,6 +2268,10 @@ async function initialize() {
     currentUserId = user.id;
     startNotificationRealtime();
     refreshNotifications();
+    subscribeToAppPresence(
+      renderAppPresence,
+      error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
+    );
 
     const { data: profile, error: profileError } = await supabase.from('profiles')
       .select('display_name,username,avatar_path,interests,matchmaking_enabled,onboarding_completed,university,gender')

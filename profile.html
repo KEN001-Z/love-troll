@@ -16,8 +16,10 @@
 <link rel="stylesheet" href="src/css/profile.css">
 <link rel="stylesheet" href="src/css/profile-refresh.css">
 <link rel="stylesheet" href="src/css/app-shell-refresh.css">
+<link rel="stylesheet" href="app-presence.css">
 <link rel="stylesheet" href="src/css/performance.css">
 <script type="module" src="src/js/app/page-transition.js"></script>
+<script type="module" src="app-presence.js"></script>
 </head>
 <body class="profile-body">
 <a class="skip" href="#main">Skip to content</a>
@@ -61,6 +63,10 @@
         <div class="profile-heading">
           <p class="profile-kicker"><span aria-hidden="true">✳</span> A LITTLE CAMPUS INTRO</p>
           <h1 id="profile-name" data-name>Loading…</h1>
+          <p class="app-presence-status profile-online-status" data-profile-online data-status="offline" aria-live="polite">
+            <span class="app-presence-dot" aria-hidden="true"></span>
+            <span data-profile-online-label>Offline</span>
+          </p>
           <p class="profile-handle" data-username></p>
           <p class="profile-meta" data-education></p>
           <p class="profile-gender" data-gender hidden></p>

@@ -1,0 +1,38 @@
+.app-presence-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #716b79;
+  font-size: .76rem;
+  line-height: 1.2;
+}
+
+.app-presence-status[data-status="online"] {
+  color: #26744d;
+}
+
+.app-presence-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #aaa5af;
+}
+
+.app-presence-status[data-status="online"] .app-presence-dot {
+  background: #2e9b66;
+  box-shadow: 0 0 0 2px rgba(46, 155, 102, .14);
+}
+
+.profile-online-status {
+  margin: 3px 0 0;
+}
+
+.suggestion-heading .app-presence-status,
+.connection-description .app-presence-status {
+  margin-top: 3px;
+}
+
+.suggestion-heading .app-presence-status {
+  font-size: .7rem;
+}
