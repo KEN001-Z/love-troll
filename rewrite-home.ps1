@@ -4,7 +4,7 @@ if (-not (Test-Path (Join-Path $root 'home.html'))) {
   throw "VYBE home.html was not found at $root"
 }
 
-Write-Host "The current VYBE home page is already implemented in home.html and home.css."
+Write-Host "The current VYBE home page is already implemented in home.html and src/css/home.css."
 Write-Host "This script no longer overwrites the application with the old static prototype."
 Write-Host "Running a production build to verify the current project..."
 

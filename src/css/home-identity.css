@@ -206,20 +206,41 @@
 }
 
 .home-body .home-match-card{
-  width:auto;min-height:0;display:flex;align-items:center;
-  margin-top:22px;padding:22px 28px;
+  width:auto;min-height:190px;display:flex;align-items:center;
+  margin-top:22px;padding:28px 34px;
   border:2px solid var(--ink);border-radius:24px;
-  background:linear-gradient(120deg,#7357e8 0%,#6047d0 100%);
+  background:radial-gradient(ellipse at 88% 55%,rgba(255,209,102,.19),transparent 28%),linear-gradient(115deg,#684bdc 0%,#7357e8 52%,#876de9 100%);
   box-shadow:5px 5px 0 var(--ink);color:#fff;
 }
-.home-body .home-match-card .home-eyebrow{color:#e4dcff}
-.home-body .home-match-card h2{margin:6px 0 8px;color:#fff;font:800 clamp(1.45rem,2.6vw,1.9rem)/1.05 var(--display)}
-.home-body .home-match-card p:not(.home-eyebrow){display:block;max-width:42ch;color:rgba(255,255,255,.88);font-size:.86rem}
-.home-body .home-match-card>a{margin-top:12px;color:var(--yellow);font-weight:800;text-decoration:none}
-.home-body .home-match-card>a:hover{text-decoration:underline;text-underline-offset:4px}
+.home-body .home-match-card .match-card-copy{position:relative;z-index:1;max-width:590px;padding-right:150px}
+.home-body .home-match-card .home-eyebrow{margin-bottom:8px;color:#eee8ff;font-size:.66rem;letter-spacing:.14em}
+.home-body .home-match-card h2{margin:0 0 9px;color:#fff;font:800 clamp(1.55rem,2.8vw,2.05rem)/1.08 var(--display);letter-spacing:-.04em}
+.home-body .home-match-card p:not(.home-eyebrow){display:block;max-width:42ch;margin:0;color:rgba(255,255,255,.9);font-size:.88rem;line-height:1.55}
+.home-body .home-match-card .match-card-cta{
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:11px;
+  margin-top:17px;padding:0 18px;border:2px solid var(--ink);border-radius:999px;
+  background:var(--yellow);box-shadow:3px 3px 0 var(--ink);color:var(--ink);
+  font-size:.82rem;font-weight:800;text-decoration:none;transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+.home-body .home-match-card .match-card-cta span{font-size:1.05rem;transition:transform .18s ease}
+.home-body .home-match-card .match-card-cta:hover{background:#ffe08b;box-shadow:1px 1px 0 var(--ink);transform:translate(2px,2px)}
+.home-body .home-match-card .match-card-cta:hover span{transform:translateX(3px)}
+.home-body .home-match-card .match-card-cta:focus-visible{outline:3px solid #fff;outline-offset:4px}
 .home-body .match-card-orbit{
-  right:22px;top:50%;width:72px;height:72px;border:2px solid var(--ink);
-  background:var(--coral);color:var(--ink);transform:translateY(-50%) rotate(-8deg);
+  position:absolute;z-index:0;right:7%;top:50%;width:144px;height:144px;
+  display:grid;place-items:center;overflow:visible;border:1px solid rgba(255,255,255,.36);
+  border-radius:50%;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.35),rgba(255,255,255,.08) 62%,rgba(255,255,255,.04));
+  box-shadow:inset 0 0 0 9px rgba(255,255,255,.06),0 14px 34px rgba(35,20,76,.14);
+  transform:translateY(-50%);
+}
+.home-body .match-card-heart{width:108px;height:108px;overflow:visible;animation:crush-heart-float 3.2s ease-in-out infinite}
+.home-body .match-card-spark{position:absolute;color:#ffe18c;line-height:1}
+.home-body .match-card-spark-one{top:16px;right:25px;font-size:1.3rem}
+.home-body .match-card-spark-two{bottom:24px;left:16px;color:#fff;font-size:1.05rem}
+.home-body .match-card-heart-dot{position:absolute;right:22px;bottom:33px;width:8px;height:8px;border:2px solid #7357e8;border-radius:50%;background:#ffe18c}
+@keyframes crush-heart-float{
+  0%,100%{transform:translateY(0) rotate(-5deg)}
+  50%{transform:translateY(-5px) rotate(-2deg)}
 }
 
 .home-body .share-starters{
@@ -360,9 +381,16 @@
   .home-body .home-main>.people-section .interest-tags,
   .home-body .home-main>.people-section .suggestion-vibe,
   .home-body .home-main>.people-section .suggestion-actions{display:none}
-  .home-body .home-match-card{padding:16px 18px 16px 16px}
-  .home-body .home-match-card p:not(.home-eyebrow){display:block}
-  .home-body .match-card-orbit{width:48px;height:48px;right:12px;font-size:1.4rem}
+  .home-body .home-match-card{min-height:0;padding:21px 18px}
+  .home-body .home-match-card .match-card-copy{padding-right:74px}
+  .home-body .home-match-card h2{font-size:1.35rem}
+  .home-body .home-match-card p:not(.home-eyebrow){font-size:.78rem}
+  .home-body .home-match-card .match-card-cta{min-height:41px;margin-top:14px;padding:0 14px;font-size:.76rem}
+  .home-body .match-card-orbit{width:74px;height:74px;right:12px;border-width:1px}
+  .home-body .match-card-heart{width:56px;height:56px}
+  .home-body .match-card-spark-one{top:6px;right:11px;font-size:.8rem}
+  .home-body .match-card-spark-two{bottom:10px;left:7px;font-size:.72rem}
+  .home-body .match-card-heart-dot{right:9px;bottom:13px;width:6px;height:6px}
   .home-body .share-starters{display:none}
   .home-body .feed-section{padding:14px;border-radius:18px}
   .home-body .home-rail .profile-progress-card{display:flex}
@@ -370,9 +398,103 @@
   .home-body .suggestion-actions a{min-height:42px}
 }
 
+.home-body .home-main>.people-section .suggestion-list{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:12px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:8px 2px 12px;
+  scroll-snap-type:x proximity;
+  scrollbar-width:thin;
+}
+.home-body .home-main>.people-section .suggestion-card,
+.home-body .home-main>.people-section .suggestion-card:hover{
+  display:flex;
+  flex:0 0 92px;
+  flex-direction:column;
+  align-items:center;
+  gap:7px;
+  overflow:visible;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  text-align:center;
+  transform:none;
+  scroll-snap-align:start;
+}
+.home-body .home-main>.people-section .suggestion-avatar-link{
+  display:block;
+  width:84px;
+  height:84px;
+  flex:none;
+  padding:3px;
+  border:0;
+  border-radius:50%;
+  background:linear-gradient(45deg,#feda75 0%,#fa7e1e 24%,#d62976 52%,#962fbf 76%,#4f5bd5 100%);
+  box-shadow:0 2px 8px rgba(33,29,43,.16);
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.home-body .home-main>.people-section .suggestion-avatar-link:hover{
+  transform:scale(1.045);
+  box-shadow:0 5px 14px rgba(33,29,43,.2);
+}
+.home-body .home-main>.people-section .suggestion-avatar-link:focus-visible{
+  outline:3px solid #7357e8;
+  outline-offset:3px;
+}
+.home-body .home-main>.people-section .suggestion-visual{
+  width:100%;
+  height:100%;
+  border:3px solid #fff;
+  border-radius:50%;
+}
+.home-body .home-main>.people-section .suggestion-avatar-image{border-radius:50%}
+.home-body .home-main>.people-section .suggestion-visual-note{display:none}
+.home-body .home-main>.people-section .suggestion-body{width:100%;padding:0}
+.home-body .home-main>.people-section .suggestion-heading{display:block}
+.home-body .home-main>.people-section .suggestion-heading h3{margin:0}
+.home-body .home-main>.people-section .suggestion-name{
+  display:block;
+  overflow:hidden;
+  color:var(--ink);
+  font:600 .72rem/1.25 var(--body);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.home-body .home-main>.people-section .suggestion-handle{
+  display:block;
+  overflow:hidden;
+  margin:2px 0 0;
+  color:#6b6374;
+  font:500 .62rem/1.2 var(--body);
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.home-body .home-main>.people-section .suggestion-intention,
+.home-body .home-main>.people-section .suggestion-detail,
+.home-body .home-main>.people-section .interest-tags,
+.home-body .home-main>.people-section .suggestion-vibe,
+.home-body .home-main>.people-section .suggestion-actions{display:none}
+.home-body .home-main>.people-section .people-empty{
+  flex:1 0 100%;
+  width:100%;
+}
+@media(max-width:560px){
+  .home-body .home-main>.people-section .suggestion-list{gap:12px;scrollbar-width:none}
+  .home-body .home-main>.people-section .suggestion-list::-webkit-scrollbar{display:none}
+  .home-body .home-main>.people-section .suggestion-card,
+  .home-body .home-main>.people-section .suggestion-card:hover{flex-basis:80px}
+  .home-body .home-main>.people-section .suggestion-avatar-link{width:72px;height:72px}
+}
+
 @media(prefers-reduced-motion:reduce){
   .home-body .home-move,
-  .home-body .suggestion-card{transition:none}
+  .home-body .suggestion-card,
+  .home-body .home-match-card .match-card-cta,
+  .home-body .match-card-heart{transition:none;animation:none}
   .home-body .home-move:hover,
   .home-body .suggestion-card:hover{transform:none}
 }

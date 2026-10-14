@@ -11,10 +11,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/profile-CAup1Npw.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/supabase-client-se9m8bUX.js">
-  <link rel="stylesheet" crossorigin href="/assets/supabase-client-DiPHQWYS.css">
-  <link rel="stylesheet" crossorigin href="/assets/profile-BSNMt39c.css">
+  <script type="module" crossorigin src="/assets/profile-BjLFy4a1.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/client-DedHO0bd.js">
+  <link rel="stylesheet" crossorigin href="/assets/client-DiPHQWYS.css">
+  <link rel="stylesheet" crossorigin href="/assets/profile-CLDEkCTL.css">
   <link rel="stylesheet" crossorigin href="/assets/performance-CIfAUpdm.css">
   <link rel="stylesheet" crossorigin href="/assets/app-shell-refresh-jDFe7HEe.css">
 </head>
@@ -26,7 +26,7 @@
     <nav class="app-nav" aria-label="Main navigation">
       <a class="app-nav-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg>Vibe</a>
       <a class="app-nav-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>Community</a>
-      <a class="app-nav-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
+      <a class="app-nav-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>Meet people</a>
       <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
       <a class="app-nav-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
@@ -65,6 +65,7 @@
           <p class="profile-bio" data-bio></p>
           <p class="profile-mood" data-mood hidden></p>
           <div class="profile-stats" aria-label="Profile stats">
+            <span><strong data-post-count>0</strong> posts</span>
             <span><strong data-followers>0</strong> followers</span>
             <span><strong data-following>0</strong> following</span>
             <span><strong data-likes>0</strong> likes</span>
@@ -81,11 +82,17 @@
     </nav>
 
     <section id="panel-posts" class="profile-panel" role="tabpanel" aria-labelledby="tab-posts" data-panel="posts">
-      <div class="profile-empty">
+      <div class="profile-empty" data-profile-post-empty hidden>
         <span class="empty-mark" aria-hidden="true">✳</span>
         <p class="profile-eyebrow">THE CAMPUS TIMELINE</p>
         <h2>No gist on this page yet</h2>
-        <p>Posts aren’t switched on just yet. When they are, this is where the campus gist, photos and funny moments will land.</p>
+        <p>Posts, photos and clips shared by this member will appear here.</p>
+      </div>
+      <div class="profile-posts" data-profile-posts>
+        <div class="profile-post-list" data-profile-post-list aria-live="polite"></div>
+        <p class="profile-post-state" data-profile-post-state role="status" aria-live="polite">Loading posts…</p>
+        <button class="profile-post-retry" type="button" data-profile-post-retry hidden>Try again</button>
+        <button class="profile-post-more" type="button" data-profile-post-more hidden>Load more posts</button>
       </div>
     </section>
     <section id="panel-about" class="profile-panel" role="tabpanel" aria-labelledby="tab-about" data-panel="about" hidden>
@@ -136,7 +143,7 @@
 <nav class="app-mobile-nav" aria-label="Main navigation">
   <a class="app-mobile-link" href="home.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"/></svg><span>Vibe</span></a>
   <a class="app-mobile-link" href="community.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg><span>Community</span></a>
-  <a class="app-mobile-link" href="home.html#people"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
+  <a class="app-mobile-link" href="people.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><span>Meet people</span></a>
   <a class="app-mobile-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>Messages</span></a>
   <a class="app-mobile-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Profile</span></a>
 </nav>

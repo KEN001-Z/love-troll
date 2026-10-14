@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from './supabase-client.js';
+import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -29,12 +29,25 @@ const interestOptions = Object.keys(labels.interests);
 const editDialog = $('[data-edit-dialog]');
 const editForm = $('[data-edit-form]');
 const moreDialog = $('[data-more-dialog]');
+const profilePostList = $('[data-profile-post-list]');
+const profilePostState = $('[data-profile-post-state]');
+const profilePostEmpty = $('[data-profile-post-empty]');
+const profilePostRetry = $('[data-profile-post-retry]');
+const profilePostMore = $('[data-profile-post-more]');
 let supabase;
 let currentUser;
 let ownProfile;
 let profile;
 let targetId;
 let sendingInterest = false;
+const PROFILE_POST_PAGE_SIZE = 16;
+const profilePostMediaUrls = new Map();
+let profilePostCursor = null;
+let profilePostHasMore = true;
+let profilePostRequest = null;
+let profilePostChannel;
+let profilePostRefreshTimer;
+let profilePostRefreshing = false;
 const messageButton = $('[data-message]');
 const followButton = $('[data-follow]');
 let changingFollow = false;
@@ -150,6 +163,7 @@ function renderProfile() {
   $('[data-followers]').textContent = Number(profile.follower_count || 0).toLocaleString();
   $('[data-following]').textContent = Number(profile.following_count || 0).toLocaleString();
   $('[data-likes]').textContent = Number(profile.like_count || 0).toLocaleString();
+  $('[data-post-count]').textContent = Number(profile.post_count || 0).toLocaleString();
   $('[data-about-mood]').textContent = `Currently in the mood for: ${profile.current_mood}`;
   $('[data-about-mood]').hidden = !profile.current_mood;
   $('[data-catchphrase]').textContent = profile.catchphrase ? `“${profile.catchphrase}”` : '';
@@ -536,6 +550,234 @@ async function loadProfile() {
   renderProfile();
 }
 
+function profilePostMedia(post) {
+  if (Array.isArray(post.media_items) && post.media_items.length) return post.media_items;
+  return post.media_path ? [{ path: post.media_path, mime: post.media_mime, kind: post.media_kind }] : [];
+}
+
+async function signProfilePostMedia(posts) {
+  const paths = [...new Set(posts.flatMap(post => profilePostMedia(post).map(media => media.path)).filter(Boolean))];
+  const missing = paths.filter(path => !profilePostMediaUrls.has(path));
+  if (!missing.length) return;
+  const { data, error } = await supabase.storage.from('post-media').createSignedUrls(missing, 3600);
+  if (error) throw error;
+  (data || []).forEach(result => {
+    if (result.path && result.signedUrl) profilePostMediaUrls.set(result.path, result.signedUrl);
+  });
+  if (missing.some(path => !profilePostMediaUrls.has(path))) {
+    throw new Error('Some post media could not be opened. Check post-media Storage read permissions.');
+  }
+}
+
+function renderProfilePost(post, avatarUrl = '') {
+  const item = document.createElement('article');
+  item.className = 'profile-post-card';
+  item.dataset.postId = post.id;
+  item.id = `profile-post-${post.id}`;
+
+  const header = document.createElement('header');
+  header.className = 'profile-post-header';
+  const avatar = document.createElement('span');
+  avatar.className = 'profile-post-avatar';
+  avatar.textContent = (profile.display_name || profile.username || 'V').trim().slice(0, 1).toUpperCase();
+  if (avatarUrl) {
+    const image = document.createElement('img');
+    image.src = avatarUrl;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.addEventListener('load', () => { avatar.textContent = ''; }, { once: true });
+    image.addEventListener('error', () => image.remove(), { once: true });
+    avatar.append(image);
+  }
+
+  const identity = document.createElement('div');
+  identity.className = 'profile-post-identity';
+  const name = document.createElement('strong');
+  name.textContent = profile.display_name?.trim() || 'VYBE member';
+  identity.append(name);
+  if (profile.username) {
+    const username = document.createElement('span');
+    username.textContent = `@${profile.username}`;
+    identity.append(username);
+  }
+  const time = document.createElement('time');
+  time.dateTime = post.created_at;
+  const date = new Date(post.created_at);
+  time.textContent = Number.isNaN(date.getTime())
+    ? ''
+    : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+  header.append(avatar, identity, time);
+
+  const content = document.createElement('p');
+  content.className = 'profile-post-content';
+  content.textContent = post.content;
+  item.append(header, content);
+
+  const mediaItems = profilePostMedia(post);
+  if (mediaItems.length) {
+    const gallery = document.createElement('div');
+    gallery.className = 'profile-post-gallery';
+    gallery.setAttribute('role', 'group');
+    if (mediaItems.length > 1) gallery.setAttribute('aria-label', `${mediaItems.length} photos`);
+    mediaItems.forEach((media, index) => {
+      const slide = document.createElement('div');
+      slide.className = 'profile-post-slide';
+      const source = profilePostMediaUrls.get(media.path);
+      if (source && media.kind === 'image') {
+        const image = document.createElement('img');
+        image.src = source;
+        image.alt = mediaItems.length > 1
+          ? `Photo ${index + 1} of ${mediaItems.length}: ${post.content}`
+          : post.content ? `Photo post: ${post.content}` : 'Photo shared on VYBE';
+        image.loading = 'lazy';
+        slide.append(image);
+      } else if (source && media.kind === 'video') {
+        const video = document.createElement('video');
+        video.src = source;
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-label', 'Attached video clip');
+        slide.append(video);
+      } else {
+        const unavailable = document.createElement('p');
+        unavailable.className = 'profile-post-media-error';
+        unavailable.textContent = 'This post’s media could not be loaded.';
+        slide.append(unavailable);
+      }
+      gallery.append(slide);
+    });
+    item.append(gallery);
+  }
+  return item;
+}
+
+function setProfilePostState(message, state = '') {
+  profilePostState.textContent = message;
+  profilePostState.dataset.state = state;
+  profilePostState.hidden = !message;
+}
+
+async function loadProfilePosts({ reset = false } = {}) {
+  if (profilePostRequest) {
+    if (!reset) return profilePostRequest;
+    await profilePostRequest;
+  }
+  if (reset) {
+    profilePostCursor = null;
+    profilePostHasMore = true;
+    profilePostRetry.hidden = true;
+    if (!profilePostList.childElementCount) setProfilePostState('Loading posts…');
+  } else if (!profilePostHasMore) {
+    setProfilePostState(profilePostList.childElementCount ? 'You’re all caught up.' : '', 'empty');
+    return true;
+  }
+  profilePostMore.disabled = true;
+
+  const request = (async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_profile_posts', {
+        target_profile: targetId,
+        p_before_created_at: profilePostCursor?.created_at || null,
+        p_before_id: profilePostCursor?.id || null,
+        p_limit: PROFILE_POST_PAGE_SIZE + 1
+      });
+      if (error) throw error;
+      const rows = data || [];
+      const posts = rows.slice(0, PROFILE_POST_PAGE_SIZE);
+      await signProfilePostMedia(posts);
+      let avatarUrl = '';
+      const avatarPath = profile.avatar_url || profile.avatar_path;
+      if (avatarPath) {
+        try {
+          avatarUrl = await signedAsset(avatarPath);
+        } catch (error) {
+          console.warn('VYBE could not load this profile photo for its posts:', error);
+        }
+      }
+
+      if (reset) profilePostList.replaceChildren();
+      const existingIds = new Set([...profilePostList.children].map(item => item.dataset.postId));
+      posts.forEach(post => {
+        if (!existingIds.has(post.id)) profilePostList.append(renderProfilePost(post, avatarUrl));
+      });
+      profilePostHasMore = rows.length > PROFILE_POST_PAGE_SIZE;
+      if (posts.length) {
+        const lastPost = posts[posts.length - 1];
+        profilePostCursor = { created_at: lastPost.created_at, id: lastPost.id };
+      }
+      profilePostEmpty.hidden = profilePostList.childElementCount > 0;
+      setProfilePostState(
+        profilePostList.childElementCount
+          ? profilePostHasMore ? '' : 'You’re all caught up.'
+          : '',
+        profilePostList.childElementCount && !profilePostHasMore ? 'empty' : ''
+      );
+      profilePostRetry.hidden = true;
+      profilePostMore.hidden = !profilePostHasMore;
+      return true;
+    } catch (error) {
+      profilePostEmpty.hidden = true;
+      setProfilePostState(
+        ['PGRST202', 'PGRST205', '42883'].includes(error?.code)
+          ? 'Profile posts need the latest reviewed Feed migration. Apply it, then retry.'
+          : `Couldn’t load posts. ${friendlyError(error)}`,
+        'error'
+      );
+      profilePostRetry.hidden = false;
+      profilePostMore.hidden = true;
+      return false;
+    } finally {
+      profilePostRequest = null;
+      profilePostMore.disabled = false;
+    }
+  })();
+  profilePostRequest = request;
+  return request;
+}
+
+function refreshProfilePosts() {
+  if (profilePostRefreshing || document.visibilityState !== 'visible') return;
+  profilePostRefreshing = true;
+  Promise.all([loadProfile(), loadProfilePosts({ reset: true })])
+    .catch(error => setProfilePostState(`Couldn’t refresh profile posts. ${friendlyError(error)}`, 'error'))
+    .finally(() => { profilePostRefreshing = false; });
+}
+
+function startProfilePostRealtime() {
+  if (!profilePostList || !targetId || !supabase || profilePostChannel) return;
+  profilePostChannel = supabase
+    .channel(`profile:posts:${targetId}:${currentUser.id}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'posts'
+    }, payload => {
+      const authorId = payload.new?.author_id || payload.old?.author_id;
+      if (payload.eventType === 'DELETE' || authorId === targetId) refreshProfilePosts();
+    })
+    .subscribe(channelStatus => {
+      if (channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT') {
+        setProfilePostState('Live post updates are unavailable. VYBE will keep checking for changes.', 'error');
+      }
+    });
+  profilePostRefreshTimer = window.setInterval(refreshProfilePosts, 30000);
+  window.addEventListener('pagehide', stopProfilePostRealtime, { once: true });
+}
+
+function stopProfilePostRealtime() {
+  if (profilePostRefreshTimer) window.clearInterval(profilePostRefreshTimer);
+  profilePostRefreshTimer = null;
+  if (profilePostChannel) supabase?.removeChannel(profilePostChannel);
+  profilePostChannel = null;
+}
+
+function resumeProfilePostRealtime() {
+  if (!targetId) return;
+  startProfilePostRealtime();
+  refreshProfilePosts();
+}
+
 async function loadInterestState() {
   if (profile.id === currentUser.id) return;
   messageButton.disabled = false;
@@ -658,6 +900,12 @@ async function initialize() {
     await loadProfile();
     status.hidden = true;
     page.hidden = false;
+    loadProfilePosts({ reset: true });
+    startProfilePostRealtime();
+    window.addEventListener('pageshow', resumeProfilePostRealtime);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refreshProfilePosts();
+    });
     if (targetId === currentUser.id && new URLSearchParams(window.location.search).get('edit') === 'complete') {
       openEditDialog('university');
     }
@@ -688,6 +936,8 @@ async function initialize() {
     tabs[next].focus();
     activateTab(tabs[next]);
   });
+  profilePostRetry.addEventListener('click', () => loadProfilePosts({ reset: true }));
+  profilePostMore.addEventListener('click', () => loadProfilePosts());
 
   $('[data-edit]').addEventListener('click', () => openEditDialog());
   $('[data-edit-avatar]').addEventListener('click', () => openEditDialog('avatar'));
