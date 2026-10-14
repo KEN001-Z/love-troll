@@ -46,6 +46,17 @@ const mobileCreateMenu = $('[data-mobile-create-menu]');
 const notificationTrigger = $('[data-notification-open]');
 const notificationDrawer = $('[data-notification-drawer]');
 const notificationClose = $('[data-notification-close]');
+const notificationList = $('[data-notification-list]');
+const notificationEmpty = $('[data-notification-empty]');
+const notificationStatus = $('[data-notification-status]');
+const notificationToolbar = $('[data-notification-toolbar]');
+const notificationSelectAll = $('[data-notification-select-all]');
+const notificationExitSelection = $('[data-notification-exit-selection]');
+const notificationMarkAll = $('[data-notification-mark-all]');
+const notificationDeleteSelected = $('[data-notification-delete-selected]');
+const notificationDeleteAll = $('[data-notification-delete-all]');
+const notificationBadge = $('[data-notification-badge]');
+const notificationToasts = $('[data-notification-toasts]');
 const POST_MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime';
 const labels = {
   food: {
@@ -88,11 +99,23 @@ const labels = {
 
 let supabase;
 let currentUserId;
+let notificationChannel;
+let notificationAudioContext;
+let notificationItems = [];
+let notificationAvatarUrls = new Map();
+const selectedNotificationIds = new Set();
+let notificationActionsBusy = false;
+let notificationSelectionMode = false;
+let notificationLongPressTriggered = false;
 const onlineUserIds = new Set();
 let ownInterests = [];
 let ownMatchmakingEnabled = false;
 let activePeopleFilter = 'for-you';
 let candidates = [];
+let discoveryProfiles = [];
+let discoveryPoolOffset = 0;
+let discoveryFetchOffset = 0;
+let discoveryHasMore = false;
 const pendingActions = new Set();
 const PEOPLE_PAGE_SIZE = 24;
 let peopleOffset = 0;
@@ -125,6 +148,7 @@ const POST_MEDIA_TYPES = {
   image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   video: ['video/mp4', 'video/webm', 'video/quicktime']
 };
+const DISCOVERY_REFRESH_INTERVAL = 60_000;
 const CONVERSATION_PROMPTS = [
   'What’s your biggest green flag?',
   'What song have you had on repeat this week?',
@@ -164,6 +188,7 @@ function bindNotificationDrawer() {
     }
     notificationDrawer.showModal();
     notificationTrigger.setAttribute('aria-expanded', 'true');
+    refreshNotifications({ showLoading: true });
   });
   notificationClose?.addEventListener('click', () => notificationDrawer.close());
   notificationDrawer.addEventListener('click', event => {
@@ -173,6 +198,442 @@ function bindNotificationDrawer() {
     notificationTrigger.setAttribute('aria-expanded', 'false');
     notificationTrigger.focus();
   });
+  notificationList?.addEventListener('change', event => {
+    const checkbox = event.target.closest('[data-notification-select]');
+    if (!checkbox) return;
+    const notificationId = checkbox.dataset.notificationSelect;
+    if (checkbox.checked) selectedNotificationIds.add(notificationId);
+    else selectedNotificationIds.delete(notificationId);
+    updateNotificationActions();
+  });
+  notificationList?.addEventListener('click', event => {
+    if (notificationLongPressTriggered) {
+      notificationLongPressTriggered = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (!notificationSelectionMode) return;
+    const link = event.target.closest('.notification-link');
+    const item = link?.closest('.notification-item');
+    if (!item) return;
+    event.preventDefault();
+    toggleNotificationSelection(item.dataset.notificationId);
+  });
+  notificationList?.addEventListener('keydown', event => {
+    if (event.code !== 'Space' || event.target.closest('[data-notification-select]')) return;
+    const link = event.target.closest('.notification-link');
+    const item = link?.closest('.notification-item');
+    if (!item) return;
+    event.preventDefault();
+    if (!notificationSelectionMode) setNotificationSelectionMode(true);
+    toggleNotificationSelection(item.dataset.notificationId);
+  });
+  notificationSelectAll?.addEventListener('change', () => {
+    notificationItems.forEach(notification => {
+      const notificationId = String(notification.notification_id);
+      if (notificationSelectAll.checked) selectedNotificationIds.add(notificationId);
+      else selectedNotificationIds.delete(notificationId);
+    });
+    notificationList?.querySelectorAll('[data-notification-select]').forEach(checkbox => {
+      checkbox.checked = notificationSelectAll.checked;
+    });
+    updateNotificationActions();
+  });
+  notificationMarkAll?.addEventListener('click', markAllNotificationsRead);
+  notificationDeleteSelected?.addEventListener('click', deleteSelectedNotifications);
+  notificationDeleteAll?.addEventListener('click', deleteAllNotifications);
+  notificationExitSelection?.addEventListener('click', () => setNotificationSelectionMode(false));
+}
+
+function setNotificationStatus(message, isError = false) {
+  if (!notificationStatus) return;
+  notificationStatus.textContent = message;
+  notificationStatus.hidden = !message;
+  if (isError) notificationStatus.dataset.state = 'error';
+  else delete notificationStatus.dataset.state;
+}
+
+function unlockNotificationAudio() {
+  if (!window.AudioContext) return;
+  notificationAudioContext ||= new window.AudioContext();
+  if (notificationAudioContext.state === 'running') return;
+  notificationAudioContext.resume().then(() => {
+    if (notificationAudioContext.state !== 'running') {
+      console.warn('VYBE could not start the notification chime because audio is still suspended.');
+    }
+  }).catch(error => console.warn('VYBE could not enable the notification chime.', error));
+}
+
+function playNotificationSound() {
+  if (!notificationAudioContext || notificationAudioContext.state !== 'running') return;
+
+  const context = notificationAudioContext;
+  const now = context.currentTime;
+  [880, 1320].forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    const volume = context.createGain();
+    const startAt = now + index * 0.07;
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    volume.gain.setValueAtTime(0.0001, startAt);
+    volume.gain.exponentialRampToValueAtTime(index ? 0.018 : 0.04, startAt + 0.015);
+    volume.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.55);
+    oscillator.connect(volume);
+    volume.connect(context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + 0.56);
+  });
+}
+
+function updateNotificationBadge(notifications) {
+  if (!notificationTrigger || !notificationBadge) return;
+  const unreadCount = notifications.filter(item => !item.read_at).length;
+  notificationBadge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  notificationBadge.hidden = unreadCount === 0;
+  const label = unreadCount
+    ? `Notifications, ${unreadCount} unread`
+    : 'Open notifications';
+  notificationTrigger.setAttribute('aria-label', label);
+  notificationTrigger.title = label;
+}
+
+function updateNotificationActions() {
+  if (!notificationToolbar) return;
+  const availableIds = new Set(notificationItems.map(item => String(item.notification_id)));
+  for (const id of selectedNotificationIds) {
+    if (!availableIds.has(id)) selectedNotificationIds.delete(id);
+  }
+  const selectedCount = selectedNotificationIds.size;
+  notificationToolbar.hidden = !notificationSelectionMode || notificationItems.length === 0;
+  if (notificationList) notificationList.dataset.selectionMode = String(notificationSelectionMode);
+  if (notificationSelectAll) {
+    notificationSelectAll.checked = notificationItems.length > 0 && selectedCount === notificationItems.length;
+    notificationSelectAll.indeterminate = selectedCount > 0 && selectedCount < notificationItems.length;
+    notificationSelectAll.disabled = notificationActionsBusy;
+  }
+  if (notificationMarkAll) {
+    notificationMarkAll.disabled = notificationActionsBusy;
+  }
+  if (notificationDeleteSelected) {
+    notificationDeleteSelected.disabled = notificationActionsBusy || selectedCount === 0;
+    notificationDeleteSelected.textContent = selectedCount
+      ? `Delete selected (${selectedCount})`
+      : 'Delete selected';
+  }
+  if (notificationDeleteAll) notificationDeleteAll.disabled = notificationActionsBusy;
+  if (notificationExitSelection) notificationExitSelection.disabled = notificationActionsBusy;
+  notificationList?.querySelectorAll('[data-notification-select]').forEach(checkbox => {
+    checkbox.disabled = notificationActionsBusy;
+  });
+}
+
+function setNotificationSelectionMode(enabled) {
+  notificationSelectionMode = enabled;
+  if (!enabled) {
+    selectedNotificationIds.clear();
+    if (notificationSelectAll) notificationSelectAll.checked = false;
+  }
+  updateNotificationActions();
+}
+
+function toggleNotificationSelection(notificationId) {
+  if (!notificationId || notificationActionsBusy) return;
+  if (!notificationSelectionMode) setNotificationSelectionMode(true);
+  if (selectedNotificationIds.has(notificationId)) selectedNotificationIds.delete(notificationId);
+  else selectedNotificationIds.add(notificationId);
+  const checkbox = notificationList?.querySelector(`[data-notification-select="${CSS.escape(notificationId)}"]`);
+  if (checkbox) checkbox.checked = selectedNotificationIds.has(notificationId);
+  updateNotificationActions();
+}
+
+function notificationAge(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const units = [
+    ['year', 31536000],
+    ['month', 2592000],
+    ['week', 604800],
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60]
+  ];
+  const [unit, duration] = units.find(([, length]) => Math.abs(seconds) >= length) || ['second', 1];
+  return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(Math.round(seconds / duration), unit);
+}
+
+function notificationMessage(kind) {
+  if (kind === 'follow') return ' followed you.';
+  if (kind === 'match') return ' matched with you.';
+  return ' sent you interest.';
+}
+
+function addNotificationAvatar(container, name, avatarUrl) {
+  container.textContent = name.slice(0, 1).toLocaleUpperCase();
+  if (!avatarUrl) return;
+  const image = document.createElement('img');
+  image.src = avatarUrl;
+  image.alt = '';
+  image.loading = 'lazy';
+  image.addEventListener('error', () => image.remove(), { once: true });
+  container.append(image);
+}
+
+function renderNotifications(notifications, avatarUrls) {
+  if (!notificationList || !notificationEmpty) return;
+  notificationItems = notifications;
+  notificationAvatarUrls = avatarUrls;
+  notificationList.replaceChildren();
+  notifications.forEach(notification => {
+    const name = sanitizeName(notification.actor_display_name) || 'A VYBE member';
+    const item = document.createElement('li');
+    item.className = 'notification-item';
+    item.dataset.unread = String(!notification.read_at);
+    const notificationId = String(notification.notification_id);
+    item.dataset.notificationId = notificationId;
+
+    const select = document.createElement('input');
+    select.className = 'notification-select';
+    select.type = 'checkbox';
+    select.dataset.notificationSelect = notificationId;
+    select.checked = selectedNotificationIds.has(notificationId);
+    select.setAttribute('aria-label', `Select notification from ${name}`);
+    item.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || notificationSelectionMode || event.target.closest('button, input')) return;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const holdTimer = window.setTimeout(() => {
+        notificationLongPressTriggered = true;
+        setNotificationSelectionMode(true);
+        toggleNotificationSelection(notificationId);
+      }, 550);
+      const clearHold = () => {
+        window.clearTimeout(holdTimer);
+        item.removeEventListener('pointerup', clearHold);
+        item.removeEventListener('pointercancel', clearHold);
+        item.removeEventListener('pointermove', cancelOnMove);
+      };
+      const cancelOnMove = moveEvent => {
+        if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > 12) clearHold();
+      };
+      item.addEventListener('pointerup', clearHold, { once: true });
+      item.addEventListener('pointercancel', clearHold, { once: true });
+      item.addEventListener('pointermove', cancelOnMove);
+    });
+    item.addEventListener('contextmenu', event => event.preventDefault());
+
+    const link = document.createElement('a');
+    link.className = 'notification-link';
+    link.href = `profile.html?id=${encodeURIComponent(notification.actor_id)}`;
+
+    const avatar = document.createElement('span');
+    avatar.className = 'notification-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    addNotificationAvatar(avatar, name, avatarUrls.get(notification.actor_id));
+
+    const copy = document.createElement('span');
+    copy.className = 'notification-copy';
+    const message = document.createElement('span');
+    const actorName = document.createElement('strong');
+    actorName.textContent = name;
+    message.append(actorName, document.createTextNode(notificationMessage(notification.kind)));
+
+    const time = document.createElement('time');
+    time.className = 'notification-time';
+    time.dateTime = notification.created_at;
+    time.textContent = notificationAge(notification.created_at);
+    copy.append(message, time);
+
+    const unreadDot = document.createElement('span');
+    unreadDot.className = 'notification-unread-dot';
+    unreadDot.setAttribute('aria-hidden', 'true');
+    link.append(avatar, copy, unreadDot);
+    item.append(select, link);
+    notificationList.append(item);
+  });
+
+  const hasNotifications = notifications.length > 0;
+  notificationList.hidden = !hasNotifications;
+  notificationEmpty.hidden = hasNotifications;
+  if (!hasNotifications) setNotificationSelectionMode(false);
+  updateNotificationBadge(notifications);
+  updateNotificationActions();
+}
+
+function showNotificationToast(notification, avatarUrl = '') {
+  if (!notificationToasts) return;
+  const name = sanitizeName(notification.actor_display_name) || 'A VYBE member';
+  const toast = document.createElement('article');
+  toast.className = 'notification-toast';
+
+  const link = document.createElement('a');
+  link.className = 'notification-toast-link';
+  link.href = `profile.html?id=${encodeURIComponent(notification.actor_id)}`;
+  link.setAttribute('aria-label', `${name}${notificationMessage(notification.kind)} View profile.`);
+
+  const avatar = document.createElement('span');
+  avatar.className = 'notification-toast-avatar';
+  avatar.setAttribute('aria-hidden', 'true');
+  addNotificationAvatar(avatar, name, avatarUrl);
+
+  const copy = document.createElement('span');
+  copy.className = 'notification-toast-copy';
+  const brand = document.createElement('span');
+  brand.className = 'notification-toast-brand';
+  brand.textContent = 'A LITTLE VYBE UPDATE';
+  const message = document.createElement('span');
+  message.className = 'notification-toast-message';
+  const actorName = document.createElement('strong');
+  actorName.textContent = name;
+  message.append(actorName, document.createTextNode(notificationMessage(notification.kind)));
+  copy.append(brand, message);
+  link.append(avatar, copy);
+
+  const close = document.createElement('button');
+  close.className = 'notification-toast-close';
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Dismiss notification');
+  close.textContent = '×';
+  close.addEventListener('click', () => dismissNotificationToast(toast));
+
+  toast.append(link, close);
+  notificationToasts.prepend(toast);
+  window.setTimeout(() => dismissNotificationToast(toast), 6500);
+}
+
+function dismissNotificationToast(toast) {
+  if (!toast.isConnected) return;
+  toast.classList.add('notification-toast-leave');
+  window.setTimeout(() => toast.remove(), 220);
+}
+
+async function refreshNotifications({ showLoading = false, incomingId = null } = {}) {
+  if (!supabase || !currentUserId || !notificationList) return;
+  if (showLoading) {
+    notificationList.hidden = true;
+    notificationEmpty.hidden = true;
+    if (notificationToolbar) notificationToolbar.hidden = true;
+    setNotificationStatus('Loading your notifications…');
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('get_my_notifications');
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error('VYBE returned an invalid notifications response.');
+
+    const avatars = await signProfileAvatars(data.map(item => ({
+      id: item.actor_id,
+      avatar_path: item.actor_avatar_path
+    })));
+    renderNotifications(data, avatars.urlsByProfileId);
+    setNotificationStatus('');
+
+    if (incomingId) {
+      const incoming = data.find(item => String(item.notification_id) === String(incomingId));
+      if (incoming) showNotificationToast(incoming, avatars.urlsByProfileId.get(incoming.actor_id));
+    }
+
+  } catch (error) {
+    const missingNotificationsRpc = error.code === 'PGRST202' ||
+      /could not find the function public\.get_my_notifications/i.test(error.message || '');
+    setNotificationStatus(missingNotificationsRpc
+      ? 'Notifications aren’t set up in this Supabase project yet. Apply the notifications migration, then refresh this page.'
+      : `We couldn’t load your notifications. ${error.message || 'Please try again.'}`,
+    true);
+  }
+}
+
+async function markAllNotificationsRead() {
+  if (!supabase || notificationActionsBusy) return;
+  notificationActionsBusy = true;
+  updateNotificationActions();
+  try {
+    const { error } = await supabase.rpc('mark_my_notifications_read');
+    if (error) throw error;
+    const readAt = new Date().toISOString();
+    notificationItems.forEach(item => { item.read_at ||= readAt; });
+    renderNotifications(notificationItems, notificationAvatarUrls);
+    setNotificationStatus('All notifications marked as read.');
+  } catch (error) {
+    setNotificationStatus(`We couldn’t mark your notifications as read. ${error.message || 'Please try again.'}`, true);
+  } finally {
+    notificationActionsBusy = false;
+    updateNotificationActions();
+  }
+}
+
+async function deleteSelectedNotifications() {
+  if (!supabase || notificationActionsBusy || selectedNotificationIds.size === 0) return;
+  const ids = [...selectedNotificationIds];
+  notificationActionsBusy = true;
+  updateNotificationActions();
+  try {
+    const { data: deletedCount, error } = await supabase.rpc('delete_my_notifications', {
+      p_notification_ids: ids
+    });
+    if (error) throw error;
+    if (!Number.isInteger(deletedCount)) throw new Error('VYBE could not confirm how many notifications were deleted.');
+    ids.forEach(id => selectedNotificationIds.delete(id));
+    renderNotifications(
+      notificationItems.filter(item => !ids.includes(String(item.notification_id))),
+      notificationAvatarUrls
+    );
+    setNotificationStatus(`${deletedCount} notification${deletedCount === 1 ? '' : 's'} deleted.`);
+  } catch (error) {
+    setNotificationStatus(`We couldn’t delete the selected notifications. ${error.message || 'Please try again.'}`, true);
+  } finally {
+    notificationActionsBusy = false;
+    updateNotificationActions();
+  }
+}
+
+async function deleteAllNotifications() {
+  if (!supabase || notificationActionsBusy || !window.confirm('Delete all notifications? This cannot be undone.')) return;
+  notificationActionsBusy = true;
+  updateNotificationActions();
+  try {
+    const { data: deletedCount, error } = await supabase.rpc('delete_my_notifications', {
+      p_notification_ids: null
+    });
+    if (error) throw error;
+    if (!Number.isInteger(deletedCount)) throw new Error('VYBE could not confirm how many notifications were deleted.');
+    selectedNotificationIds.clear();
+    renderNotifications([], notificationAvatarUrls);
+    setNotificationStatus(`All ${deletedCount} notification${deletedCount === 1 ? '' : 's'} deleted.`);
+  } catch (error) {
+    setNotificationStatus(`We couldn’t delete your notifications. ${error.message || 'Please try again.'}`, true);
+  } finally {
+    notificationActionsBusy = false;
+    updateNotificationActions();
+  }
+}
+
+function startNotificationRealtime() {
+  if (!notificationTrigger || !currentUserId) return;
+  document.addEventListener('pointerdown', unlockNotificationAudio);
+  document.addEventListener('keydown', unlockNotificationAudio);
+  notificationChannel = supabase
+    .channel(`notifications:${currentUserId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'notifications',
+      filter: `recipient_id=eq.${currentUserId}`
+    }, payload => {
+      playNotificationSound();
+      refreshNotifications({
+        incomingId: payload.new?.id
+      });
+    })
+    .subscribe(state => {
+      if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
+        setNotificationStatus('Live notification updates are unavailable. Open notifications to refresh.', true);
+      }
+    });
+  window.addEventListener('pagehide', () => {
+    if (notificationChannel) supabase?.removeChannel(notificationChannel);
+  }, { once: true });
 }
 
 function applyHomeSearch() {
@@ -1278,6 +1739,15 @@ function searchHaystack(profile) {
   ].filter(Boolean).join(' ').toLocaleLowerCase();
 }
 
+function shuffleProfiles(profiles) {
+  const shuffled = [...profiles];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
 function renderCandidates() {
   const visible = candidates;
   suggestionList.replaceChildren();
@@ -1383,7 +1853,7 @@ function renderCandidate(candidate) {
   return card;
 }
 
-async function loadSuggestions({ reset = true } = {}) {
+async function loadSuggestions({ reset = true, background = false } = {}) {
   if (!reset && peopleLoading) return;
   const requestId = ++peopleRequestId;
   const filter = activePeopleFilter || 'for-you';
@@ -1393,10 +1863,14 @@ async function loadSuggestions({ reset = true } = {}) {
   suggestionList.dataset.error = '';
   setSectionMessage(peopleMessage, reset ? 'Finding people you might click with…' : 'Loading more people…');
   if (reset) {
-    peopleOffset = 0;
-    peopleHasMore = false;
-    candidates = [];
-    renderPeopleSkeletons();
+    if (background) {
+      renderCandidates();
+    } else {
+      peopleOffset = 0;
+      peopleHasMore = false;
+      candidates = [];
+      renderPeopleSkeletons();
+    }
   } else {
     renderCandidates();
   }
@@ -1433,15 +1907,43 @@ async function loadSuggestions({ reset = true } = {}) {
         });
       }
     } else {
-      const { data, error } = await supabase.rpc('discover_profiles', {
-        result_offset: offset,
-        result_limit: PEOPLE_PAGE_SIZE + 1
-      });
-      if (error) throw error;
-      if (requestId !== peopleRequestId) return;
-      const page = data || [];
-      peopleHasMore = page.length > PEOPLE_PAGE_SIZE;
+      if (reset) {
+        const { data, error } = await supabase.rpc('discover_profiles', {
+          result_offset: 0,
+          result_limit: 100
+        });
+        if (error) throw error;
+        if (requestId !== peopleRequestId) return;
+        const page = data || [];
+        discoveryProfiles = shuffleProfiles(page);
+        discoveryPoolOffset = 0;
+        discoveryFetchOffset = page.length;
+        discoveryHasMore = page.length === 100;
+      }
+
+      while (
+        discoveryProfiles.length - discoveryPoolOffset < PEOPLE_PAGE_SIZE + 1 &&
+        discoveryHasMore
+      ) {
+        const { data, error } = await supabase.rpc('discover_profiles', {
+          result_offset: discoveryFetchOffset,
+          result_limit: 100
+        });
+        if (error) throw error;
+        if (requestId !== peopleRequestId) return;
+        const page = data || [];
+        discoveryFetchOffset += page.length;
+        discoveryHasMore = page.length === 100;
+        discoveryProfiles.push(...shuffleProfiles(page));
+      }
+
+      const page = discoveryProfiles.slice(
+        discoveryPoolOffset,
+        discoveryPoolOffset + PEOPLE_PAGE_SIZE + 1
+      );
+      peopleHasMore = page.length > PEOPLE_PAGE_SIZE || discoveryHasMore;
       profiles = page.slice(0, PEOPLE_PAGE_SIZE);
+      discoveryPoolOffset += profiles.length;
     }
     if (requestId !== peopleRequestId) return;
 
@@ -1475,23 +1977,18 @@ async function loadSuggestions({ reset = true } = {}) {
       following: followedIds.has(profile.id),
       followStatusAvailable: !followStatusUnavailable
     }));
-    if (filter === 'for-you') {
-      nextCandidates.sort((first, second) => {
-        const firstShared = (first.profile.interests || []).filter(item => ownInterests.includes(item)).length;
-        const secondShared = (second.profile.interests || []).filter(item => ownInterests.includes(item)).length;
-        return secondShared - firstShared ||
-          new Date(second.profile.created_at).getTime() - new Date(first.profile.created_at).getTime() ||
-          first.profile.id.localeCompare(second.profile.id);
-      });
+    if (background) {
+      candidates = nextCandidates;
+    } else {
+      const uniqueIds = new Set(candidates.map(candidate => candidate.profile.id));
+      candidates.push(...nextCandidates.filter(candidate => !uniqueIds.has(candidate.profile.id)));
     }
-    const uniqueIds = new Set(candidates.map(candidate => candidate.profile.id));
-    candidates.push(...nextCandidates.filter(candidate => !uniqueIds.has(candidate.profile.id)));
     peopleOffset = nextOffset;
     setSectionMessage(peopleMessage, '');
     renderCandidates();
   } catch (error) {
     if (requestId === peopleRequestId) {
-      suggestionList.replaceChildren();
+      if (!background) suggestionList.replaceChildren();
       suggestionList.setAttribute('aria-busy', 'false');
       suggestionList.dataset.error = 'true';
       peopleLoadMore.hidden = true;
@@ -1507,6 +2004,22 @@ async function loadSuggestions({ reset = true } = {}) {
       renderCandidates();
     }
   }
+}
+
+function refreshHomeSuggestions() {
+  if (!suggestionList || !supabase || document.visibilityState !== 'visible' || peopleLoading) return;
+  loadSuggestions({ background: true }).catch(error => {
+    setSectionMessage(peopleMessage, `We couldn’t refresh people to meet: ${error.message || 'Please try again.'}`, 'error');
+  });
+}
+
+function startHomeSuggestionRefresh() {
+  const refreshTimer = window.setInterval(refreshHomeSuggestions, DISCOVERY_REFRESH_INTERVAL);
+  window.addEventListener('pageshow', refreshHomeSuggestions);
+  window.addEventListener('pagehide', () => {
+    window.clearInterval(refreshTimer);
+    window.removeEventListener('pageshow', refreshHomeSuggestions);
+  }, { once: true });
 }
 
 function renderConnections(matches, profiles, urlsByProfileId) {
@@ -1753,6 +2266,8 @@ async function initialize() {
       return;
     }
     currentUserId = user.id;
+    startNotificationRealtime();
+    refreshNotifications();
     subscribeToAppPresence(
       renderAppPresence,
       error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
@@ -1799,7 +2314,10 @@ async function initialize() {
     startFeedRealtime();
     window.addEventListener('pageshow', resumeFeedRealtime);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') refreshFeedHead();
+      if (document.visibilityState === 'visible') {
+        refreshFeedHead();
+        refreshHomeSuggestions();
+      }
     });
     const results = await Promise.allSettled([
       feedSection ? loadFeed({ reset: true }) : Promise.resolve(true),
@@ -1821,6 +2339,7 @@ async function initialize() {
     if (results[3].status === 'rejected') {
       setSectionMessage(communityRoomsMessage, `Rooms are listed from Community. We couldn’t refresh them: ${results[3].reason.message || 'Please try again.'}`, 'error');
     }
+    if (suggestionList) startHomeSuggestionRefresh();
   } catch (error) {
     setStatus(error.message || 'We couldn’t load your VYBE home. Please refresh and try again.');
   }

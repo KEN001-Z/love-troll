@@ -54,12 +54,32 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+:where(
+  .chat-history,
+  .connection-list,
+  .conversation-list,
+  .immersive-gallery,
+  .menu,
+  .notification-drawer,
+  .people-tabs,
+  .post-media-gallery,
+  .profile-post-gallery,
+  .share-starter-list,
+  .suggestion-list
+) {
+  -webkit-overflow-scrolling: touch;
+}
+
 :focus-visible {
   outline: 3px solid rgba(115, 87, 232, .72);
   outline-offset: 3px;
 }
 
 @media (max-width: 760px) {
+  html {
+    scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
   input,
   textarea,
   select {

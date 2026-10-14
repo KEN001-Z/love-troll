@@ -39,6 +39,7 @@
 
 <main class="profile-main" id="main">
   <p class="profile-status" data-profile-status role="status" aria-live="polite" tabindex="-1">Loading profile…</p>
+  <button class="btn alt profile-unblock" type="button" data-unblock-profile hidden>Unblock profile</button>
   <div class="profile-page" data-profile-page hidden>
     <section class="profile-card" aria-labelledby="profile-name">
       <div class="profile-cover" data-cover>
@@ -251,8 +252,39 @@
 
 <dialog class="profile-dialog small-dialog" data-more-dialog aria-labelledby="more-title">
   <div class="dialog-heading"><div><p class="profile-eyebrow">PROFILE OPTIONS</p><h2 id="more-title">More about this profile</h2></div><button type="button" class="icon-close" data-close-more aria-label="Close profile options">×</button></div>
-  <p class="dialog-intro">Reporting and blocking aren’t available in VYBE yet. They’ll be added before public profiles are broadly launched.</p>
+  <p class="dialog-intro">Report a concern or block this profile. Blocking hides each other’s profiles and stops follows, interests, and messages.</p>
+  <div class="profile-safety-actions">
+    <button class="btn alt" type="button" data-report-profile>Report profile</button>
+    <button class="btn coral" type="button" data-block-profile>Block profile</button>
+  </div>
   <button class="btn alt dialog-done" type="button" data-close-more>Done</button>
+</dialog>
+
+<dialog class="profile-dialog small-dialog" data-report-dialog aria-labelledby="report-title">
+  <div class="dialog-heading"><div><p class="profile-eyebrow">PRIVATE REPORT</p><h2 id="report-title">Report this profile</h2></div><button type="button" class="icon-close" data-close-report aria-label="Close report form">×</button></div>
+  <p class="dialog-intro">Reports are private. Choose the reason that best describes your concern.</p>
+  <form data-report-form>
+    <label class="edit-field">Reason
+      <select name="reason" required>
+        <option value="">Choose a reason</option>
+        <option value="harassment">Harassment or bullying</option>
+        <option value="hate">Hateful or abusive content</option>
+        <option value="sexual-content">Sexual content</option>
+        <option value="impersonation">Impersonation</option>
+        <option value="spam">Spam or scam</option>
+        <option value="other">Something else</option>
+      </select>
+    </label>
+    <label class="edit-field">Details (optional)
+      <textarea name="details" rows="4" maxlength="500" placeholder="Share any context that may help our team."></textarea>
+      <small>Up to 500 characters.</small>
+    </label>
+    <p class="profile-feedback" data-report-status role="status" aria-live="polite" hidden></p>
+    <div class="edit-submit">
+      <button class="btn alt" type="button" data-cancel-report>Cancel</button>
+      <button class="btn" type="submit">Submit report</button>
+    </div>
+  </form>
 </dialog>
 <script type="module" src="src/js/profile/profile.js"></script>
 </body>
