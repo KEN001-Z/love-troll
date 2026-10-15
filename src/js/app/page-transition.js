@@ -22,6 +22,7 @@ const transition = (() => {
     if (!screen.isConnected) document.body.append(screen);
     screen.getBoundingClientRect();
     screen.classList.add('is-visible');
+    document.documentElement.classList.remove('vybe-transition-pending');
   }
 
   function hideScreenAfter(delay = 140) {

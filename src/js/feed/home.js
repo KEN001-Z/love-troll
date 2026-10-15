@@ -3425,13 +3425,20 @@ async function loadSuggestions({ reset = true } = {}) {
         });
       }
     } else {
-      const { data, error } = await supabase.rpc('discover_profiles', {
+      let result = await supabase.rpc('discover_profiles', {
         result_offset: offset,
-        result_limit: PEOPLE_PAGE_SIZE + 1
+        result_limit: PEOPLE_PAGE_SIZE + 1,
+        p_matchmaking_only: true
       });
-      if (error) throw error;
+      if (result.error?.code === 'PGRST202') {
+        result = await supabase.rpc('discover_profiles', {
+          result_offset: offset,
+          result_limit: PEOPLE_PAGE_SIZE + 1
+        });
+      }
+      if (result.error) throw result.error;
       if (requestId !== peopleRequestId) return;
-      const page = data || [];
+      const page = result.data || [];
       peopleHasMore = page.length > PEOPLE_PAGE_SIZE;
       profiles = page.slice(0, PEOPLE_PAGE_SIZE);
     }

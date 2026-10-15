@@ -32,13 +32,17 @@
 .about-section{padding:18px;border-color:#ebe6df;border-radius:12px;background:#fdfbf8}
 .about-section>p:not(.profile-eyebrow){color:#625b67;font-size:.84rem;line-height:1.55}
 .profile-eyebrow{font-size:.61rem;letter-spacing:.11em}
+@media(max-width:700px){
+  .profile-actions{padding-left:142px}
+  .profile-action{white-space:nowrap}
+}
 @media(max-width:600px){
   .profile-main{width:calc(100% - 28px);padding-top:16px}
   .profile-cover{height:136px}
   .profile-identity{padding-inline:15px;padding-bottom:18px}
   .profile-avatar{left:15px;top:-46px;width:90px;height:90px}
-  .profile-actions{min-height:58px;gap:5px}
-  .profile-action{min-height:35px;padding:6px 8px;font-size:.7rem}
+  .profile-actions{min-height:58px;gap:5px;padding-left:105px}
+  .profile-action{min-height:35px;padding:6px 8px;font-size:.7rem;white-space:nowrap}
   .profile-heading{padding-top:8px}
   .profile-heading h1{font-size:1.6rem}
   .profile-tabs{gap:13px;margin-top:13px}

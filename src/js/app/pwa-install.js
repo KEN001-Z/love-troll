@@ -1,9 +1,11 @@
 import '../../css/pwa-install.css';
+import { startAppUpdateChecks } from './pwa-update.js';
 
 const DISMISSAL_KEY = 'vybes-install-snoozed-until';
 const INSTALLED_KEY = 'vybes-install-completed';
 const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
 const AUTO_PROMPT_DELAY_MS = 5000;
+const appUpdates = startAppUpdateChecks();
 const pageStartedAt = Date.now();
 const isInAppBrowser = /Instagram|FBAN|FBAV|FB_IAB|TikTok|Line\/|Snapchat/i.test(navigator.userAgent);
 const ua = navigator.userAgent;
@@ -298,6 +300,10 @@ function showInstallResult(message, installed = false) {
 function maybeShowAutomaticPrompt() {
   if (autoPromptShown || isStandalone() || hasSnooze()) return;
   if (!autoPromptPaths.has(window.location.pathname)) return;
+  if (appUpdates.isAvailable() || appUpdates.isChecking()) {
+    window.setTimeout(maybeShowAutomaticPrompt, 500);
+    return;
+  }
   const delayRemaining = AUTO_PROMPT_DELAY_MS - (Date.now() - pageStartedAt);
   if (delayRemaining > 0) {
     window.setTimeout(maybeShowAutomaticPrompt, delayRemaining);

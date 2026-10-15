@@ -12,6 +12,19 @@
 <meta name="apple-mobile-web-app-title" content="VYBES">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
+<script>
+try {
+  const [destinationPath, startedAt] = (sessionStorage.getItem('vybe-transition-destination') || '').split('|');
+  const age = Date.now() - Number(startedAt);
+  const navigation = performance.getEntriesByType('navigation')[0];
+  if ((destinationPath === location.pathname && Number.isFinite(age) && age >= 0 && age < 10000) ||
+      navigation?.type === 'back_forward') {
+    document.documentElement.classList.add('vybe-transition-pending');
+  }
+} catch (error) {
+  console.warn('VYBE could not prepare the page transition.', error);
+}
+</script>
 <meta property="og:title" content="VYBE — Good people. Mad gist. Better vibes.">
 <meta property="og:description" content="VYBE is a Nigerian Gen Z social space to meet people, share gist, and play small. Omo, there is room for everybody.">
 <meta property="og:type" content="website">

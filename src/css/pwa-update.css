@@ -1,0 +1,99 @@
+.vybes-update-dialog {
+  width: min(440px, calc(100% - 32px));
+  max-width: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+  color: var(--ink, #211D2B);
+}
+
+.vybes-update-dialog::backdrop {
+  background: rgba(33, 29, 43, .58);
+  backdrop-filter: blur(5px);
+}
+
+.vybes-update-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 34px 30px 30px;
+  border: 2px solid var(--ink, #211D2B);
+  border-radius: 28px;
+  background: var(--ivory, #FFF9F0);
+  box-shadow: 7px 7px 0 var(--ink, #211D2B);
+  text-align: center;
+}
+
+.vybes-update-icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border: 2px solid var(--ink, #211D2B);
+  border-radius: 18px;
+  background: var(--yellow, #FFD166);
+  font-size: 30px;
+}
+
+.vybes-update-kicker {
+  color: var(--purple, #7357E8);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.vybes-update-card h2 {
+  font: 800 clamp(1.8rem, 8vw, 2.35rem)/1.05 var(--display, "Bricolage Grotesque", sans-serif);
+  letter-spacing: -.04em;
+}
+
+.vybes-update-card p:not(.vybes-update-kicker) {
+  max-width: 30ch;
+  color: var(--muted, #5d566b);
+}
+
+.vybes-update-actions {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.vybes-update-actions button {
+  min-height: 48px;
+  padding: 11px 20px;
+  border: 2px solid var(--ink, #211D2B);
+  border-radius: 999px;
+  font: 700 16px var(--body, "DM Sans", sans-serif);
+  cursor: pointer;
+}
+
+.vybes-update-refresh {
+  background: var(--purple, #7357E8);
+  box-shadow: 3px 3px 0 var(--ink, #211D2B);
+  color: #fff;
+}
+
+.vybes-update-later {
+  background: #fff;
+  color: var(--ink, #211D2B);
+}
+
+.vybes-update-actions button:focus-visible {
+  outline: 3px solid var(--purple, #7357E8);
+  outline-offset: 3px;
+}
+
+@media (max-width: 420px) {
+  .vybes-update-card {
+    padding: 28px 22px 24px;
+  }
+
+  .vybes-update-actions button {
+    flex: 1 1 auto;
+  }
+}
