@@ -22,19 +22,7 @@
 <link rel="stylesheet" href="src/css/style.css">
 <link rel="stylesheet" href="src/css/entry-splash.css">
 <link rel="stylesheet" href="src/css/performance.css">
-<script>
-(function () {
-const mobileViewport = window.matchMedia('(max-width: 760px)').matches;
-if (mobileViewport) {
-  document.documentElement.classList.add('show-mobile-entry-splash');
-  try {
-    window.sessionStorage.setItem('vybe-mobile-entry-splash-pending', String(Date.now()));
-  } catch (error) {
-    console.warn('VYBE could not preserve the mobile entry splash across sign-in.', error);
-  }
-}
-})();
-</script>
+<script type="module" src="src/js/app/entry-splash-state.js"></script>
 <script type="module" src="src/js/app/page-transition.js"></script>
 <script type="module" src="app-presence.js"></script>
 </head>

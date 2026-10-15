@@ -20,6 +20,10 @@ html.show-mobile-entry-splash .mobile-entry-splash {
   display: grid;
 }
 
+html.show-mobile-entry-splash body > :not(.mobile-entry-splash):not(script):not(.vybe-transition-screen) {
+  visibility: hidden;
+}
+
 .mobile-entry-splash.is-exiting {
   visibility: hidden;
   opacity: 0;
