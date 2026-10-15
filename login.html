@@ -23,27 +23,7 @@
 <link rel="stylesheet" href="src/css/style.css">
 <link rel="stylesheet" href="src/css/entry-splash.css">
 <link rel="stylesheet" href="src/css/performance.css">
-<script>
-(function () {
-  const mobileViewport = window.matchMedia('(max-width: 760px)').matches;
-  const installedApp = navigator.standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.matchMedia('(display-mode: fullscreen)').matches;
-  const pwaLaunch = installedApp || new URLSearchParams(window.location.search).get('source') === 'pwa';
-  let pendingLaunch = false;
-  try {
-    const pendingAt = Number(window.sessionStorage.getItem('vybe-mobile-entry-splash-pending'));
-    pendingLaunch = Number.isFinite(pendingAt) && Date.now() >= pendingAt && Date.now() - pendingAt < 20000;
-    if (pendingAt) window.sessionStorage.removeItem('vybe-mobile-entry-splash-pending');
-    if (mobileViewport && (pwaLaunch || pendingLaunch)) {
-      document.documentElement.classList.add('show-mobile-entry-splash');
-    }
-  } catch (error) {
-    console.warn('VYBE could not check the mobile entry splash state.', error);
-    if (mobileViewport) document.documentElement.classList.add('show-mobile-entry-splash');
-  }
-})();
-</script>
+<script type="module" src="src/js/app/entry-splash-state.js"></script>
 <script type="module" src="src/js/app/page-transition.js"></script>
 <script type="module" src="app-presence.js"></script>
 </head>
