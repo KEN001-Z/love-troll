@@ -381,7 +381,8 @@ async function initializeAuthForms(supabase) {
     });
 
     const { user, recovered } = await getAuthenticatedUser(supabase);
-    if (user) {
+    const showLoginForm = new URLSearchParams(window.location.search).get('showLogin') === '1';
+    if (user && !showLoginForm) {
       const searchParams = new URLSearchParams(window.location.search);
       if (searchParams.get('session') === 'oauth') {
         window.location.replace(await getAuthenticatedDestination(supabase, user));

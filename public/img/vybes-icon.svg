@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="vybes-icon-title">
+  <title id="vybes-icon-title">VYBES</title>
   <rect width="512" height="512" rx="128" fill="#7357E8"/>
   <path d="m128 160 128 204 128-204" fill="none" stroke="#FFD166" stroke-linecap="round" stroke-linejoin="round" stroke-width="58"/>
   <circle cx="397" cy="112" r="28" fill="#FF6B61"/>

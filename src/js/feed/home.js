@@ -41,6 +41,31 @@ const postMediaInput = postForm ? postForm.querySelector('[data-post-media]') : 
 const postMediaTrigger = postForm ? postForm.querySelector('[data-post-media-trigger]') : null;
 const postMediaPreview = postForm ? postForm.querySelector('[data-post-media-preview]') : null;
 const createKindButtons = $$('[data-create-kind]');
+const createChoiceButtons = $$('[data-create-select]');
+const createCaptureButtons = $$('[data-create-capture]');
+const createChoose = $('[data-create-choose]');
+const createPreview = $('[data-create-preview]');
+const createFields = $('[data-create-fields]');
+const createPreviewStage = $('[data-create-preview-stage]');
+const createPreviewMedia = $('[data-create-preview-media]');
+const createTextCard = $('[data-create-text-card]');
+const createTextPreview = $('[data-create-text-preview]');
+const createVideoControls = $('[data-create-video-controls]');
+const createVideoProgress = $('[data-create-video-progress]');
+const createGalleryDots = $('[data-create-gallery-dots]');
+const createPhotoTools = $('[data-create-photo-tools]');
+const createPhotoThumbnails = $('[data-create-photo-thumbnails]');
+const createPrevPhoto = $('[data-create-photo-prev]');
+const createNextPhoto = $('[data-create-photo-next]');
+const createReplaceMedia = $('[data-create-replace-media]');
+const createRemoveMedia = $('[data-create-remove-media]');
+const createAddPhotos = $('[data-create-add-photos]');
+const createRetryButton = $('[data-create-retry]');
+const createUploadProgress = $('[data-create-upload-progress]');
+const createDetailButtons = $$('[data-create-insert]');
+const discardConfirm = $('[data-discard-confirm]');
+const discardKeepButton = $('[data-discard-keep]');
+const discardConfirmButton = $('[data-discard-confirm-action]');
 const mobileCreateButton = $('[data-mobile-create]');
 const mobileCreateMenu = $('[data-mobile-create-menu]');
 const notificationTrigger = $('[data-notification-open]');
@@ -57,6 +82,14 @@ const notificationDeleteSelected = $('[data-notification-delete-selected]');
 const notificationDeleteAll = $('[data-notification-delete-all]');
 const notificationBadge = $('[data-notification-badge]');
 const notificationToasts = $('[data-notification-toasts]');
+const pushToggle = $('[data-push-toggle]');
+const pushStatus = $('[data-push-status]');
+const pushReminder = $('[data-push-reminder]');
+const pushReminderMessage = $('[data-push-reminder-message]');
+const pushReminderEnable = $('[data-push-reminder-enable]');
+const pushReminderDismiss = $('[data-push-reminder-dismiss]');
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+let pushReminderDismissed = false;
 const POST_MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime';
 const labels = {
   food: {
@@ -112,10 +145,6 @@ let ownInterests = [];
 let ownMatchmakingEnabled = false;
 let activePeopleFilter = 'for-you';
 let candidates = [];
-let discoveryProfiles = [];
-let discoveryPoolOffset = 0;
-let discoveryFetchOffset = 0;
-let discoveryHasMore = false;
 const pendingActions = new Set();
 const PEOPLE_PAGE_SIZE = 24;
 let peopleOffset = 0;
@@ -137,18 +166,46 @@ let feedRefreshingHead = false;
 let composerBusy = false;
 let editingPostId = null;
 let selectedPostMedia = [];
+let editingMediaPreview = [];
+let createMediaIndex = 0;
+let createPickerAction = 'new';
+let createPickerKind = '';
+let composerInitialState = null;
+let createSoundOn = false;
+let createRestoreFocus = null;
 const postMediaUrls = new Map();
 const loadedPosts = new Map();
 const isImmersiveFeed = document.body.classList.contains('vibe-body');
+const isCardFeedLayout = document.body.classList.contains('vibe-feed-cards');
 let feedPlaybackObserver;
 let activeFeedVideo;
+const composerSheet = $('[data-composer-sheet]');
+const composerTitle = $('#composer-title');
+const reelToast = $('[data-reel-toast]');
+const reelNewPill = $('[data-reel-new]');
+const reelSoundButton = $('[data-reel-sound]');
+const REEL_SOUND_KEY = 'vybe-reel-sound';
+let reelObserver;
+let activeReel = null;
+let reelSoundOn = false;
+let reelTapTimer;
+let reelLastTap = { id: '', time: 0 };
+let reelToastTimer;
+let feedStateTimer;
+let insertNewOnRefresh = false;
+let likeBackend = 'unknown';
+const likeStates = new Map();
+const likePending = new Set();
+const followingKnown = new Set();
+const followingIds = new Set();
 let currentAuthor = { id: '', display_name: '', username: '', avatar_path: '' };
 const MAX_POST_MEDIA = 10;
 const POST_MEDIA_TYPES = {
   image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   video: ['video/mp4', 'video/webm', 'video/quicktime']
 };
-const DISCOVERY_REFRESH_INTERVAL = 60_000;
+const POST_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const POST_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 const CONVERSATION_PROMPTS = [
   'What’s your biggest green flag?',
   'What song have you had on repeat this week?',
@@ -207,6 +264,13 @@ function bindNotificationDrawer() {
     updateNotificationActions();
   });
   notificationList?.addEventListener('click', event => {
+    const markReadButton = event.target.closest('[data-notification-mark-read]');
+    if (markReadButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      markNotificationRead(markReadButton);
+      return;
+    }
     if (notificationLongPressTriggered) {
       notificationLongPressTriggered = false;
       event.preventDefault();
@@ -244,6 +308,17 @@ function bindNotificationDrawer() {
   notificationDeleteSelected?.addEventListener('click', deleteSelectedNotifications);
   notificationDeleteAll?.addEventListener('click', deleteAllNotifications);
   notificationExitSelection?.addEventListener('click', () => setNotificationSelectionMode(false));
+  pushToggle?.addEventListener('click', togglePushNotifications);
+  pushReminderEnable?.addEventListener('click', async () => {
+    pushReminderEnable.disabled = true;
+    try {
+      await enablePushNotifications();
+    } finally {
+      pushReminderEnable.disabled = false;
+      await initializePushNotifications();
+    }
+  });
+  pushReminderDismiss?.addEventListener('click', dismissPushReminder);
 }
 
 function setNotificationStatus(message, isError = false) {
@@ -277,7 +352,7 @@ function playNotificationSound() {
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(frequency, startAt);
     volume.gain.setValueAtTime(0.0001, startAt);
-    volume.gain.exponentialRampToValueAtTime(index ? 0.018 : 0.04, startAt + 0.015);
+    volume.gain.exponentialRampToValueAtTime(index ? 0.027 : 0.06, startAt + 0.015);
     volume.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.55);
     oscillator.connect(volume);
     volume.connect(context.destination);
@@ -312,9 +387,7 @@ function updateNotificationActions() {
     notificationSelectAll.indeterminate = selectedCount > 0 && selectedCount < notificationItems.length;
     notificationSelectAll.disabled = notificationActionsBusy;
   }
-  if (notificationMarkAll) {
-    notificationMarkAll.disabled = notificationActionsBusy;
-  }
+  if (notificationMarkAll) notificationMarkAll.disabled = notificationActionsBusy;
   if (notificationDeleteSelected) {
     notificationDeleteSelected.disabled = notificationActionsBusy || selectedCount === 0;
     notificationDeleteSelected.textContent = selectedCount
@@ -325,6 +398,9 @@ function updateNotificationActions() {
   if (notificationExitSelection) notificationExitSelection.disabled = notificationActionsBusy;
   notificationList?.querySelectorAll('[data-notification-select]').forEach(checkbox => {
     checkbox.disabled = notificationActionsBusy;
+  });
+  notificationList?.querySelectorAll('[data-notification-mark-read]').forEach(button => {
+    button.disabled = notificationActionsBusy;
   });
 }
 
@@ -366,7 +442,18 @@ function notificationAge(timestamp) {
 function notificationMessage(kind) {
   if (kind === 'follow') return ' followed you.';
   if (kind === 'match') return ' matched with you.';
+  if (kind === 'message') return ' sent you a message.';
   return ' sent you interest.';
+}
+
+function notificationUrl(notification) {
+  if (notification.kind === 'message') {
+    const conversation = notification.conversation_id
+      ? `?conversation=${encodeURIComponent(notification.conversation_id)}`
+      : '';
+    return `messages.html${conversation}`;
+  }
+  return `profile.html?id=${encodeURIComponent(notification.actor_id)}`;
 }
 
 function addNotificationAvatar(container, name, avatarUrl) {
@@ -425,8 +512,7 @@ function renderNotifications(notifications, avatarUrls) {
 
     const link = document.createElement('a');
     link.className = 'notification-link';
-    link.href = `profile.html?id=${encodeURIComponent(notification.actor_id)}`;
-
+    link.href = notificationUrl(notification);
     const avatar = document.createElement('span');
     avatar.className = 'notification-avatar';
     avatar.setAttribute('aria-hidden', 'true');
@@ -438,7 +524,6 @@ function renderNotifications(notifications, avatarUrls) {
     const actorName = document.createElement('strong');
     actorName.textContent = name;
     message.append(actorName, document.createTextNode(notificationMessage(notification.kind)));
-
     const time = document.createElement('time');
     time.className = 'notification-time';
     time.dateTime = notification.created_at;
@@ -450,6 +535,15 @@ function renderNotifications(notifications, avatarUrls) {
     unreadDot.setAttribute('aria-hidden', 'true');
     link.append(avatar, copy, unreadDot);
     item.append(select, link);
+    if (!notification.read_at) {
+      const markReadButton = document.createElement('button');
+      markReadButton.className = 'notification-mark-read';
+      markReadButton.type = 'button';
+      markReadButton.dataset.notificationMarkRead = notificationId;
+      markReadButton.setAttribute('aria-label', `Mark ${name}’s notification as read`);
+      markReadButton.textContent = 'Mark as read';
+      item.append(markReadButton);
+    }
     notificationList.append(item);
   });
 
@@ -464,13 +558,15 @@ function renderNotifications(notifications, avatarUrls) {
 function showNotificationToast(notification, avatarUrl = '') {
   if (!notificationToasts) return;
   const name = sanitizeName(notification.actor_display_name) || 'A VYBE member';
+  const username = typeof notification.actor_username === 'string'
+    ? notification.actor_username.trim()
+    : '';
   const toast = document.createElement('article');
   toast.className = 'notification-toast';
-
   const link = document.createElement('a');
   link.className = 'notification-toast-link';
-  link.href = `profile.html?id=${encodeURIComponent(notification.actor_id)}`;
-  link.setAttribute('aria-label', `${name}${notificationMessage(notification.kind)} View profile.`);
+  link.href = notificationUrl(notification);
+  link.setAttribute('aria-label', `${name}${notificationMessage(notification.kind)} ${notification.kind === 'message' ? 'Open conversation.' : 'View profile.'}`);
 
   const avatar = document.createElement('span');
   avatar.className = 'notification-toast-avatar';
@@ -481,13 +577,23 @@ function showNotificationToast(notification, avatarUrl = '') {
   copy.className = 'notification-toast-copy';
   const brand = document.createElement('span');
   brand.className = 'notification-toast-brand';
-  brand.textContent = 'A LITTLE VYBE UPDATE';
+  brand.textContent = notification.kind === 'follow' ? 'NEW FOLLOWER' : 'A LITTLE VYBE UPDATE';
   const message = document.createElement('span');
   message.className = 'notification-toast-message';
   const actorName = document.createElement('strong');
   actorName.textContent = name;
   message.append(actorName, document.createTextNode(notificationMessage(notification.kind)));
   copy.append(brand, message);
+  if (username) {
+    const handle = document.createElement('span');
+    handle.className = 'notification-toast-handle';
+    handle.textContent = `@${username}`;
+    copy.append(handle);
+  }
+  const profileAction = document.createElement('span');
+  profileAction.className = 'notification-toast-profile-action';
+  profileAction.textContent = notification.kind === 'message' ? 'Open conversation →' : 'View profile →';
+  copy.append(profileAction);
   link.append(avatar, copy);
 
   const close = document.createElement('button');
@@ -496,7 +602,6 @@ function showNotificationToast(notification, avatarUrl = '') {
   close.setAttribute('aria-label', 'Dismiss notification');
   close.textContent = '×';
   close.addEventListener('click', () => dismissNotificationToast(toast));
-
   toast.append(link, close);
   notificationToasts.prepend(toast);
   window.setTimeout(() => dismissNotificationToast(toast), 6500);
@@ -521,19 +626,16 @@ async function refreshNotifications({ showLoading = false, incomingId = null } =
     const { data, error } = await supabase.rpc('get_my_notifications');
     if (error) throw error;
     if (!Array.isArray(data)) throw new Error('VYBE returned an invalid notifications response.');
-
     const avatars = await signProfileAvatars(data.map(item => ({
       id: item.actor_id,
       avatar_path: item.actor_avatar_path
     })));
     renderNotifications(data, avatars.urlsByProfileId);
     setNotificationStatus('');
-
     if (incomingId) {
       const incoming = data.find(item => String(item.notification_id) === String(incomingId));
       if (incoming) showNotificationToast(incoming, avatars.urlsByProfileId.get(incoming.actor_id));
     }
-
   } catch (error) {
     const missingNotificationsRpc = error.code === 'PGRST202' ||
       /could not find the function public\.get_my_notifications/i.test(error.message || '');
@@ -558,6 +660,47 @@ async function markAllNotificationsRead() {
   } catch (error) {
     setNotificationStatus(`We couldn’t mark your notifications as read. ${error.message || 'Please try again.'}`, true);
   } finally {
+    notificationActionsBusy = false;
+    updateNotificationActions();
+  }
+}
+
+async function markNotificationRead(button) {
+  const notificationId = button.dataset.notificationMarkRead;
+  if (!supabase || notificationActionsBusy || !notificationId) return;
+
+  notificationActionsBusy = true;
+  button.textContent = 'Marking…';
+  updateNotificationActions();
+  try {
+    const { data, error } = await supabase.rpc('mark_my_notification_read', {
+      p_notification_id: notificationId
+    });
+    if (error) throw error;
+    if (typeof data !== 'boolean') {
+      throw new Error('VYBE could not confirm that the notification was marked as read.');
+    }
+    if (!data) {
+      await refreshNotifications();
+      setNotificationStatus('This notification is no longer unread. Your notifications have been refreshed.');
+      return;
+    }
+
+    const notification = notificationItems.find(item =>
+      String(item.notification_id) === notificationId
+    );
+    if (notification) notification.read_at = new Date().toISOString();
+    renderNotifications(notificationItems, notificationAvatarUrls);
+    setNotificationStatus('Notification marked as read.');
+  } catch (error) {
+    const missingMarkReadRpc = error.code === 'PGRST202' ||
+      /could not find the function public\.mark_my_notification_read/i.test(error.message || '');
+    setNotificationStatus(missingMarkReadRpc
+      ? 'Per-notification read isn’t enabled in this Supabase project yet. Apply migration 20261015002128_mark_single_notification_read.sql, then refresh and try again.'
+      : `We couldn’t mark this notification as read. ${error.message || 'Please try again.'}`,
+    true);
+  } finally {
+    if (button.isConnected) button.textContent = 'Mark as read';
     notificationActionsBusy = false;
     updateNotificationActions();
   }
@@ -622,9 +765,7 @@ function startNotificationRealtime() {
       filter: `recipient_id=eq.${currentUserId}`
     }, payload => {
       playNotificationSound();
-      refreshNotifications({
-        incomingId: payload.new?.id
-      });
+      refreshNotifications({ incomingId: payload.new?.id });
     })
     .subscribe(state => {
       if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
@@ -634,6 +775,256 @@ function startNotificationRealtime() {
   window.addEventListener('pagehide', () => {
     if (notificationChannel) supabase?.removeChannel(notificationChannel);
   }, { once: true });
+}
+
+function setPushStatus(message, isError = false) {
+  if (!pushStatus) return;
+  pushStatus.textContent = message;
+  if (isError) pushStatus.dataset.state = 'error';
+  else delete pushStatus.dataset.state;
+}
+
+function setPushReminder(message, { canEnable = true, buttonText = 'Enable push alerts' } = {}) {
+  if (!pushReminder || !pushReminderMessage) return;
+  pushReminderMessage.textContent = message;
+  pushReminder.hidden = pushReminderDismissed;
+  if (pushReminderEnable) {
+    pushReminderEnable.hidden = !canEnable;
+    pushReminderEnable.textContent = buttonText;
+  }
+}
+
+function hidePushReminder() {
+  if (pushReminder) pushReminder.hidden = true;
+}
+
+function dismissPushReminder() {
+  pushReminderDismissed = true;
+  hidePushReminder();
+}
+
+function decodeVapidPublicKey(key) {
+  const padding = '='.repeat((4 - key.length % 4) % 4);
+  const base64 = `${key.replace(/-/g, '+').replace(/_/g, '/')}${padding}`;
+  const decoded = Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+  if (decoded.length !== 65 || decoded[0] !== 4) {
+    throw new Error('The VAPID public key is invalid. Configure the matching public key and reload VYBE.');
+  }
+  return decoded;
+}
+
+function hasValidVapidPublicKey() {
+  try {
+    decodeVapidPublicKey(VAPID_PUBLIC_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isIosDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandaloneApp() {
+  return Boolean(navigator.standalone) ||
+    window.matchMedia('(display-mode: standalone)').matches;
+}
+
+async function savePushSubscription(subscription) {
+  const keys = subscription.toJSON().keys;
+  if (!keys?.p256dh || !keys.auth) {
+    throw new Error('The browser returned an incomplete push subscription.');
+  }
+  const { error } = await supabase.rpc('register_my_push_subscription', {
+    p_endpoint: subscription.endpoint,
+    p_p256dh: keys.p256dh,
+    p_auth_secret: keys.auth,
+    p_user_agent: navigator.userAgent.slice(0, 300)
+  });
+  if (error) throw error;
+}
+
+async function enablePushNotifications() {
+  if (!pushToggle || !supabase) return;
+  pushToggle.disabled = true;
+  setPushStatus('Setting up notifications…');
+  try {
+    if (!window.isSecureContext || !('Notification' in window) ||
+        !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      throw new Error('This browser cannot receive web push notifications.');
+    }
+    if (!hasValidVapidPublicKey()) {
+      throw new Error('Push is not configured yet. Set a valid VITE_VAPID_PUBLIC_KEY and reload.');
+    }
+    if (isIosDevice() && !isStandaloneApp()) {
+      throw new Error('On iPhone or iPad, add VYBE to your Home Screen and open the installed app to enable push.');
+    }
+
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    if (permission !== 'granted') {
+      pushToggle.disabled = permission === 'denied';
+      setPushStatus(
+        permission === 'denied'
+          ? 'Notifications are blocked for this site. Allow them in your browser settings to turn them on.'
+          : 'Allow notifications in your browser to receive message and activity alerts.',
+        permission === 'denied'
+      );
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register('/service-worker.js', {
+      scope: '/',
+      updateViaCache: 'none'
+    });
+    await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    let createdSubscription = false;
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: decodeVapidPublicKey(VAPID_PUBLIC_KEY)
+      });
+      createdSubscription = true;
+    }
+    try {
+      await savePushSubscription(subscription);
+    } catch (error) {
+      if (createdSubscription) {
+        try {
+          const removed = await subscription.unsubscribe();
+          if (!removed) console.warn('VYBE could not roll back the unsaved push subscription.');
+        } catch (cleanupError) {
+          console.warn('VYBE could not roll back the unsaved push subscription.', cleanupError);
+        }
+      }
+      throw error;
+    }
+    pushToggle.textContent = 'Turn off on this device';
+    pushToggle.disabled = false;
+    setPushStatus('You’ll get message and activity alerts on this device.');
+  } catch (error) {
+    pushToggle.disabled = false;
+    setPushStatus(`Notifications couldn’t be enabled. ${error.message || 'Please try again.'}`, true);
+  }
+}
+
+async function initializePushNotifications() {
+  if (!pushToggle) return;
+  if (!window.isSecureContext || !('Notification' in window) ||
+      !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    pushToggle.disabled = true;
+    pushToggle.textContent = 'Push not supported';
+    const message = 'This browser cannot receive push notifications. In-app alerts will still work.';
+    setPushStatus(message);
+    setPushReminder(message, { canEnable: false });
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    const subscription = await registration?.pushManager.getSubscription();
+    if (subscription) {
+      await savePushSubscription(subscription);
+      pushToggle.disabled = false;
+      pushToggle.textContent = 'Turn off on this device';
+      if (!hasValidVapidPublicKey()) {
+        const message = 'This device has a push subscription, but VYBE’s push keys aren’t configured for this site. Contact the site administrator; you can still turn push off below.';
+        setPushStatus(message);
+        setPushReminder(message, { canEnable: false });
+      } else if (Notification.permission === 'denied') {
+        const message = 'This device is subscribed, but VYBE notifications are blocked in browser settings. Allow them there, or turn them off below.';
+        setPushStatus(message);
+        setPushReminder(
+          'Notifications are blocked for VYBE in browser settings. Allow them there to receive alerts, or turn them off in the Notifications drawer.',
+          { canEnable: false }
+        );
+      } else {
+        setPushStatus('You’ll get message and activity alerts on this device.');
+        hidePushReminder();
+      }
+      return;
+    }
+
+    pushToggle.textContent = 'Enable on this device';
+    if (!hasValidVapidPublicKey()) {
+      pushToggle.disabled = true;
+      const message = 'Push notifications aren’t configured for this VYBE site yet. The site administrator must configure the public VAPID key and matching server secrets before users can enable push.';
+      setPushStatus(message);
+      setPushReminder(message, { canEnable: false });
+      return;
+    }
+    if (isIosDevice() && !isStandaloneApp()) {
+      pushToggle.disabled = true;
+      const message = 'On iPhone or iPad, add VYBE to your Home Screen first, then open it there to turn on push.';
+      setPushStatus(message);
+      setPushReminder(message, { canEnable: false });
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      pushToggle.disabled = false;
+      pushToggle.textContent = 'Show how to allow';
+      const message = 'Notifications are blocked for VYBE. Allow them in this site’s browser settings, then reload VYBE and enable push.';
+      setPushStatus(message);
+      setPushReminder(message, { canEnable: false });
+      return;
+    }
+    pushToggle.disabled = false;
+    const message = 'Turn on push alerts to hear from your people, even when VYBE is closed.';
+    setPushStatus(message);
+    setPushReminder(message);
+  } catch (error) {
+    pushToggle.disabled = false;
+    setPushStatus(`Push status couldn’t be checked. ${error.message || 'Try enabling notifications again.'}`, true);
+    setPushReminder('Push is not fully set up on this device yet. Try again to finish enabling alerts.', {
+      buttonText: 'Finish setup'
+    });
+  }
+}
+
+async function disablePushNotifications() {
+  if (!supabase) throw new Error('VYBE is still connecting. Please try again in a moment.');
+  const registration = await navigator.serviceWorker.getRegistration('/');
+  const subscription = await registration?.pushManager.getSubscription();
+  if (!subscription) {
+    setPushStatus('Push is already off on this device.');
+    return;
+  }
+
+  const { error } = await supabase.from('push_subscriptions')
+    .delete()
+    .eq('endpoint', subscription.endpoint);
+  if (error) throw error;
+  const removed = await subscription.unsubscribe();
+  if (!removed) throw new Error('The browser did not confirm that push was turned off.');
+  setPushStatus('Push is off on this device. Your in-app notifications are still here.');
+}
+
+async function togglePushNotifications() {
+  if (!pushToggle || pushToggle.disabled) return;
+  pushToggle.disabled = true;
+  let refreshPushState = true;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    const subscription = await registration?.pushManager.getSubscription();
+    if (subscription) {
+      dismissPushReminder();
+      await disablePushNotifications();
+    } else if (Notification.permission === 'denied') {
+      pushToggle.textContent = 'Show how to allow';
+      setPushStatus('VYBE can’t open browser settings for you. Click the site controls or lock icon beside the address, open Site settings, set Notifications to Allow, then reload VYBE and enable push.', true);
+      refreshPushState = false;
+    }
+    else await enablePushNotifications();
+  } catch (error) {
+    setPushStatus(`We couldn’t update push on this device. ${error.message || 'Please try again.'}`, true);
+  } finally {
+    pushToggle.disabled = false;
+    if (refreshPushState) await initializePushNotifications();
+  }
 }
 
 function applyHomeSearch() {
@@ -705,9 +1096,22 @@ function setSectionMessage(element, message, state = '') {
 
 function setFeedState(message, state = '') {
   if (!feedState) return;
+  window.clearTimeout(feedStateTimer);
+  if (isImmersiveFeed && state === 'error' && feedPostList?.querySelector('[data-post-id]')) {
+    showReelToast(message);
+    feedState.textContent = '';
+    feedState.dataset.state = '';
+    feedState.hidden = true;
+    return;
+  }
   feedState.textContent = message;
   feedState.dataset.state = state;
   feedState.hidden = !message;
+  if (isImmersiveFeed && state === 'success' && message) {
+    feedStateTimer = window.setTimeout(() => {
+      if (feedState.dataset.state === 'success') setFeedState('');
+    }, 3200);
+  }
 }
 
 function setComposerStatus(message, state = '') {
@@ -720,6 +1124,12 @@ function setComposerStatus(message, state = '') {
 function explainPostBackendError(error) {
   if (['PGRST202', 'PGRST205', '42P01', '42883'].includes(error?.code)) {
     return 'The post publishing and Feed update requires the latest VYBE posts migration. Apply the reviewed migration, then try again.';
+  }
+  if (/bucket.*not found/i.test(error?.message || '')) {
+    return 'Photo and video posting needs the private post-media Storage bucket and its access policies. Your caption and selected media are kept; configure post-media in Supabase, then retry.';
+  }
+  if (/media_(path|mime|kind).*schema cache|could not find the .* column of .*posts/i.test(error?.message || '')) {
+    return 'Photo and video posting needs the post-media database columns enabled in Supabase. Your caption and selected media are kept; apply the reviewed post-media setup, then retry.';
   }
   return error?.message || 'Please try again.';
 }
@@ -743,7 +1153,37 @@ function setFeedInteractionEnabled(enabled) {
   if (feedRetry) feedRetry.disabled = !enabled;
   if (feedMore) feedMore.disabled = !enabled;
   createKindButtons.forEach(button => { button.disabled = !enabled; });
+  createChoiceButtons.forEach(button => { button.disabled = !enabled; });
+  createCaptureButtons.forEach(button => { button.disabled = !enabled; });
   if (mobileCreateButton) mobileCreateButton.disabled = !enabled;
+  if (composerSheet && !composerSheet.open) {
+    postMediaInput.disabled = !enabled;
+    if (createChoiceButtons.length) {
+      createChoiceButtons.forEach(button => { button.disabled = !enabled; });
+    }
+  }
+  updateCreateSubmitState();
+}
+
+function updateCreateSubmitState() {
+  if (!isImmersiveFeed || !postSubmitButton || composerBusy) return;
+  postSubmitButton.disabled = !currentUserId || !postContentInput.value.trim();
+}
+
+function insertCreateDetail(value) {
+  if (!postContentInput || postContentInput.disabled) return;
+  const start = postContentInput.selectionStart ?? postContentInput.value.length;
+  const end = postContentInput.selectionEnd ?? start;
+  const before = postContentInput.value.slice(0, start);
+  const prefix = before && !/\s$/.test(before) ? ' ' : '';
+  const insertion = `${prefix}${value}`;
+  if (postContentInput.value.length - (end - start) + insertion.length > postContentInput.maxLength) {
+    setComposerStatus(`Keep your caption under ${postContentInput.maxLength} characters.`, 'error');
+    return;
+  }
+  postContentInput.setRangeText(insertion, start, end, 'end');
+  postContentInput.dispatchEvent(new Event('input', { bubbles: true }));
+  postContentInput.focus({ preventScroll: true });
 }
 
 function startPostCreation(kind) {
@@ -751,21 +1191,91 @@ function startPostCreation(kind) {
     window.location.assign(`vibe.html?create=${encodeURIComponent(kind)}#feed`);
     return;
   }
-  document.body.classList.add('is-composing');
-  feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  if (kind === 'image' || kind === 'video') {
-    postMediaInput.multiple = kind === 'image';
-    postMediaInput.accept = POST_MEDIA_TYPES[kind].join(',');
-    postMediaInput.click();
-  } else {
-    postContentInput.focus({ preventScroll: true });
+  if (!isImmersiveFeed) {
+    document.body.classList.add('is-composing');
+    feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (kind === 'image' || kind === 'video') {
+      postMediaInput.multiple = kind === 'image';
+      postMediaInput.accept = POST_MEDIA_TYPES[kind].join(',');
+      postMediaInput.click();
+    } else {
+      postContentInput.focus({ preventScroll: true });
+    }
+    return;
   }
+  if (!composerSheet.open) {
+    prepareNewComposer();
+    createRestoreFocus = document.activeElement;
+    openComposerSheet();
+  }
+  if (kind === 'image' || kind === 'video') {
+    launchCreatePicker(kind, 'new');
+  } else if (kind === 'thought') {
+    showCreateStep('preview');
+    postContentInput.focus({ preventScroll: true });
+  } else {
+    showCreateStep('choose');
+    createChoiceButtons[0]?.focus({ preventScroll: true });
+  }
+  updateCreateSubmitState();
+}
+
+function prepareNewComposer() {
+  releaseSelectedPostMedia();
+  postForm.reset();
+  editingPostId = null;
+  editingMediaPreview = [];
+  createMediaIndex = 0;
+  createSoundOn = false;
+  const previewSoundButton = $('[data-create-video-sound]');
+  previewSoundButton?.setAttribute('aria-pressed', 'false');
+  previewSoundButton?.setAttribute('aria-label', 'Turn preview sound on');
+  if (previewSoundButton) previewSoundButton.textContent = 'Sound off';
+  composerInitialState = { content: '', anonymous: false };
+  postMediaInput.value = '';
+  postMediaInput.accept = POST_MEDIA_ACCEPT;
+  postMediaInput.multiple = true;
+  postMediaInput.removeAttribute('capture');
+  if (composerTitle) composerTitle.textContent = 'Create a post';
+  postSubmitButton.textContent = 'Post ↗';
+  postCharacterCount.textContent = `0 / ${postContentInput.maxLength}`;
+  setComposerStatus('');
+  if (createRetryButton) createRetryButton.hidden = true;
+  if (createUploadProgress) createUploadProgress.hidden = true;
+  showCreateStep('choose');
+  renderPostMediaPreview();
+}
+
+function showCreateStep(step) {
+  if (!createChoose || !createPreview) return;
+  createChoose.hidden = step !== 'choose';
+  createPreview.hidden = step !== 'preview';
+  createFields.hidden = step !== 'preview';
+  if (step === 'preview') renderCreatePreview();
+}
+
+function launchCreatePicker(kind, action = 'new', capture = '') {
+  if (!postMediaInput || composerBusy || editingPostId) return;
+  createPickerAction = action;
+  createPickerKind = kind;
+  postMediaInput.value = '';
+  postMediaInput.accept = kind === 'image' ? 'image/*' : 'video/*';
+  postMediaInput.multiple = kind === 'image' && action !== 'replace' && !capture;
+  postMediaInput.disabled = false;
+  if (capture) postMediaInput.setAttribute('capture', capture);
+  else postMediaInput.removeAttribute('capture');
+  postMediaInput.click();
 }
 
 function openComposerFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const kind = params.get('create');
   if (!postForm || !['thought', 'image', 'video'].includes(kind)) return;
+  if (isImmersiveFeed) {
+    startPostCreation(kind);
+    window.history.replaceState(null, '', `${window.location.pathname}#feed`);
+    return;
+  }
   document.body.classList.add('is-composing');
   window.history.replaceState(null, '', `${window.location.pathname}#feed`);
   requestAnimationFrame(() => {
@@ -781,7 +1291,239 @@ function openComposerFromUrl() {
   });
 }
 
+function releaseSelectedPostMedia() {
+  selectedPostMedia.forEach(media => {
+    if (media.previewUrl) URL.revokeObjectURL(media.previewUrl);
+  });
+  selectedPostMedia = [];
+}
+
+function renderCreatePreview() {
+  if (!createPreviewMedia || !createTextCard) return;
+  createPreviewMedia.replaceChildren();
+  createGalleryDots.replaceChildren();
+  createPhotoThumbnails.replaceChildren();
+  const media = editingPostId ? editingMediaPreview : selectedPostMedia;
+  const isEditing = Boolean(editingPostId);
+  const hasPhotos = media.some(item => item.kind === 'image');
+  const isVideo = media[createMediaIndex]?.kind === 'video';
+
+  createTextPreview.textContent = postContentInput.value.trim() || 'Your words, your VYBE.';
+  createTextCard.hidden = media.length > 0;
+  createPreviewMedia.hidden = media.length === 0;
+  createVideoControls.hidden = !isVideo;
+  createPhotoTools.hidden = isEditing || !hasPhotos;
+  createPrevPhoto.hidden = !hasPhotos || media.length < 2;
+  createNextPhoto.hidden = !hasPhotos || media.length < 2;
+  createReplaceMedia.hidden = isEditing || !media.length;
+  createRemoveMedia.hidden = isEditing || !media.length;
+  createAddPhotos.hidden = isEditing || !hasPhotos || media.length >= MAX_POST_MEDIA;
+
+  if (!media.length) {
+    postMediaInput.disabled = Boolean(editingPostId) || !currentUserId;
+    updateCreateSubmitState();
+    return;
+  }
+
+  const gallery = media.length > 1 && hasPhotos ? makeElement('div', 'create-preview-gallery') : null;
+  if (gallery) {
+    gallery.addEventListener('scroll', () => {
+      const nextIndex = Math.round(gallery.scrollLeft / gallery.clientWidth);
+      if (nextIndex !== createMediaIndex) {
+        createMediaIndex = nextIndex;
+        updateCreatePreviewControls(media);
+      }
+    }, { passive: true });
+    createPreviewMedia.append(gallery);
+  }
+
+  media.forEach((item, index) => {
+    const slide = gallery || createPreviewMedia;
+    const target = gallery ? makeElement('div', 'create-preview-slide') : slide;
+    const source = item.previewUrl || item.url || postMediaUrls.get(item.path);
+    if (item.kind === 'image') {
+      const image = makeElement('img', 'create-preview-image');
+      image.src = source || '';
+      image.alt = `Photo ${index + 1} preview`;
+      image.addEventListener('load', () => updateCreatePreviewOrientation(image), { once: true });
+      target.append(image);
+      if (gallery) slide.append(target);
+    } else {
+      const video = makeElement('video', 'create-preview-video');
+      video.src = source || '';
+      video.muted = !createSoundOn;
+      video.loop = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.addEventListener('loadedmetadata', () => {
+        video.classList.toggle('is-wide', video.videoWidth / video.videoHeight > .8);
+      }, { once: true });
+      video.addEventListener('timeupdate', () => {
+        if (video === createPreviewMedia.querySelector('video') && video.duration) {
+          createVideoProgress.style.width = `${(video.currentTime / video.duration) * 100}%`;
+        }
+      });
+      video.addEventListener('click', () => {
+        if (video.paused) video.play().catch(() => {});
+        else video.pause();
+      });
+      target.append(video);
+      if (gallery) slide.append(target);
+    }
+    if (gallery) createGalleryDots.append(makeElement('span', index === createMediaIndex ? 'is-active' : ''));
+
+    if (hasPhotos && !isEditing) {
+      const thumb = makeElement('div', 'create-photo-thumb');
+      thumb.draggable = true;
+      thumb.dataset.photoIndex = String(index);
+      const select = makeElement('button', 'create-photo-select');
+      select.type = 'button';
+      select.setAttribute('aria-label', `Show photo ${index + 1}`);
+      const thumbnail = makeElement('img');
+      thumbnail.src = item.previewUrl;
+      thumbnail.alt = '';
+      select.append(thumbnail);
+      select.addEventListener('click', () => {
+        createMediaIndex = index;
+        if (gallery) gallery.scrollTo({ left: gallery.clientWidth * index, behavior: 'smooth' });
+        updateCreatePreviewControls(media);
+      });
+      const move = makeElement('div', 'create-photo-reorder');
+      const up = makeElement('button', '', '‹');
+      up.type = 'button';
+      up.disabled = index === 0;
+      up.setAttribute('aria-label', `Move photo ${index + 1} earlier`);
+      up.addEventListener('click', () => moveCreatePhoto(index, -1));
+      const down = makeElement('button', '', '›');
+      down.type = 'button';
+      down.disabled = index === media.length - 1;
+      down.setAttribute('aria-label', `Move photo ${index + 1} later`);
+      down.addEventListener('click', () => moveCreatePhoto(index, 1));
+      move.append(up, down);
+      thumb.append(select, move);
+      thumb.addEventListener('dragstart', event => {
+        event.dataTransfer.setData('text/plain', String(index));
+        event.dataTransfer.effectAllowed = 'move';
+      });
+      thumb.addEventListener('dragover', event => event.preventDefault());
+      thumb.addEventListener('drop', event => {
+        event.preventDefault();
+        const from = Number(event.dataTransfer.getData('text/plain'));
+        moveCreatePhoto(from, index - from);
+      });
+      createPhotoThumbnails.append(thumb);
+    }
+  });
+
+  postMediaInput.disabled = true;
+  if (gallery) requestAnimationFrame(() => {
+    gallery.scrollLeft = gallery.clientWidth * createMediaIndex;
+  });
+  updateCreatePreviewControls(media);
+  updateCreateSubmitState();
+}
+
+function currentCreateMedia() {
+  return editingPostId ? editingMediaPreview : selectedPostMedia;
+}
+
+function updateCreatePreviewControls(media = selectedPostMedia) {
+  const isPhotos = media.length > 0 && media.every(item => item.kind === 'image');
+  if (createPrevPhoto) createPrevPhoto.disabled = createMediaIndex <= 0;
+  if (createNextPhoto) createNextPhoto.disabled = createMediaIndex >= media.length - 1;
+  if (createGalleryDots) {
+    [...createGalleryDots.children].forEach((dot, index) => dot.classList.toggle('is-active', index === createMediaIndex));
+  }
+  if (createPhotoThumbnails) {
+    [...createPhotoThumbnails.children].forEach((thumb, index) => thumb.classList.toggle('is-current', index === createMediaIndex));
+  }
+  if (createVideoControls) createVideoControls.hidden = isPhotos || media[createMediaIndex]?.kind !== 'video';
+}
+
+function moveCreatePhoto(index, offset) {
+  const destination = index + offset;
+  if (destination < 0 || destination >= selectedPostMedia.length) return;
+  const [photo] = selectedPostMedia.splice(index, 1);
+  selectedPostMedia.splice(destination, 0, photo);
+  createMediaIndex = destination;
+  renderCreatePreview();
+}
+
+function handleCreateMediaSelection() {
+  const files = [...postMediaInput.files];
+  if (!files.length) return;
+  let validated;
+  try {
+    validated = files.map(validatePostMedia).filter(Boolean);
+    if (!validated.length) return;
+    if (validated.some(media => media.kind !== createPickerKind)) {
+      throw new Error(`Choose ${createPickerKind === 'image' ? 'photos' : 'a video'} for this selection.`);
+    }
+    if (createPickerAction === 'replace' && validated.length !== 1) {
+      throw new Error('Choose one file to replace the selected media.');
+    }
+    const existing = selectedPostMedia;
+    const combined = createPickerAction === 'add' ? [...existing, ...validated]
+      : createPickerAction === 'replace' ? existing.map((media, index) => index === createMediaIndex ? validated[0] : media)
+        : validated;
+    if (combined.length > MAX_POST_MEDIA) {
+      throw new Error(`Add no more than ${MAX_POST_MEDIA} photos to one post.`);
+    }
+    if ((combined.length > 1 && combined.some(media => media.kind !== 'image')) ||
+        (combined.length > 1 && combined.length !== validated.length && createPickerAction === 'replace')) {
+      throw new Error('A post can include multiple photos or one video clip, not both.');
+    }
+
+    const withPreviews = validated.map(media => ({
+      ...media,
+      previewUrl: URL.createObjectURL(media.file)
+    }));
+    if (createPickerAction === 'add') {
+      selectedPostMedia = [...existing, ...withPreviews];
+      createMediaIndex = selectedPostMedia.length - withPreviews.length;
+    } else if (createPickerAction === 'replace') {
+      const previous = selectedPostMedia[createMediaIndex];
+      if (previous?.previewUrl) URL.revokeObjectURL(previous.previewUrl);
+      selectedPostMedia.splice(createMediaIndex, 1, withPreviews[0]);
+    } else {
+      releaseSelectedPostMedia();
+      selectedPostMedia = withPreviews;
+      createMediaIndex = 0;
+    }
+    postMediaInput.value = '';
+    postMediaInput.accept = POST_MEDIA_ACCEPT;
+    postMediaInput.multiple = true;
+    postMediaInput.removeAttribute('capture');
+    postMediaInput.disabled = true;
+    renderPostMediaPreview();
+    showCreateStep('preview');
+    setComposerStatus('');
+  } catch (error) {
+    postMediaInput.value = '';
+    postMediaInput.accept = POST_MEDIA_ACCEPT;
+    postMediaInput.multiple = true;
+    postMediaInput.removeAttribute('capture');
+    postMediaInput.disabled = true;
+    setComposerStatus(error.message || 'Choose a supported photo or video.', 'error');
+    if (createPickerAction === 'new' && !selectedPostMedia.length) showCreateStep('choose');
+  }
+}
+
+function removeCreateMedia() {
+  if (editingPostId || !selectedPostMedia.length) return;
+  const [removed] = selectedPostMedia.splice(createMediaIndex, 1);
+  if (removed.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+  createMediaIndex = Math.max(0, Math.min(createMediaIndex, selectedPostMedia.length - 1));
+  renderPostMediaPreview();
+  renderCreatePreview();
+}
+
+function updateCreatePreviewOrientation(image) {
+  image.classList.toggle('is-wide', image.naturalWidth / image.naturalHeight > .8);
+}
+
 function renderPostMediaPreview() {
+  if (!postMediaPreview) return;
   postMediaPreview.replaceChildren();
   postMediaPreview.hidden = !selectedPostMedia.length;
   selectedPostMedia.forEach((media, index) => {
@@ -791,7 +1533,8 @@ function renderPostMediaPreview() {
     remove.type = 'button';
     remove.setAttribute('aria-label', `Remove ${media.file.name}`);
     remove.addEventListener('click', () => {
-      selectedPostMedia.splice(index, 1);
+      const [removed] = selectedPostMedia.splice(index, 1);
+      if (removed.previewUrl) URL.revokeObjectURL(removed.previewUrl);
       postMediaInput.value = '';
       renderPostMediaPreview();
     });
@@ -809,8 +1552,8 @@ function validatePostMedia(file) {
       (isVideo && !POST_MEDIA_TYPES.video.includes(file.type))) {
     throw new Error('Choose a supported JPG, PNG, WebP, GIF, MP4, WebM, or QuickTime file.');
   }
-  const limit = isImage ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
-  if (file.size > limit) throw new Error(`${isImage ? 'Images' : 'Clips'} must be ${isImage ? '10MB' : '50MB'} or smaller.`);
+  const limit = isImage ? POST_IMAGE_MAX_BYTES : POST_VIDEO_MAX_BYTES;
+  if (file.size > limit) throw new Error(`${isImage ? 'Images' : 'Clips'} must be ${isImage ? POST_IMAGE_MAX_BYTES / (1024 * 1024) : POST_VIDEO_MAX_BYTES / (1024 * 1024)}MB or smaller.`);
   return { file, kind: isImage ? 'image' : 'video' };
 }
 
@@ -840,41 +1583,51 @@ function postMediaItems(post) {
 function appendPostMedia(container, post, immersive = false) {
   const mediaItems = postMediaItems(post);
   if (!mediaItems.length) return false;
-  const gallery = mediaItems.length > 1
-    ? makeElement('div', immersive ? 'immersive-gallery' : 'post-media-gallery')
+  const multiple = mediaItems.length > 1;
+  const gallery = multiple
+    ? makeElement('div', immersive ? 'reel-gallery' : 'post-media-gallery')
     : container;
-  if (mediaItems.length > 1) {
+  if (multiple) {
     gallery.setAttribute('role', 'group');
     gallery.setAttribute('aria-label', `${mediaItems.length} photos`);
   }
 
   mediaItems.forEach((media, index) => {
-    const target = mediaItems.length > 1
-      ? makeElement('div', immersive ? 'immersive-gallery-slide' : 'post-media-slide')
+    const target = multiple
+      ? makeElement('div', immersive ? 'reel-slide' : 'post-media-slide')
       : gallery;
     const mediaUrl = postMediaUrls.get(media.path);
     if (!mediaUrl) {
       target.append(makeElement('p', 'post-media-unavailable', 'This post’s media could not be loaded.'));
     } else if (media.kind === 'image') {
-      const image = makeElement('img', immersive ? 'immersive-media immersive-image' : 'post-media-image');
+      const image = makeElement('img', immersive ? 'reel-media' : 'post-media-image');
       image.src = mediaUrl;
-      image.alt = mediaItems.length > 1
+      image.alt = multiple
         ? `Photo ${index + 1} of ${mediaItems.length}: ${post.content || 'Photo shared on VYBE'}`
         : post.content ? `Photo post: ${post.content}` : 'Photo shared on VYBE';
       image.loading = 'lazy';
+      if (immersive) {
+        image.decoding = 'async';
+        image.addEventListener('load', () => {
+          if (image.naturalWidth && image.naturalHeight) image.classList.toggle('is-wide', image.naturalWidth / image.naturalHeight > .8);
+        }, { once: true });
+      }
       target.append(image);
     } else if (media.kind === 'video') {
-      const video = makeElement('video', immersive ? 'immersive-media immersive-video' : 'post-media-video');
+      const video = makeElement('video', immersive ? 'reel-media' : 'post-media-video');
       video.src = mediaUrl;
-      video.controls = true;
       video.preload = 'metadata';
       if (immersive) {
+        video.loop = true;
         video.muted = true;
         video.defaultMuted = true;
         video.playsInline = true;
-        video.setAttribute('aria-label', 'Video post. Starts muted; use native controls for sound.');
+        video.controls = false;
+        video.setAttribute('disablepictureinpicture', '');
+        video.setAttribute('aria-label', 'Video post. Tap to pause or play.');
         observeImmersiveVideo(video);
       } else {
+        video.controls = true;
         video.setAttribute('aria-label', 'Attached video clip');
       }
       target.append(video);
@@ -883,6 +1636,16 @@ function appendPostMedia(container, post, immersive = false) {
   });
 
   if (gallery !== container) container.append(gallery);
+  if (immersive && multiple) {
+    const dots = makeElement('div', 'reel-dots');
+    dots.setAttribute('aria-hidden', 'true');
+    mediaItems.forEach((_, index) => dots.append(makeElement('i', index === 0 ? 'is-on' : '')));
+    gallery.addEventListener('scroll', () => {
+      const current = Math.round(gallery.scrollLeft / Math.max(1, gallery.clientWidth));
+      [...dots.children].forEach((dot, index) => dot.classList.toggle('is-on', index === current));
+    }, { passive: true });
+    container.append(dots);
+  }
   return true;
 }
 
@@ -897,26 +1660,22 @@ function formatPostDate(value) {
 }
 
 function observeImmersiveVideo(video) {
-  if (!isImmersiveFeed || !('IntersectionObserver' in window)) return;
-  if (!feedPlaybackObserver) {
-    feedPlaybackObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        const candidate = entry.target;
-        if (entry.isIntersecting && entry.intersectionRatio >= .72) {
-          if (activeFeedVideo && activeFeedVideo !== candidate) activeFeedVideo.pause();
-          activeFeedVideo = candidate;
-          candidate.play().catch(() => { /* The visible native controls remain available. */ });
-        } else if (candidate !== activeFeedVideo || entry.intersectionRatio < .35) {
-          candidate.pause();
-        }
-      });
-    }, { threshold: [.35, .72] });
-  }
-  feedPlaybackObserver.observe(video);
+  if (!isImmersiveFeed) return;
+  video.addEventListener('loadedmetadata', () => {
+    if (video.videoWidth && video.videoHeight) video.classList.toggle('is-wide', video.videoWidth / video.videoHeight > .8);
+  }, { once: true });
+  video.addEventListener('timeupdate', () => {
+    const item = video.closest('.reel');
+    if (item && video.duration) item.style.setProperty('--p', String(video.currentTime / video.duration));
+  });
+  video.addEventListener('play', () => video.closest('.reel')?.classList.remove('is-paused'));
+  video.addEventListener('pause', () => video.closest('.reel')?.classList.add('is-paused'));
+  video.addEventListener('waiting', () => video.closest('.reel')?.classList.add('is-buffering'));
+  video.addEventListener('playing', () => video.closest('.reel')?.classList.remove('is-buffering'));
 }
 
 function renderPost(post, avatarUrl = '') {
-  if (isImmersiveFeed) return renderImmersivePost(post, avatarUrl);
+  if (isImmersiveFeed && !isCardFeedLayout) return renderImmersivePost(post, avatarUrl);
   const item = makeElement('li', 'feed-post');
   item.dataset.postId = post.id;
   item.dataset.mediaKind = post.media_kind || 'text';
@@ -1002,72 +1761,741 @@ function renderPost(post, avatarUrl = '') {
   return item;
 }
 
+const REEL_PALETTES = [
+  ['#7357E8', '#4B33B8', '#ffffff'],
+  ['#F2504A', '#C2336B', '#ffffff'],
+  ['#FFD166', '#FF9A5C', '#211D2B'],
+  ['#BDEBD7', '#5CC7A5', '#211D2B'],
+  ['#2B2350', '#5B3FD1', '#ffffff'],
+  ['#EAE4FF', '#B7A5FF', '#211D2B'],
+  ['#0E7C66', '#0B4F4A', '#ffffff'],
+  ['#8E2DE2', '#4A00E0', '#ffffff']
+];
+
+const REEL_ICONS = {
+  heart: 'M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6.1-8 11-8 11Z',
+  chat: 'M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-5 4.5V16h-.5A2.5 2.5 0 0 1 4 13.5Z',
+  share: 'M12 3v12|M7.5 7.5 12 3l4.5 4.5|M5 12v6.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V12',
+  more: 'M5 12h.01|M12 12h.01|M19 12h.01',
+  play: 'M8 5.5v13l11-6.5Z',
+  anon: 'M12 12.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z|M5 20a7 7 0 0 1 14 0'
+};
+
+function reelIcon(name) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  REEL_ICONS[name].split('|').forEach(d => {
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  });
+  return svg;
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function formatCount(value) {
+  const number = Number(value) || 0;
+  if (number >= 1e6) return `${(number / 1e6).toFixed(number >= 1e7 ? 0 : 1).replace(/\.0$/, '')}M`;
+  if (number >= 1e3) return `${(number / 1e3).toFixed(number >= 1e4 ? 0 : 1).replace(/\.0$/, '')}K`;
+  return String(number);
+}
+
+function showReelToast(message) {
+  if (!reelToast || !message) return;
+  reelToast.textContent = message;
+  reelToast.hidden = false;
+  window.clearTimeout(reelToastTimer);
+  reelToastTimer = window.setTimeout(() => { reelToast.hidden = true; }, 3200);
+}
+
 function renderImmersivePost(post, avatarUrl = '') {
-  const item = makeElement('li', `feed-post immersive-post immersive-${post.media_kind || 'text'}`);
+  const kind = post.media_kind || 'text';
+  const item = makeElement('li', `feed-post reel reel-${kind}`);
   item.dataset.postId = post.id;
-  item.dataset.mediaKind = post.media_kind || 'text';
+  item.dataset.mediaKind = kind;
   item.id = `post-${post.id}`;
   item.dataset.searchText = `${post.content} ${post.author_display_name || ''} ${post.author_username || ''}`.toLocaleLowerCase();
-  const article = makeElement('article', 'immersive-post-frame');
-  const mediaItems = postMediaItems(post);
-  const isMedia = mediaItems.length > 0;
+  const frame = makeElement('article', 'reel-frame');
+  const hasMedia = postMediaItems(post).length > 0;
+  const authorName = post.is_anonymous ? 'Anonymous' : (sanitizeName(post.author_display_name) || 'VYBE member');
+  const profileHref = post.author_profile_id && !post.is_anonymous
+    ? `profile.html?id=${encodeURIComponent(post.author_profile_id)}`
+    : '';
 
-  const visual = makeElement('div', `immersive-visual${isMedia ? '' : ' immersive-copy-visual'}`);
-  if (isMedia) {
+  const visual = makeElement('div', `reel-visual${hasMedia ? '' : ' reel-text'}`);
+  if (hasMedia) {
     appendPostMedia(visual, post, true);
   } else {
-    const type = makeElement('span', 'immersive-text-type', post.is_anonymous ? 'ANONYMOUS GIST' : 'VYBE THOUGHT');
-    const statement = makeElement('p', 'immersive-text-statement', post.content);
-    visual.append(type, statement);
+    const [from, to, ink] = REEL_PALETTES[hashString(String(post.id)) % REEL_PALETTES.length];
+    const length = (post.content || '').length;
+    visual.style.setProperty('--a', from);
+    visual.style.setProperty('--b', to);
+    visual.style.setProperty('--fg', ink);
+    visual.style.setProperty('--size', length < 50 ? '2.7rem' : length < 110 ? '2.1rem' : length < 200 ? '1.7rem' : length < 400 ? '1.35rem' : '1.1rem');
+    visual.append(
+      makeElement('span', 'reel-kind', post.is_anonymous ? 'Anonymous gist' : 'Thought'),
+      makeElement('p', 'reel-statement', post.content)
+    );
+  }
+  const shade = makeElement('div', 'reel-shade');
+
+  const info = makeElement('div', 'reel-info');
+  const byline = makeElement('div', 'reel-byline');
+  if (profileHref) {
+    const author = makeElement('a', 'reel-author', authorName);
+    author.href = profileHref;
+    byline.append(author);
+  } else {
+    byline.append(makeElement('span', 'reel-author', authorName));
+  }
+  const when = formatPostDate(post.created_at);
+  if (when) {
+    const time = makeElement('time', 'reel-time', when);
+    time.dateTime = post.created_at;
+    byline.append(time);
+  }
+  info.append(byline);
+  if (hasMedia && post.content) info.append(makeElement('p', 'reel-caption', post.content));
+
+  const rail = makeElement('div', 'reel-rail');
+  if (post.is_anonymous) {
+    const anonymous = makeElement('span', 'reel-avatar is-anonymous');
+    anonymous.append(reelIcon('anon'));
+    rail.append(anonymous);
+  } else {
+    const creator = makeElement('div', 'reel-creator');
+    const shell = makeElement(profileHref ? 'a' : 'span', 'reel-avatar-link');
+    if (profileHref) {
+      shell.href = profileHref;
+      shell.setAttribute('aria-label', `${authorName}’s profile`);
+    }
+    const avatar = makeElement('span', 'reel-avatar', authorName.slice(0, 1).toUpperCase());
+    if (avatarUrl) {
+      const image = makeElement('img', 'reel-avatar-image');
+      image.alt = '';
+      image.loading = 'lazy';
+      image.addEventListener('load', () => { avatar.firstChild.textContent = ''; }, { once: true });
+      image.addEventListener('error', () => image.remove(), { once: true });
+      image.src = avatarUrl;
+      avatar.append(image);
+    }
+    shell.append(avatar);
+    creator.append(shell);
+    const authorId = post.author_profile_id;
+    if (authorId && !post.can_edit && authorId !== currentUserId && followingKnown.has(authorId) && !followingIds.has(authorId)) {
+      const follow = makeElement('button', 'reel-follow', '+');
+      follow.type = 'button';
+      follow.dataset.postFollow = '';
+      follow.dataset.authorId = authorId;
+      follow.setAttribute('aria-label', `Follow ${authorName}`);
+      creator.append(follow);
+    }
+    rail.append(creator);
   }
 
-  const overlay = makeElement('div', 'immersive-overlay');
-  const identity = makeElement('div', 'immersive-identity');
-  const avatar = makeElement('span', `immersive-avatar${post.is_anonymous ? ' is-anonymous' : ''}`);
-  avatar.textContent = post.is_anonymous ? '◉' : (sanitizeName(post.author_display_name) || 'V').slice(0, 1).toUpperCase();
-  if (avatarUrl && !post.is_anonymous) {
-    const image = makeElement('img', 'immersive-avatar-image');
-    image.alt = ''; image.loading = 'lazy';
-    image.addEventListener('load', () => { avatar.textContent = ''; }, { once: true });
-    image.addEventListener('error', () => image.remove(), { once: true });
-    image.src = avatarUrl;
-    avatar.append(image);
-  }
-  const byline = makeElement('div', 'immersive-byline');
-  if (post.author_profile_id && !post.is_anonymous) {
-    const profile = makeElement('a', 'immersive-author', sanitizeName(post.author_display_name) || 'VYBE member');
-    profile.href = `profile.html?id=${encodeURIComponent(post.author_profile_id)}`;
-    byline.append(profile);
-  } else byline.append(makeElement('strong', 'immersive-author', post.is_anonymous ? 'Anonymous' : (sanitizeName(post.author_display_name) || 'VYBE member')));
-  const time = formatPostDate(post.created_at);
-  byline.append(makeElement('span', 'immersive-time', time || 'Now'));
-  identity.append(avatar, byline);
-
-  const caption = makeElement('p', 'immersive-caption', isMedia ? post.content : '');
-  if (!isMedia) caption.hidden = true;
-  const actions = makeElement('div', 'immersive-actions');
-  if (post.author_profile_id && !post.is_anonymous) {
-    const visit = makeElement('a', 'immersive-action', 'Profile');
-    visit.href = `profile.html?id=${encodeURIComponent(post.author_profile_id)}`;
-    visit.setAttribute('aria-label', `Visit ${sanitizeName(post.author_display_name) || 'creator'}'s profile`);
-    actions.append(visit);
-  }
-  const conversation = makeElement('a', 'immersive-action', 'Discuss');
-  conversation.href = 'community.html?room=campus-gist';
-  conversation.setAttribute('aria-label', 'Join the Community conversation');
-  const share = makeElement('button', 'immersive-action immersive-share', 'Share');
-  share.type = 'button'; share.dataset.postShare = '';
+  const like = makeElement('button', 'reel-action reel-like');
+  like.type = 'button';
+  like.dataset.postLike = '';
+  like.append(reelIcon('heart'), makeElement('span', 'reel-count', 'Like'));
+  const discuss = makeElement('a', 'reel-action');
+  discuss.href = 'community.html?room=campus-gist';
+  discuss.setAttribute('aria-label', 'Join the Community conversation');
+  discuss.append(reelIcon('chat'), makeElement('span', '', 'Gist'));
+  const share = makeElement('button', 'reel-action');
+  share.type = 'button';
+  share.dataset.postShare = '';
   share.dataset.postUrl = `${window.location.origin}/vibe.html#post-${post.id}`;
   share.setAttribute('aria-label', 'Share this post');
-  actions.append(conversation, share);
-  overlay.append(identity, caption, actions);
-  article.append(visual, overlay);
-  item.append(article);
+  share.append(reelIcon('share'), makeElement('span', '', 'Share'));
+  rail.append(like, discuss, share);
+
+  if (post.can_edit) {
+    const owner = makeElement('div', 'reel-owner');
+    const more = makeElement('button', 'reel-action reel-more');
+    more.type = 'button';
+    more.dataset.reelMore = '';
+    more.setAttribute('aria-label', 'More options for your post');
+    more.setAttribute('aria-expanded', 'false');
+    more.append(reelIcon('more'), makeElement('span', '', 'More'));
+    const menu = makeElement('div', 'reel-menu');
+    menu.hidden = true;
+    const edit = makeElement('button', '', 'Edit');
+    edit.type = 'button';
+    edit.dataset.postEdit = '';
+    const remove = makeElement('button', '', 'Delete');
+    remove.type = 'button';
+    remove.dataset.postDelete = '';
+    menu.append(edit, remove);
+    owner.append(more, menu);
+    rail.append(owner);
+  }
+
+  frame.append(visual, shade, info, rail);
+  if (visual.querySelector('video')) {
+    const flash = makeElement('div', 'reel-flash');
+    flash.setAttribute('aria-hidden', 'true');
+    flash.append(reelIcon('play'));
+    frame.append(flash, makeElement('div', 'reel-progress'));
+  }
+  item.append(frame);
+  paintReelLike(item);
   return item;
+}
+
+/* ---- Likes ---------------------------------------------------------------- */
+
+function isMissingBackend(error) {
+  return ['PGRST202', 'PGRST205', '42P01', '42883'].includes(error?.code);
+}
+
+function localLikesKey() {
+  return `vybe-local-likes:${currentUserId || 'guest'}`;
+}
+
+function readLocalLikes() {
+  try {
+    return new Set(JSON.parse(window.localStorage.getItem(localLikesKey()) || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeLocalLike(id, liked) {
+  const likes = readLocalLikes();
+  if (liked) likes.add(id); else likes.delete(id);
+  try {
+    window.localStorage.setItem(localLikesKey(), JSON.stringify([...likes].slice(-500)));
+  } catch { /* Private mode: the like simply won't survive a reload. */ }
+}
+
+function paintReelLike(item) {
+  const button = item.querySelector('[data-post-like]');
+  if (!button) return;
+  const state = likeStates.get(item.dataset.postId) || { liked: false, count: 0 };
+  button.setAttribute('aria-pressed', String(state.liked));
+  button.setAttribute('aria-label', state.liked ? 'Unlike this post' : 'Like this post');
+  const label = button.querySelector('.reel-count');
+  if (!label) return;
+  if (likeBackend === 'missing') label.textContent = state.liked ? 'Liked' : 'Like';
+  else label.textContent = state.count > 0 ? formatCount(state.count) : 'Like';
+}
+
+function repaintReelLikes() {
+  feedPostList?.querySelectorAll('.reel[data-post-id]').forEach(paintReelLike);
+}
+
+async function loadLikeStates(posts) {
+  const ids = posts.map(post => post.id).filter(Boolean);
+  if (!ids.length) return;
+  if (likeBackend !== 'missing') {
+    try {
+      const { data, error } = await supabase.rpc('get_post_like_state', { p_post_ids: ids });
+      if (error) throw error;
+      likeBackend = 'ok';
+      (data || []).forEach(row => {
+        if (likePending.has(row.post_id)) return;
+        likeStates.set(row.post_id, { liked: Boolean(row.liked_by_me), count: Number(row.like_count) || 0 });
+      });
+      return;
+    } catch (error) {
+      if (!isMissingBackend(error)) {
+        console.warn('VYBE could not load likes:', error);
+        return;
+      }
+      likeBackend = 'missing';
+    }
+  }
+  const local = readLocalLikes();
+  ids.forEach(id => {
+    if (!likePending.has(id)) likeStates.set(id, { liked: local.has(id), count: 0 });
+  });
+}
+
+async function setReelLike(item, wantLiked) {
+  const id = item?.dataset.postId;
+  if (!id || likePending.has(id)) return;
+  const before = likeStates.get(id) || { liked: false, count: 0 };
+  const next = typeof wantLiked === 'boolean' ? wantLiked : !before.liked;
+  if (next === before.liked) return;
+  likePending.add(id);
+  likeStates.set(id, { liked: next, count: Math.max(0, before.count + (next ? 1 : -1)) });
+  paintReelLike(item);
+  if (next) { try { navigator.vibrate?.(8); } catch { /* Not supported. */ } }
+  try {
+    if (likeBackend === 'missing') {
+      writeLocalLike(id, next);
+      return;
+    }
+    const { data, error } = await supabase.rpc('set_post_like', { p_post_id: id, p_liked: next });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error('VYBE could not confirm that like.');
+    likeBackend = 'ok';
+    likeStates.set(id, { liked: Boolean(row.liked), count: Number(row.like_count) || 0 });
+  } catch (error) {
+    if (isMissingBackend(error)) {
+      likeBackend = 'missing';
+      writeLocalLike(id, next);
+    } else {
+      likeStates.set(id, before);
+      showReelToast('Couldn’t save that like. Try again.');
+    }
+  } finally {
+    likePending.delete(id);
+    repaintReelLikes();
+  }
+}
+
+/* ---- Follow --------------------------------------------------------------- */
+
+async function loadFollowingStates(posts) {
+  if (!currentUserId) return;
+  const ids = [...new Set(posts
+    .filter(post => post.author_profile_id && !post.is_anonymous && !post.can_edit && post.author_profile_id !== currentUserId)
+    .map(post => post.author_profile_id))]
+    .filter(id => !followingKnown.has(id));
+  if (!ids.length) return;
+  try {
+    const { data, error } = await supabase.from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUserId)
+      .in('following_id', ids);
+    if (error) throw error;
+    ids.forEach(id => followingKnown.add(id));
+    (data || []).forEach(row => followingIds.add(row.following_id));
+  } catch (error) {
+    console.warn('VYBE could not check who you follow:', error);
+  }
+}
+
+async function followReelAuthor(button) {
+  const authorId = button.dataset.authorId;
+  if (!authorId || button.disabled) return;
+  button.disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('toggle_follow', { target_user: authorId });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result || typeof result.following !== 'boolean') throw new Error('VYBE could not confirm that follow.');
+    if (result.following) followingIds.add(authorId); else followingIds.delete(authorId);
+    feedPostList.querySelectorAll(`[data-post-follow][data-author-id="${CSS.escape(authorId)}"]`)
+      .forEach(el => el.classList.toggle('is-following', result.following));
+    showReelToast(result.following ? 'Following' : 'Unfollowed');
+  } catch (error) {
+    showReelToast(error.message || 'Couldn’t follow right now. Try again.');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/* ---- Playback and navigation ---------------------------------------------- */
+
+function syncReelSoundButton() {
+  if (!reelSoundButton) return;
+  reelSoundButton.setAttribute('aria-pressed', String(reelSoundOn));
+  reelSoundButton.setAttribute('aria-label', reelSoundOn ? 'Mute sound' : 'Turn sound on');
+}
+
+function setReelSound(on) {
+  reelSoundOn = on;
+  try { window.localStorage.setItem(REEL_SOUND_KEY, on ? '1' : '0'); } catch { /* Optional. */ }
+  feedPostList?.querySelectorAll('video').forEach(video => { video.muted = !on; });
+  syncReelSoundButton();
+}
+
+function playReelVideo(video) {
+  video.muted = !reelSoundOn;
+  const attempt = video.play();
+  if (attempt && typeof attempt.catch === 'function') {
+    attempt.catch(() => {
+      if (!video.muted) {
+        video.muted = true;
+        reelSoundOn = false;
+        syncReelSoundButton();
+        video.play().catch(() => { /* Tap the video to play. */ });
+      }
+    });
+  }
+}
+
+function activateReel(item) {
+  if (!item.dataset.postId || activeReel === item) return;
+  if (activeReel) deactivateReel(activeReel);
+  activeReel = item;
+  item.classList.add('is-active');
+  const video = item.querySelector('video');
+  document.body.classList.toggle('reel-has-video', Boolean(video));
+  if (video && !composerSheet?.open) {
+    delete video.dataset.userPaused;
+    playReelVideo(video);
+  }
+  const next = item.nextElementSibling;
+  next?.querySelectorAll('video').forEach(upcoming => { upcoming.preload = 'auto'; });
+  const siblings = [...feedPostList.children];
+  if (feedHasMore && feedAutoLoadEnabled && !feedRequest && siblings.length - siblings.indexOf(item) <= 4) loadFeed();
+}
+
+function deactivateReel(item) {
+  item.classList.remove('is-active');
+  item.querySelectorAll('video').forEach(video => {
+    video.pause();
+    try { video.currentTime = 0; } catch { /* Not seekable yet. */ }
+  });
+  if (activeReel === item) activeReel = null;
+}
+
+function togglePlayback(item) {
+  const video = item.querySelector('video');
+  if (!video) return;
+  if (video.paused) {
+    delete video.dataset.userPaused;
+    playReelVideo(video);
+  } else {
+    video.dataset.userPaused = '1';
+    video.pause();
+  }
+}
+
+function stepReel(direction) {
+  const items = [...feedPostList.children].filter(el => !el.hidden);
+  if (!items.length) return;
+  let index = items.indexOf(activeReel);
+  if (index < 0 && isCardFeedLayout) {
+    const midpoint = window.innerHeight / 2;
+    index = items.reduce((closestIndex, item, itemIndex) => {
+      const closestDistance = Math.abs(items[closestIndex].getBoundingClientRect().top - midpoint);
+      const distance = Math.abs(item.getBoundingClientRect().top - midpoint);
+      return distance < closestDistance ? itemIndex : closestIndex;
+    }, 0);
+  }
+  index = Math.max(0, index);
+  const target = items[Math.min(items.length - 1, Math.max(0, index + direction))];
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function spawnHeartBurst(item, clientX, clientY) {
+  const frame = item.querySelector('.reel-frame');
+  if (!frame) return;
+  const rect = frame.getBoundingClientRect();
+  const burst = makeElement('span', 'reel-burst');
+  burst.setAttribute('aria-hidden', 'true');
+  burst.append(reelIcon('heart'));
+  burst.style.left = `${clientX - rect.left}px`;
+  burst.style.top = `${clientY - rect.top}px`;
+  burst.style.setProperty('--tilt', `${Math.round(Math.random() * 30 - 15)}deg`);
+  frame.append(burst);
+  burst.addEventListener('animationend', () => burst.remove(), { once: true });
+  window.setTimeout(() => burst.remove(), 1300);
+}
+
+function handleReelTap(item, event) {
+  const id = item.dataset.postId;
+  const now = Date.now();
+  window.clearTimeout(reelTapTimer);
+  if (reelLastTap.id === id && now - reelLastTap.time < 300) {
+    reelLastTap = { id: '', time: 0 };
+    spawnHeartBurst(item, event.clientX, event.clientY);
+    setReelLike(item, true);
+    return;
+  }
+  reelLastTap = { id, time: now };
+  reelTapTimer = window.setTimeout(() => togglePlayback(item), 300);
+}
+
+function closeReelMenus() {
+  feedPostList?.querySelectorAll('.reel-menu').forEach(menu => {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    menu.parentElement?.querySelector('[data-reel-more]')?.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function handleReelClick(event) {
+  const target = event.target;
+  const item = target.closest('.reel[data-post-id]');
+  if (!item) {
+    if (target.closest('[data-reel-end-post]')) startPostCreation('thought');
+    else if (target.closest('[data-reel-top]')) feedPostList.scrollTo({ top: 0 });
+    return;
+  }
+  const likeButton = target.closest('[data-post-like]');
+  if (likeButton) { setReelLike(item); return; }
+  const followButton = target.closest('[data-post-follow]');
+  if (followButton) { followReelAuthor(followButton); return; }
+  const moreButton = target.closest('[data-reel-more]');
+  if (moreButton) {
+    const menu = moreButton.parentElement.querySelector('.reel-menu');
+    const open = menu.hidden;
+    closeReelMenus();
+    menu.hidden = !open;
+    moreButton.setAttribute('aria-expanded', String(open));
+    return;
+  }
+  if (target.closest('[data-post-edit], [data-post-delete]')) closeReelMenus();
+  const caption = target.closest('.reel-caption');
+  if (caption) { caption.classList.toggle('is-open'); return; }
+  if (!target.closest('.reel-visual') || target.closest('a, button')) return;
+  handleReelTap(item, event);
+}
+
+function handleReelKeys(event) {
+  if (event.key === 'Escape') closeReelMenus();
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (composerSheet?.open) return;
+  if (event.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+  const key = event.key.toLowerCase();
+  if (key === 'arrowdown' || key === 'j' || key === 'pagedown') {
+    event.preventDefault();
+    stepReel(1);
+  } else if (key === 'arrowup' || key === 'k' || key === 'pageup') {
+    event.preventDefault();
+    stepReel(-1);
+  } else if (key === 'l' && activeReel) {
+    if (!likeStates.get(activeReel.dataset.postId)?.liked) {
+      const rect = activeReel.getBoundingClientRect();
+      spawnHeartBurst(activeReel, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+    setReelLike(activeReel);
+  } else if (key === 'm') {
+    setReelSound(!reelSoundOn);
+  } else if (key === ' ' && activeReel && !event.target.closest?.('button, a')) {
+    event.preventDefault();
+    togglePlayback(activeReel);
+  }
+}
+
+function openComposerSheet() {
+  document.body.classList.add('is-composing');
+  activeReel?.querySelector('video')?.pause();
+  if (composerSheet && !composerSheet.open) {
+    updateComposerViewport();
+    composerSheet.showModal();
+  }
+}
+
+function closeComposerSheet() {
+  requestComposerClose();
+}
+
+function composerHasUnsavedChanges() {
+  if (editingPostId) {
+    return postContentInput.value !== composerInitialState?.content ||
+      postAnonymousInput.checked !== composerInitialState?.anonymous;
+  }
+  return selectedPostMedia.length > 0 || Boolean(postContentInput.value.trim()) || postAnonymousInput.checked;
+}
+
+function requestComposerClose() {
+  if (composerBusy || !composerSheet?.open) return;
+  if (!isImmersiveFeed) {
+    composerSheet.close();
+    return;
+  }
+  if (composerHasUnsavedChanges()) {
+    discardConfirm.hidden = false;
+    discardKeepButton.focus({ preventScroll: true });
+    return;
+  }
+  resetComposer();
+}
+
+function finishComposerDiscard() {
+  if (discardConfirm) discardConfirm.hidden = true;
+  resetComposer();
+}
+
+function updateComposerViewport() {
+  if (!composerSheet) return;
+  const height = window.visualViewport?.height || window.innerHeight;
+  document.documentElement.style.setProperty('--composer-vh', `${height}px`);
+}
+
+function showNewPostsPill(count) {
+  if (!reelNewPill) return;
+  reelNewPill.textContent = count === 1 ? '1 new post' : `${count} new posts`;
+  reelNewPill.hidden = false;
+}
+
+function hideNewPostsPill() {
+  if (reelNewPill) reelNewPill.hidden = true;
+}
+
+function reelPostChanged(post) {
+  const previous = loadedPosts.get(post.id);
+  return !previous || previous.updated_at !== post.updated_at || previous.content !== post.content;
+}
+
+function showFeedEnd() {
+  if (!isImmersiveFeed) {
+    setFeedState('You’re all caught up.', 'empty');
+    return;
+  }
+  setFeedState('');
+  if (feedPostList.querySelector('.reel-end') || !feedPostList.querySelector('[data-post-id]')) return;
+  const end = makeElement('li', 'reel reel-end');
+  const card = makeElement('div', 'reel-end-card');
+  const actions = makeElement('div', 'reel-end-actions');
+  const post = makeElement('button', 'reel-end-primary', 'Post something');
+  post.type = 'button';
+  post.dataset.reelEndPost = '';
+  const top = makeElement('button', 'reel-end-secondary', 'Back to top');
+  top.type = 'button';
+  top.dataset.reelTop = '';
+  actions.append(post, top);
+  card.append(
+    makeElement('h2', '', 'You’re all caught up'),
+    makeElement('p', '', 'New posts show up here as people share. Start something yourself while you wait.'),
+    actions
+  );
+  end.append(card);
+  feedPostList.append(end);
+}
+
+function scrollToHashPost() {
+  let id = '';
+  try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+  if (!id.startsWith('post-')) return;
+  const target = document.getElementById(id);
+  if (!target || !feedPostList.contains(target)) return;
+  feedPostList.style.scrollBehavior = 'auto';
+  target.scrollIntoView({ block: 'start' });
+  feedPostList.style.scrollBehavior = '';
+}
+
+function initReel() {
+  if (reelObserver || !feedPostList) return;
+  try { reelSoundOn = window.localStorage.getItem(REEL_SOUND_KEY) === '1'; } catch { reelSoundOn = false; }
+  syncReelSoundButton();
+  if (!('IntersectionObserver' in window)) return;
+  reelObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && entry.intersectionRatio >= .6) activateReel(entry.target);
+      else if (entry.target === activeReel && entry.intersectionRatio < .3) deactivateReel(entry.target);
+    });
+  }, { root: feedPostList, threshold: [0, .3, .6, .9] });
+}
+
+function bindReelInteractions() {
+  if (!feedPostList) return;
+  feedPostList.addEventListener('click', handleReelClick);
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.reel-owner')) closeReelMenus();
+  });
+  document.addEventListener('keydown', handleReelKeys);
+  reelSoundButton?.addEventListener('click', () => setReelSound(!reelSoundOn));
+  reelNewPill?.addEventListener('click', () => {
+    hideNewPostsPill();
+    insertNewOnRefresh = true;
+    feedPostList.scrollTo({ top: 0 });
+    refreshFeedHead();
+  });
+  $('[data-reel-prev]')?.addEventListener('click', () => stepReel(-1));
+  $('[data-reel-next]')?.addEventListener('click', () => stepReel(1));
+  document.addEventListener('visibilitychange', () => {
+    const video = activeReel?.querySelector('video');
+    if (!video) return;
+    if (document.visibilityState === 'hidden') video.pause();
+    else if (!composerSheet?.open && !video.dataset.userPaused) playReelVideo(video);
+  });
+  $('[data-composer-close]')?.addEventListener('click', closeComposerSheet);
+  composerSheet?.addEventListener('cancel', event => {
+    event.preventDefault();
+    if (!discardConfirm.hidden) {
+      if (discardConfirm) discardConfirm.hidden = true;
+      $('[data-composer-close]')?.focus({ preventScroll: true });
+      return;
+    }
+    requestComposerClose();
+  });
+  composerSheet?.addEventListener('keydown', event => {
+    if (event.key !== 'Tab' || discardConfirm.hidden) return;
+    const controls = $$('button:not(:disabled), textarea:not(:disabled), input:not(:disabled)', discardConfirm)
+      .filter(control => !control.hidden);
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  discardKeepButton?.addEventListener('click', () => {
+    discardConfirm.hidden = true;
+    $('[data-composer-close]')?.focus({ preventScroll: true });
+  });
+  discardConfirmButton?.addEventListener('click', finishComposerDiscard);
+  createRetryButton?.addEventListener('click', () => postForm.requestSubmit());
+  createChoiceButtons.forEach(button => button.addEventListener('click', () => {
+    startPostCreation(button.dataset.createSelect);
+  }));
+  createCaptureButtons.forEach(button => button.addEventListener('click', () => {
+    if (!composerSheet?.open) startPostCreation();
+    launchCreatePicker(button.dataset.createCapture, 'new', 'environment');
+  }));
+  createReplaceMedia?.addEventListener('click', () => {
+    const current = selectedPostMedia[createMediaIndex];
+    if (current) launchCreatePicker(current.kind, 'replace');
+  });
+  createRemoveMedia?.addEventListener('click', removeCreateMedia);
+  createAddPhotos?.addEventListener('click', () => launchCreatePicker('image', 'add'));
+  createPrevPhoto?.addEventListener('click', () => {
+    createMediaIndex = Math.max(0, createMediaIndex - 1);
+    renderCreatePreview();
+  });
+  createNextPhoto?.addEventListener('click', () => {
+    createMediaIndex = Math.min(currentCreateMedia().length - 1, createMediaIndex + 1);
+    renderCreatePreview();
+  });
+  $('[data-create-video-sound]')?.addEventListener('click', event => {
+    createSoundOn = !createSoundOn;
+    const button = event.currentTarget;
+    const video = createPreviewMedia.querySelector('video');
+    button.setAttribute('aria-pressed', String(createSoundOn));
+    button.setAttribute('aria-label', createSoundOn ? 'Mute preview sound' : 'Turn preview sound on');
+    button.textContent = createSoundOn ? 'Sound on' : 'Sound off';
+    if (video) {
+      video.muted = !createSoundOn;
+      if (createSoundOn) video.play().catch(() => {
+        createSoundOn = false;
+        video.muted = true;
+        button.setAttribute('aria-pressed', 'false');
+        button.setAttribute('aria-label', 'Turn preview sound on');
+        button.textContent = 'Sound off';
+      });
+    }
+  });
+  window.visualViewport?.addEventListener('resize', updateComposerViewport);
+  window.visualViewport?.addEventListener('scroll', updateComposerViewport);
+  composerSheet?.addEventListener('click', event => {
+    if (event.target === composerSheet) closeComposerSheet();
+  });
+  composerSheet?.addEventListener('close', () => {
+    document.body.classList.remove('is-composing');
+    mobileCreateButton?.setAttribute('aria-expanded', 'false');
+    const video = activeReel?.querySelector('video');
+    if (video && !video.dataset.userPaused) playReelVideo(video);
+    if (createRestoreFocus?.isConnected) createRestoreFocus.focus({ preventScroll: true });
+    createRestoreFocus = null;
+  });
 }
 
 async function hydrateFeedPosts(posts) {
   await signPostMedia(posts);
+  if (isImmersiveFeed) await Promise.all([loadLikeStates(posts), loadFollowingStates(posts)]);
   const authorIds = [...new Set(posts
     .filter(post => !post.is_anonymous && post.author_profile_id)
     .map(post => post.author_profile_id))];
@@ -1091,6 +2519,8 @@ async function hydrateFeedPosts(posts) {
 }
 
 function unobservePostMedia(item) {
+  reelObserver?.unobserve(item);
+  if (activeReel === item) activeReel = null;
   item.querySelectorAll('video').forEach(video => {
     feedPlaybackObserver?.unobserve(video);
     if (activeFeedVideo === video) activeFeedVideo = null;
@@ -1110,9 +2540,14 @@ function upsertFeedPost(post, avatarUrl = '', prepend = false) {
     feedPostList.append(rendered);
   }
   loadedPosts.set(post.id, post);
+  if (isImmersiveFeed && !isCardFeedLayout) reelObserver?.observe(rendered);
 }
 
 function preserveFeedPosition(operation) {
+  if (isImmersiveFeed) {
+    operation();
+    return;
+  }
   const feedAtTop = window.scrollY < feedSection.getBoundingClientRect().top + window.scrollY + 120;
   const anchor = [...feedPostList.children].find(item => item.getBoundingClientRect().bottom > 0);
   const anchorId = anchor?.dataset.postId;
@@ -1139,7 +2574,8 @@ async function loadFeed({ reset = false } = {}) {
     feedMore.hidden = true;
     if (!feedPostList.childElementCount) setFeedState('Loading posts…');
   } else if (!feedHasMore) {
-    setFeedState(feedPostList.childElementCount ? 'You’re all caught up.' : 'No posts yet. Start the gist with a post of your own.', 'empty');
+    if (feedPostList.childElementCount) showFeedEnd();
+    else setFeedState('No posts yet. Start the gist with a post of your own.', 'empty');
     return true;
   } else {
     setFeedState(feedPostList.childElementCount ? 'Loading more posts…' : 'Loading posts…');
@@ -1166,6 +2602,10 @@ async function loadFeed({ reset = false } = {}) {
         [...feedPostList.children].forEach(unobservePostMedia);
         feedPostList.replaceChildren();
         loadedPosts.clear();
+        if (isImmersiveFeed) {
+          activeReel = null;
+          hideNewPostsPill();
+        }
       }
       const existingIds = new Set([...feedPostList.children].map(item => item.dataset.postId));
       page.forEach(post => {
@@ -1182,13 +2622,14 @@ async function loadFeed({ reset = false } = {}) {
           'empty'
         );
       } else if (!feedHasMore) {
-        setFeedState('You’re all caught up.', 'empty');
+        showFeedEnd();
       } else {
         setFeedState('');
+        if (isImmersiveFeed) feedPostList.querySelector('.reel-end')?.remove();
       }
       feedRetry.hidden = true;
       feedAutoLoadEnabled = true;
-      feedMore.hidden = Boolean(feedObserver) || !feedHasMore;
+      feedMore.hidden = isImmersiveFeed || Boolean(feedObserver) || !feedHasMore;
       return true;
     } catch (error) {
       feedAutoLoadEnabled = false;
@@ -1231,13 +2672,21 @@ async function refreshFeedHead() {
     const avatars = await hydrateFeedPosts(posts);
     const existingIds = new Set([...feedPostList.children].map(item => item.dataset.postId));
     const newPosts = posts.filter(post => !existingIds.has(post.id));
+    const insertNew = !isImmersiveFeed || insertNewOnRefresh;
+    if (insertNew) insertNewOnRefresh = false;
     preserveFeedPosition(() => {
       posts.filter(post => existingIds.has(post.id))
+        .filter(post => !isImmersiveFeed || reelPostChanged(post))
         .forEach(post => upsertFeedPost(post, avatars.get(post.author_profile_id) || ''));
-      newPosts.reverse().forEach(post => upsertFeedPost(post, avatars.get(post.author_profile_id) || '', true));
+      if (insertNew) newPosts.reverse().forEach(post => upsertFeedPost(post, avatars.get(post.author_profile_id) || '', true));
     });
+    if (isImmersiveFeed) {
+      repaintReelLikes();
+      if (insertNew) hideNewPostsPill();
+      else if (newPosts.length) showNewPostsPill(newPosts.length);
+    }
     applyHomeSearch();
-    if (newPosts.length) {
+    if (newPosts.length && !isImmersiveFeed) {
       setFeedState(`${newPosts.length} new post${newPosts.length === 1 ? '' : 's'} loaded.`, 'success');
       window.setTimeout(() => {
         if (feedState.dataset.state === 'success') setFeedState('');
@@ -1253,7 +2702,7 @@ async function refreshFeedHead() {
     }
   } catch (error) {
     setFeedState(`Couldn’t check for new posts. ${explainPostBackendError(error)}`, 'error');
-    feedRetry.hidden = false;
+    feedRetry.hidden = isImmersiveFeed && Boolean(feedPostList.childElementCount);
   } finally {
     feedRefreshingHead = false;
     if (feedRefreshPending) {
@@ -1308,30 +2757,60 @@ function resumeFeedRealtime() {
 }
 
 function resetComposer() {
+  releaseSelectedPostMedia();
   postForm.reset();
-  selectedPostMedia = [];
+  editingMediaPreview = [];
+  createMediaIndex = 0;
+  createSoundOn = false;
+  composerInitialState = null;
   renderPostMediaPreview();
   editingPostId = null;
   document.body.classList.remove('is-composing');
+  if (discardConfirm) discardConfirm.hidden = true;
+  if (composerSheet?.open) composerSheet.close();
+  mobileCreateButton?.setAttribute('aria-expanded', 'false');
   postMediaTrigger.disabled = !currentUserId;
   postMediaInput.multiple = true;
   postMediaInput.accept = POST_MEDIA_ACCEPT;
-  postSubmitButton.textContent = 'Post';
+  postMediaInput.removeAttribute('capture');
+  postMediaInput.value = '';
+  postMediaInput.disabled = !currentUserId;
+  if (composerTitle) composerTitle.textContent = 'Create a post';
+  postSubmitButton.textContent = isImmersiveFeed ? 'Post ↗' : 'Post';
   postCharacterCount.textContent = `0 / ${postContentInput.maxLength}`;
+  if (createRetryButton) createRetryButton.hidden = true;
+  if (createUploadProgress) createUploadProgress.hidden = true;
+  showCreateStep('choose');
   setComposerStatus('');
 }
 
 function setComposerEditing(post) {
-  document.body.classList.add('is-composing');
   editingPostId = post.id;
   postContentInput.value = post.content;
   postAnonymousInput.checked = post.is_anonymous;
+  composerInitialState = { content: post.content, anonymous: post.is_anonymous };
   postCharacterCount.textContent = `${post.content.length} / ${postContentInput.maxLength}`;
-  postSubmitButton.textContent = 'Save changes';
+  if (composerTitle) composerTitle.textContent = 'Edit your post';
+  postSubmitButton.textContent = isImmersiveFeed ? 'Save ↗' : 'Save changes';
   postMediaTrigger.disabled = true;
+  postMediaInput.disabled = true;
+  editingMediaPreview = postMediaItems(post).map(media => ({
+    ...media,
+    url: postMediaUrls.get(media.path) || ''
+  }));
+  createMediaIndex = 0;
+  if (isImmersiveFeed) {
+    createRestoreFocus = document.activeElement;
+    openComposerSheet();
+    showCreateStep('preview');
+    renderCreatePreview();
+  } else {
+    document.body.classList.add('is-composing');
+  }
   setComposerStatus('Editing your post.');
   postContentInput.focus();
-  feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  updateCreateSubmitState();
+  if (!isImmersiveFeed) feedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function submitPost(event) {
@@ -1345,12 +2824,17 @@ async function submitPost(event) {
   }
   if (selectedPostMedia.length > MAX_POST_MEDIA ||
       (selectedPostMedia.length > 1 && selectedPostMedia.some(media => media.kind !== 'image'))) {
-    setComposerStatus('A post can include up to 10 photos or one video clip.', 'error');
+    setComposerStatus(`A post can include up to ${MAX_POST_MEDIA} photos or one video clip.`, 'error');
     return;
   }
 
   composerBusy = true;
   postSubmitButton.disabled = true;
+  if (isImmersiveFeed) {
+    postForm.inert = true;
+    createUploadProgress.hidden = false;
+    createRetryButton.hidden = true;
+  }
   setComposerStatus(editingPostId ? 'Saving your changes…' : 'Publishing your post…');
   const uploadedPaths = [];
   let saved = false;
@@ -1402,15 +2886,25 @@ async function submitPost(event) {
           throw new Error('Multiple-photo posts are not available until the reviewed Feed migration is applied.');
         }
         const primaryMedia = uploadedMedia[0];
-        const { data: legacyPost, error: legacyError } = await supabase.from('posts').insert({
+        const legacyPayload = {
           author_id: currentUserId,
           content,
           post_type: primaryMedia?.kind || 'text',
-          is_anonymous: postAnonymousInput.checked,
-          media_path: primaryMedia?.path || null,
-          media_mime: primaryMedia?.mime || null,
-          media_kind: primaryMedia?.kind || 'none'
-        }).select('id,author_id,content,post_type,is_anonymous,created_at,updated_at,media_path,media_mime,media_kind').single();
+          is_anonymous: postAnonymousInput.checked
+        };
+        if (primaryMedia) {
+          Object.assign(legacyPayload, {
+            media_path: primaryMedia.path,
+            media_mime: primaryMedia.mime,
+            media_kind: primaryMedia.kind
+          });
+        }
+        const legacySelection = primaryMedia
+          ? 'id,author_id,content,post_type,is_anonymous,created_at,updated_at,media_path,media_mime,media_kind'
+          : 'id,author_id,content,post_type,is_anonymous,created_at,updated_at';
+        const { data: legacyPost, error: legacyError } = await supabase.from('posts').insert(legacyPayload)
+          .select(legacySelection)
+          .single();
         if (legacyError) throw legacyError;
         post = { ...legacyPost, media_items: uploadedMedia };
       } else if (error) {
@@ -1458,9 +2952,14 @@ async function submitPost(event) {
       }
     }
     upsertFeedPost(post, authorAvatarUrl, !wasEditing);
+    if (isImmersiveFeed && !wasEditing) {
+      if (isCardFeedLayout) window.scrollTo({ top: 0, behavior: 'smooth' });
+      else feedPostList.scrollTo({ top: 0 });
+    }
     applyHomeSearch();
     const savedMessage = displayWarning || (wasEditing ? 'Your changes were saved.' : 'Your post was published.');
-    setComposerStatus(savedMessage, displayWarning ? 'error' : 'success');
+    if (isImmersiveFeed) showReelToast(wasEditing ? 'Changes saved' : 'Posted');
+    else setComposerStatus(savedMessage, displayWarning ? 'error' : 'success');
     if (changedFilter) {
       const refreshed = await loadFeed({ reset: true });
       setFeedState(
@@ -1484,8 +2983,16 @@ async function submitPost(event) {
       }
     }
     setComposerStatus(`We couldn’t confirm the post was published: ${explainPostBackendError(error)}${cleanupMessage}`, 'error');
+    if (isImmersiveFeed) createRetryButton.hidden = false;
   } finally {
     composerBusy = false;
+    if (isImmersiveFeed) {
+      postForm.inert = false;
+      createUploadProgress.hidden = true;
+      postMediaInput.disabled = Boolean(editingPostId) || !currentUserId;
+      createChoiceButtons.forEach(button => { button.disabled = !currentUserId; });
+      createCaptureButtons.forEach(button => { button.disabled = !currentUserId; });
+    }
     postSubmitButton.disabled = false;
   }
 }
@@ -1552,6 +3059,7 @@ async function handlePostAction(event) {
 }
 
 function initializeFeedObserver() {
+  if (isImmersiveFeed) return;
   if (!feedSentinel || !('IntersectionObserver' in window)) return;
   feedObserver = new IntersectionObserver(entries => {
     if (entries.some(entry => entry.isIntersecting) && feedHasMore && feedAutoLoadEnabled && !feedRequest) {
@@ -1564,6 +3072,11 @@ function initializeFeedObserver() {
 function bindFeedInteractions() {
   createKindButtons.forEach(button => button.addEventListener('click', () => startPostCreation(button.dataset.createKind)));
   mobileCreateButton?.addEventListener('click', () => {
+    if (isImmersiveFeed) {
+      startPostCreation();
+      mobileCreateButton.setAttribute('aria-expanded', 'true');
+      return;
+    }
     const open = mobileCreateMenu.hidden;
     mobileCreateMenu.hidden = !open;
     mobileCreateButton.setAttribute('aria-expanded', String(open));
@@ -1590,6 +3103,13 @@ function bindFeedInteractions() {
   });
   if (!feedSection) return;
   feedFilters.forEach(button => button.addEventListener('click', () => {
+    if (isImmersiveFeed && !feedRequest && feedFilter === button.dataset.feedFilter) {
+      if (isCardFeedLayout) window.scrollTo({ top: 0, behavior: 'smooth' });
+      else feedPostList.scrollTo({ top: 0 });
+      insertNewOnRefresh = true;
+      refreshFeedHead();
+      return;
+    }
     if (feedRequest || feedFilter === button.dataset.feedFilter) return;
     feedFilter = button.dataset.feedFilter;
     applyHomeSearch();
@@ -1604,10 +3124,14 @@ function bindFeedInteractions() {
   postForm?.addEventListener('submit', submitPost);
   postMediaTrigger?.addEventListener('click', () => postMediaInput.click());
   postMediaInput?.addEventListener('change', () => {
+    if (isImmersiveFeed) {
+      handleCreateMediaSelection();
+      return;
+    }
     try {
       const files = [...postMediaInput.files];
       const validated = files.map(validatePostMedia).filter(Boolean);
-      if (validated.length > MAX_POST_MEDIA) throw new Error('Add no more than 10 photos to one post.');
+      if (validated.length > MAX_POST_MEDIA) throw new Error(`Add no more than ${MAX_POST_MEDIA} photos to one post.`);
       if (validated.length > 1 && validated.some(media => media.kind !== 'image')) {
         throw new Error('A post can include multiple photos or one video clip, not both.');
       }
@@ -1627,7 +3151,14 @@ function bindFeedInteractions() {
   });
   postContentInput?.addEventListener('input', () => {
     postCharacterCount.textContent = `${postContentInput.value.length} / ${postContentInput.maxLength}`;
+    if (isImmersiveFeed) {
+      createTextPreview.textContent = postContentInput.value.trim() || 'Your words, your VYBE.';
+      updateCreateSubmitState();
+    }
   });
+  createDetailButtons.forEach(button => button.addEventListener('click', () => {
+    insertCreateDetail(button.dataset.createInsert);
+  }));
   feedPostList?.addEventListener('click', handlePostAction);
   homeSearch?.addEventListener('input', applyHomeSearch);
 }
@@ -1739,15 +3270,6 @@ function searchHaystack(profile) {
   ].filter(Boolean).join(' ').toLocaleLowerCase();
 }
 
-function shuffleProfiles(profiles) {
-  const shuffled = [...profiles];
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-  }
-  return shuffled;
-}
-
 function renderCandidates() {
   const visible = candidates;
   suggestionList.replaceChildren();
@@ -1853,7 +3375,7 @@ function renderCandidate(candidate) {
   return card;
 }
 
-async function loadSuggestions({ reset = true, background = false } = {}) {
+async function loadSuggestions({ reset = true } = {}) {
   if (!reset && peopleLoading) return;
   const requestId = ++peopleRequestId;
   const filter = activePeopleFilter || 'for-you';
@@ -1863,14 +3385,10 @@ async function loadSuggestions({ reset = true, background = false } = {}) {
   suggestionList.dataset.error = '';
   setSectionMessage(peopleMessage, reset ? 'Finding people you might click with…' : 'Loading more people…');
   if (reset) {
-    if (background) {
-      renderCandidates();
-    } else {
-      peopleOffset = 0;
-      peopleHasMore = false;
-      candidates = [];
-      renderPeopleSkeletons();
-    }
+    peopleOffset = 0;
+    peopleHasMore = false;
+    candidates = [];
+    renderPeopleSkeletons();
   } else {
     renderCandidates();
   }
@@ -1907,43 +3425,15 @@ async function loadSuggestions({ reset = true, background = false } = {}) {
         });
       }
     } else {
-      if (reset) {
-        const { data, error } = await supabase.rpc('discover_profiles', {
-          result_offset: 0,
-          result_limit: 100
-        });
-        if (error) throw error;
-        if (requestId !== peopleRequestId) return;
-        const page = data || [];
-        discoveryProfiles = shuffleProfiles(page);
-        discoveryPoolOffset = 0;
-        discoveryFetchOffset = page.length;
-        discoveryHasMore = page.length === 100;
-      }
-
-      while (
-        discoveryProfiles.length - discoveryPoolOffset < PEOPLE_PAGE_SIZE + 1 &&
-        discoveryHasMore
-      ) {
-        const { data, error } = await supabase.rpc('discover_profiles', {
-          result_offset: discoveryFetchOffset,
-          result_limit: 100
-        });
-        if (error) throw error;
-        if (requestId !== peopleRequestId) return;
-        const page = data || [];
-        discoveryFetchOffset += page.length;
-        discoveryHasMore = page.length === 100;
-        discoveryProfiles.push(...shuffleProfiles(page));
-      }
-
-      const page = discoveryProfiles.slice(
-        discoveryPoolOffset,
-        discoveryPoolOffset + PEOPLE_PAGE_SIZE + 1
-      );
-      peopleHasMore = page.length > PEOPLE_PAGE_SIZE || discoveryHasMore;
+      const { data, error } = await supabase.rpc('discover_profiles', {
+        result_offset: offset,
+        result_limit: PEOPLE_PAGE_SIZE + 1
+      });
+      if (error) throw error;
+      if (requestId !== peopleRequestId) return;
+      const page = data || [];
+      peopleHasMore = page.length > PEOPLE_PAGE_SIZE;
       profiles = page.slice(0, PEOPLE_PAGE_SIZE);
-      discoveryPoolOffset += profiles.length;
     }
     if (requestId !== peopleRequestId) return;
 
@@ -1977,18 +3467,23 @@ async function loadSuggestions({ reset = true, background = false } = {}) {
       following: followedIds.has(profile.id),
       followStatusAvailable: !followStatusUnavailable
     }));
-    if (background) {
-      candidates = nextCandidates;
-    } else {
-      const uniqueIds = new Set(candidates.map(candidate => candidate.profile.id));
-      candidates.push(...nextCandidates.filter(candidate => !uniqueIds.has(candidate.profile.id)));
+    if (filter === 'for-you') {
+      nextCandidates.sort((first, second) => {
+        const firstShared = (first.profile.interests || []).filter(item => ownInterests.includes(item)).length;
+        const secondShared = (second.profile.interests || []).filter(item => ownInterests.includes(item)).length;
+        return secondShared - firstShared ||
+          new Date(second.profile.created_at).getTime() - new Date(first.profile.created_at).getTime() ||
+          first.profile.id.localeCompare(second.profile.id);
+      });
     }
+    const uniqueIds = new Set(candidates.map(candidate => candidate.profile.id));
+    candidates.push(...nextCandidates.filter(candidate => !uniqueIds.has(candidate.profile.id)));
     peopleOffset = nextOffset;
     setSectionMessage(peopleMessage, '');
     renderCandidates();
   } catch (error) {
     if (requestId === peopleRequestId) {
-      if (!background) suggestionList.replaceChildren();
+      suggestionList.replaceChildren();
       suggestionList.setAttribute('aria-busy', 'false');
       suggestionList.dataset.error = 'true';
       peopleLoadMore.hidden = true;
@@ -2004,22 +3499,6 @@ async function loadSuggestions({ reset = true, background = false } = {}) {
       renderCandidates();
     }
   }
-}
-
-function refreshHomeSuggestions() {
-  if (!suggestionList || !supabase || document.visibilityState !== 'visible' || peopleLoading) return;
-  loadSuggestions({ background: true }).catch(error => {
-    setSectionMessage(peopleMessage, `We couldn’t refresh people to meet: ${error.message || 'Please try again.'}`, 'error');
-  });
-}
-
-function startHomeSuggestionRefresh() {
-  const refreshTimer = window.setInterval(refreshHomeSuggestions, DISCOVERY_REFRESH_INTERVAL);
-  window.addEventListener('pageshow', refreshHomeSuggestions);
-  window.addEventListener('pagehide', () => {
-    window.clearInterval(refreshTimer);
-    window.removeEventListener('pageshow', refreshHomeSuggestions);
-  }, { once: true });
 }
 
 function renderConnections(matches, profiles, urlsByProfileId) {
@@ -2251,6 +3730,10 @@ async function initialize() {
   window.addEventListener('hashchange', syncSocialNavigation);
   window.addEventListener('popstate', syncSocialNavigation);
   bindFeedInteractions();
+  if (isImmersiveFeed) {
+    initReel();
+    bindReelInteractions();
+  }
   setConversationPrompt(new Date().getDate() % CONVERSATION_PROMPTS.length);
   nextPromptButton?.addEventListener('click', () => setConversationPrompt(promptIndex + 1));
   suggestionList?.addEventListener('click', event => {
@@ -2268,6 +3751,7 @@ async function initialize() {
     currentUserId = user.id;
     startNotificationRealtime();
     refreshNotifications();
+    void initializePushNotifications();
     subscribeToAppPresence(
       renderAppPresence,
       error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
@@ -2282,6 +3766,8 @@ async function initialize() {
       window.location.replace('onboarding.html');
       return;
     }
+    document.documentElement.classList.add('home-session-checked');
+    window.dispatchEvent(new Event('vybe:home-session-checked'));
     currentAuthor = {
       id: user.id,
       display_name: profile.display_name || user.user_metadata?.display_name || '',
@@ -2294,7 +3780,7 @@ async function initialize() {
 
     const safeName = sanitizeName(profile.display_name) || sanitizeName(user.user_metadata?.display_name);
     if (homeHello) homeHello.textContent = hourGreeting();
-    greeting.textContent = safeName ? `, ${safeName}` : '';
+    if (greeting) greeting.textContent = safeName ? `, ${safeName}` : '';
     if (welcomeNote) {
       const campus = profile.university?.trim();
       welcomeNote.textContent = campus
@@ -2314,10 +3800,7 @@ async function initialize() {
     startFeedRealtime();
     window.addEventListener('pageshow', resumeFeedRealtime);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        refreshFeedHead();
-        refreshHomeSuggestions();
-      }
+      if (document.visibilityState === 'visible') refreshFeedHead();
     });
     const results = await Promise.allSettled([
       feedSection ? loadFeed({ reset: true }) : Promise.resolve(true),
@@ -2325,6 +3808,7 @@ async function initialize() {
       connectionList ? loadConnections() : Promise.resolve(),
       communityRooms ? loadCommunityRooms() : Promise.resolve()
     ]);
+    if (isImmersiveFeed) scrollToHashPost();
     if (feedSection && results[0].status === 'rejected') {
       setFeedState(`We couldn’t load posts: ${explainPostBackendError(results[0].reason)}`, 'error');
       feedRetry.hidden = false;
@@ -2339,12 +3823,13 @@ async function initialize() {
     if (results[3].status === 'rejected') {
       setSectionMessage(communityRoomsMessage, `Rooms are listed from Community. We couldn’t refresh them: ${results[3].reason.message || 'Please try again.'}`, 'error');
     }
-    if (suggestionList) startHomeSuggestionRefresh();
   } catch (error) {
+    document.documentElement.classList.add('home-session-checked');
+    window.dispatchEvent(new Event('vybe:home-session-checked'));
     setStatus(error.message || 'We couldn’t load your VYBE home. Please refresh and try again.');
   }
 
-  logoutButton.addEventListener('click', async () => {
+  logoutButton?.addEventListener('click', async () => {
     logoutButton.disabled = true;
     try {
       const { warning } = await signOutCurrentSession(supabase);

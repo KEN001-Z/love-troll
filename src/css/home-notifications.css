@@ -2,11 +2,26 @@
 .notification-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 4px;border:1.5px solid #fffaf3;border-radius:999px;background:#ff6b61;color:#fff;font-size:.61rem;font-weight:800;line-height:1}
 .notification-status{margin:18px 0 0;padding:12px 14px;border-radius:12px;background:#f4f0ff;color:#4935a4;font-size:.81rem;line-height:1.5}
 .notification-status[data-state=error]{background:#fff1ef;color:#8c1d15}
+.push-reminder{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 22px;padding:17px 20px;border:1.5px solid #211d2b;border-radius:18px;background:linear-gradient(110deg,#f4f0ff,#fff4d9);box-shadow:3px 3px 0 #211d2b}
+.push-reminder[hidden]{display:none}
+.push-reminder-copy{min-width:0}
+.push-reminder-copy .home-eyebrow{margin:0;color:#6047d0;font-size:.61rem;font-weight:800;letter-spacing:.13em}
+.push-reminder-copy h2{margin:4px 0;font:800 1.12rem/1.2 var(--display);letter-spacing:-.035em}
+.push-reminder-copy>p:last-child{margin:0;color:#625b69;font-size:.79rem;line-height:1.45}
+.push-reminder-actions{display:flex;align-items:center;gap:12px;flex:none}
+.push-reminder-actions .push-toggle{margin-top:0}
+.push-reminder-dismiss{padding:8px 2px;border:0;background:transparent;color:#625b69;font-size:.75rem;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.push-reminder-dismiss:hover{color:#211d2b}
+.push-reminder-dismiss:focus-visible{outline:3px solid rgba(115,87,232,.55);outline-offset:3px;border-radius:4px}
+.push-reminder-actions [hidden]{display:none}
 .notification-list{display:grid;gap:10px;margin:18px 0 20px;padding:0;list-style:none}
 .notification-item{min-width:0;display:flex;align-items:center;gap:9px}
 .notification-link{display:flex;align-items:center;gap:12px;padding:13px 12px;border:1px solid #ebe5dd;border-radius:15px;background:#fff;color:#211d2b;text-decoration:none;transition:background .16s ease,border-color .16s ease}
 .notification-item .notification-link{min-width:0;flex:1}
 .notification-link:hover,.notification-item[data-unread=true] .notification-link{border-color:#d9cef9;background:#f8f5ff}
+.notification-mark-read{min-height:36px;flex:none;padding:0 9px;border:1px solid #ded7e8;border-radius:10px;background:#fff;color:#4935a4;font-size:.68rem;font-weight:750;line-height:1.2;white-space:nowrap;cursor:pointer}
+.notification-mark-read:hover:not(:disabled){border-color:#b9a8f4;background:#f8f5ff}
+.notification-mark-read:disabled{opacity:.55;cursor:wait}
 .notification-select{display:none;width:18px;height:18px;flex:none;accent-color:#7357e8;cursor:pointer}
 .notification-list[data-selection-mode=true] .notification-select{display:block}
 .notification-item{-webkit-touch-callout:none;user-select:none}
@@ -38,12 +53,15 @@
 .notification-toast-brand{color:#6047d0;font-size:.61rem;font-weight:800;letter-spacing:.14em}
 .notification-toast-message{font-size:.82rem;line-height:1.4}
 .notification-toast-message strong{font-weight:800}
+.notification-toast-handle{color:#716b79;font-size:.72rem;line-height:1.3}
+.notification-toast-profile-action{width:max-content;margin-top:3px;color:#6047d0;font-size:.72rem;font-weight:800}
+.notification-toast-link:hover .notification-toast-profile-action{text-decoration:underline;text-underline-offset:2px}
 .notification-toast-close{position:absolute;top:8px;right:8px;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:#716b79;font-size:1.2rem;cursor:pointer}
 .notification-toast-close:hover{background:#eee8ff;color:#211d2b}
 .notification-toast-leave{animation:notification-toast-out .2s ease both}
 @keyframes notification-toast-in{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes notification-toast-out{to{opacity:0;transform:translateY(-8px) scale(.98)}}
-.home-body .notification-trigger:focus-visible,.notification-close:focus-visible,.notification-shortcuts a:focus-visible,.notification-toolbar-actions button:focus-visible{outline:3px solid rgba(115,87,232,.55);outline-offset:3px}
+.home-body .notification-trigger:focus-visible,.notification-close:focus-visible,.notification-shortcuts a:focus-visible,.notification-toolbar-actions button:focus-visible,.notification-mark-read:focus-visible{outline:3px solid rgba(115,87,232,.55);outline-offset:3px}
 .notification-drawer{
   position:fixed;inset:0 0 0 auto;width:min(440px,100%);max-width:none;height:100vh;height:100dvh;max-height:none;
   margin:0;padding:0;border:0;border-left:1px solid rgba(33,29,43,.1);background:#fffaf3;color:#211d2b;
@@ -56,6 +74,20 @@
 .notification-eyebrow,.notification-empty-label{margin:0;color:#6047d0;font-size:.67rem;font-weight:800;letter-spacing:.14em}
 .notification-header h2{margin:6px 0 5px;font:800 1.85rem/1.1 var(--display);letter-spacing:-.055em}
 .notification-intro{max-width:31ch;margin:0;color:#716b79;font-size:.83rem;line-height:1.5}
+.push-card{display:flex;align-items:flex-start;gap:14px;margin:18px 0 0;padding:16px;border:1px solid #dfd5fb;border-radius:17px;background:linear-gradient(135deg,#f4f0ff,#fff8ec)}
+.push-card-icon{width:42px;height:42px;display:grid;place-items:center;flex:none;border:1px solid rgba(115,87,232,.18);border-radius:14px;background:#fff}
+.push-card-icon svg{width:21px;height:21px;fill:none;stroke:#6047d0;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.push-card-copy{min-width:0;flex:1}
+.push-card-eyebrow{margin:0;color:#6047d0;font-size:.59rem;font-weight:800;letter-spacing:.11em;line-height:1.4}
+.push-card h3{margin:4px 0;font:800 1.08rem/1.2 var(--display);letter-spacing:-.035em}
+.push-card-copy>p:not(.push-card-eyebrow){margin:0;color:#716b79;font-size:.76rem;line-height:1.5}
+.push-card .push-status{margin-top:9px;color:#5c5664;font-size:.71rem}
+.push-card .push-status[data-state=error]{color:#8c1d15}
+.push-card .push-status:empty{display:none}
+.push-toggle{min-height:36px;margin-top:11px;padding:0 13px;border:1.5px solid #211d2b;border-radius:999px;background:#ffd166;color:#211d2b;font-size:.74rem;font-weight:800;cursor:pointer;box-shadow:2px 2px 0 #211d2b;transition:transform .15s ease,box-shadow .15s ease,opacity .15s ease}
+.push-toggle:hover:not(:disabled){transform:translate(1px,1px);box-shadow:1px 1px 0 #211d2b}
+.push-toggle:disabled{opacity:.55;cursor:not-allowed}
+.push-toggle:focus-visible{outline:3px solid rgba(115,87,232,.55);outline-offset:3px}
 .notification-close{width:40px;height:40px;display:grid;place-items:center;flex:none;border:1.5px solid #e5ded5;border-radius:13px;background:#fff;color:#4f4956;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease}
 .notification-close:hover{transform:rotate(5deg);border-color:#d4c8ef;background:#f4f0ff}
 .notification-close svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
@@ -80,6 +112,9 @@
   .home-body .notification-trigger{width:36px;height:36px;min-height:36px}
   .notification-drawer{border-left:0}
   .notification-drawer-inner{padding:23px 20px calc(18px + env(safe-area-inset-bottom))}
+  .push-reminder{align-items:flex-start;flex-direction:column;gap:12px;padding:15px}
+  .push-reminder-actions{width:100%;justify-content:space-between}
+  .push-card{padding:14px 12px}
   .notification-toolbar{align-items:flex-start}
   .notification-toolbar-actions{width:100%}
   .notification-toolbar-actions button{flex:1}
@@ -88,6 +123,6 @@
 }
 @media(prefers-reduced-motion:reduce){
   .notification-drawer[open],.notification-drawer::backdrop{animation:none}
-  .notification-close,.notification-shortcuts a{transition:none}
+  .notification-close,.notification-shortcuts a,.push-toggle{transition:none}
   .notification-toast,.notification-toast-leave{animation:none}
 }

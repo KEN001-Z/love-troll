@@ -621,3 +621,37 @@
   .home-body .home-main .people-empty,
   .home-body .home-main>.people-section .people-empty{flex:0 0 100%}
 }
+
+@media(max-width:560px){
+  .home-body .home-intro>div>p:last-child{font-size:.75rem;line-height:1.45}
+  .home-body .people-section .home-eyebrow,
+  .home-body .feed-section .section-title .home-eyebrow{font-size:.6rem}
+  .home-body .people-see-all{font-size:.7rem}
+  .home-body .people-section .section-message{font-size:.72rem}
+  .home-body .community-discovery .rail-heading .home-eyebrow,
+  .home-body .home-match-card .home-eyebrow{font-size:.58rem}
+  .home-body .community-discovery .room-teaser strong,
+  .home-body .connections-section .connection-name{font-size:.74rem}
+  .home-body .community-discovery .room-teaser small{font-size:.64rem}
+  .home-body .community-discovery .room-all,
+  .home-body .connections-section .mutual-note{font-size:.68rem}
+  .home-body .connections-section .connection-message-link{min-height:38px;font-size:.64rem}
+  .home-body .home-match-card h2{font-size:1.05rem}
+  .home-body .home-match-card>a{font-size:.72rem}
+  .home-body .feed-section .feed-community-link{font-size:.68rem}
+  .home-body .feed-section .feed-filter-row button{min-height:42px;font-size:.68rem}
+  .home-body .feed-section .feed-refresh{min-height:42px}
+  .home-body .post-composer-footer .post-media-button,
+  .home-body .post-composer-footer .post-submit{min-height:42px}
+  .home-body .post-character-count{font-size:.62rem}
+  .home-body .home-main .suggestion-name,
+  .home-body .home-main>.people-section .suggestion-name{font-size:.82rem}
+  .home-body .home-main .suggestion-intention,
+  .home-body .home-main>.people-section .suggestion-intention{font-size:.7rem}
+}
+
+@media(max-width:360px){
+  .home-body .people-see-all{font-size:.66rem}
+  .home-body .home-intro>div>p:last-child{font-size:.71rem}
+  .home-body .feed-section .feed-filter-row button{padding-inline:5px;font-size:.65rem}
+}

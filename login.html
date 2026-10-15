@@ -6,6 +6,12 @@
 <title>Log in — VYBE</title>
 <meta name="description" content="VYBE: log in.">
 <meta name="theme-color" content="#7357E8">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/img/vybes-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VYBES">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
 <meta property="og:title" content="Log in — VYBE">
 <meta property="og:description" content="VYBE: log in.">
 <meta property="og:type" content="website">
@@ -15,11 +21,54 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/style.css">
+<link rel="stylesheet" href="src/css/entry-splash.css">
 <link rel="stylesheet" href="src/css/performance.css">
+<script>
+(function () {
+  const mobileViewport = window.matchMedia('(max-width: 760px)').matches;
+  const installedApp = navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches;
+  const pwaLaunch = installedApp || new URLSearchParams(window.location.search).get('source') === 'pwa';
+  let pendingLaunch = false;
+  try {
+    const pendingAt = Number(window.sessionStorage.getItem('vybe-mobile-entry-splash-pending'));
+    pendingLaunch = Number.isFinite(pendingAt) && Date.now() >= pendingAt && Date.now() - pendingAt < 20000;
+    if (pendingAt) window.sessionStorage.removeItem('vybe-mobile-entry-splash-pending');
+    if (mobileViewport && (pwaLaunch || pendingLaunch)) {
+      document.documentElement.classList.add('show-mobile-entry-splash');
+    }
+  } catch (error) {
+    console.warn('VYBE could not check the mobile entry splash state.', error);
+    if (mobileViewport) document.documentElement.classList.add('show-mobile-entry-splash');
+  }
+})();
+</script>
 <script type="module" src="src/js/app/page-transition.js"></script>
 <script type="module" src="app-presence.js"></script>
 </head>
 <body>
+<div class="mobile-entry-splash" role="status" aria-live="polite" aria-hidden="true">
+  <div class="entry-splash-content">
+    <div class="entry-splash-art" aria-hidden="true">
+      <span class="entry-splash-spark entry-splash-spark-one">✦</span>
+      <span class="entry-splash-spark entry-splash-spark-two">✧</span>
+      <svg viewBox="0 0 180 180">
+        <path d="M90 13c42 0 75 31 75 73s-32 80-76 80-74-34-74-76 33-77 75-77Z" fill="#FFD166" stroke="#211D2B" stroke-width="5"/>
+        <circle cx="64" cy="77" r="8" fill="#211D2B"/>
+        <circle cx="116" cy="77" r="8" fill="#211D2B"/>
+        <path d="M54 104q36 44 72 0" fill="none" stroke="#211D2B" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="43" cy="96" r="8" fill="#FF6B61"/>
+        <circle cx="137" cy="96" r="8" fill="#FF6B61"/>
+      </svg>
+      <span class="entry-splash-orbit"></span>
+    </div>
+    <p class="entry-splash-brand"><span class="entry-splash-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="2" y="2" width="36" height="36" rx="12" fill="#fff" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#7357E8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg></span>VYBE</p>
+    <h1>Good people.<br>Mad gist.<br><span>Better vibes.</span></h1>
+    <p class="entry-splash-message">Oya, you don land.</p>
+    <span class="entry-splash-loader" aria-hidden="true"><i></i><i></i><i></i></span>
+  </div>
+</div>
 <main class="auth">
 <section class="pane"><a class="logo" href="index.html" aria-label="VYBE home"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="12" fill="#7357E8" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#FFD166" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg>VYBE</a>
 <h1>Welcome back!</h1><p class="sub">Sign in to continue to your VYBE account.</p>
@@ -32,7 +81,7 @@
 <div class="returning-identity"><strong data-account-name></strong><span data-account-email></span></div>
 </div>
 <button class="btn block" type="button" data-continue-account>Continue</button>
-<a class="link returning-switch" href="signup.html">Use another sign-in method</a>
+<a class="link returning-switch" href="login.html?showLogin=1">Use another sign-in method</a>
 <div class="status" data-returning-status role="status" aria-live="polite" tabindex="-1" hidden></div>
 </section>
 <form class="form" data-form="login" method="post" novalidate hidden>
@@ -72,5 +121,6 @@
 })();
 </script>
 <script type="module" src="src/js/auth/auth.js"></script>
+<script type="module" src="src/js/app/entry-splash.js"></script>
 </body>
 </html>

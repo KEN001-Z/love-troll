@@ -27,8 +27,132 @@ const genderLabels = {
   prefer_not_to_say: 'Prefer not to say'
 };
 const interestOptions = Object.keys(labels.interests);
+const nigerianUniversities = [
+  'Abia State University',
+  'Abubakar Tafawa Balewa University',
+  'Achievers University',
+  'Adamawa State University',
+  'Adekunle Ajasin University',
+  'African University of Science and Technology',
+  'Ahmadu Bello University',
+  'Ajayi Crowther University',
+  'Akwa Ibom State University',
+  'Alex Ekwueme Federal University, Ndufu-Alike',
+  'Al-Hikmah University',
+  'Ambrose Alli University',
+  'American University of Nigeria',
+  'Anchor University',
+  'Augustine University',
+  'Babcock University',
+  'Bauchi State University',
+  'Bayero University Kano',
+  'Baze University',
+  'Bells University of Technology',
+  'Benue State University',
+  'Bingham University',
+  'Bowen University',
+  'Caleb University',
+  'Caritas University',
+  'Chrisland University',
+  'Clifford University',
+  'Coal City University',
+  'Covenant University',
+  'Crawford University',
+  'Crescent University',
+  'Delta State University',
+  'Ebonyi State University',
+  'Edwin Clark University',
+  'Ekiti State University',
+  'Elizade University',
+  'Enugu State University of Science and Technology',
+  'Edo State University',
+  'Federal University of Agriculture, Abeokuta',
+  'Federal University of Agriculture, Makurdi',
+  'Federal University of Technology, Akure',
+  'Federal University of Technology, Minna',
+  'Federal University of Technology, Owerri',
+  'Federal University, Birnin Kebbi',
+  'Federal University, Dutse',
+  'Federal University, Dutsin-Ma',
+  'Federal University, Gashua',
+  'Federal University, Gusau',
+  'Federal University, Kashere',
+  'Federal University, Lafia',
+  'Federal University, Lokoja',
+  'Federal University, Otuoke',
+  'Federal University, Oye-Ekiti',
+  'Federal University, Wukari',
+  'Fountain University',
+  'Godfrey Okoye University',
+  'Gregory University',
+  'Ignatius Ajuru University of Education',
+  'Imo State University',
+  'Joseph Ayo Babalola University',
+  'Kaduna State University',
+  'Kano University of Science and Technology',
+  'Kogi State University',
+  'Kwara State University',
+  'Kwararafa University',
+  'Lagos State University',
+  'Lagos State University of Education',
+  'Landmark University',
+  'Lead City University',
+  'Madonna University',
+  'McPherson University',
+  'Michael Okpara University of Agriculture',
+  'Modibbo Adama University',
+  'Nasarawa State University',
+  'National Open University of Nigeria',
+  'Niger Delta University',
+  'Nile University of Nigeria',
+  'Nnamdi Azikiwe University',
+  'Northwest University, Kano',
+  'Novena University',
+  'Obafemi Awolowo University',
+  'Oduduwa University',
+  'Olabisi Onabanjo University',
+  'Ondo State University of Science and Technology',
+  'Osun State University',
+  'Pan-Atlantic University',
+  'Paul University',
+  'Plateau State University',
+  'Redeemer’s University',
+  'Renaissance University',
+  'Rhema University',
+  'Ritman University',
+  'Rivers State University',
+  'Salem University',
+  'Sokoto State University',
+  'Southwestern University',
+  'Summit University',
+  'Tai Solarin University of Education',
+  'Tansian University',
+  'Taraba State University',
+  'Umaru Musa Yar’Adua University',
+  'University of Abuja',
+  'University of Benin',
+  'University of Calabar',
+  'University of Ibadan',
+  'University of Ilorin',
+  'University of Jos',
+  'University of Lagos',
+  'University of Maiduguri',
+  'University of Mkar',
+  'University of Nigeria, Nsukka',
+  'University of Port Harcourt',
+  'University of Uyo',
+  'Usmanu Danfodiyo University',
+  'Veritas University',
+  'Wellspring University',
+  'Wesley University',
+  'Western Delta University',
+  'Yobe State University'
+];
 const editDialog = $('[data-edit-dialog]');
 const editForm = $('[data-edit-form]');
+const universityInput = editForm.elements.namedItem('university');
+const universityOptions = $('[data-university-options]');
+let activeUniversityOption = -1;
 const moreDialog = $('[data-more-dialog]');
 const reportDialog = $('[data-report-dialog]');
 const reportForm = $('[data-report-form]');
@@ -72,6 +196,66 @@ function setMessage(element, message, state = '') {
 
 function friendlyError(error) {
   return error?.message || 'Something went wrong. Please try again.';
+}
+
+function closeUniversityOptions() {
+  universityOptions.hidden = true;
+  universityInput.setAttribute('aria-expanded', 'false');
+  universityInput.removeAttribute('aria-activedescendant');
+  activeUniversityOption = -1;
+}
+
+function renderUniversityOptions() {
+  const query = universityInput.value.trim().toLocaleLowerCase();
+  universityOptions.replaceChildren();
+  activeUniversityOption = -1;
+  if (!query) {
+    closeUniversityOptions();
+    return;
+  }
+
+  const matches = nigerianUniversities.filter(university =>
+    university.toLocaleLowerCase().startsWith(query)
+  ).slice(0, 8);
+  if (!matches.length) {
+    const empty = document.createElement('div');
+    empty.className = 'university-no-results';
+    empty.setAttribute('role', 'status');
+    empty.textContent = 'No matching suggestions. You can still enter your university.';
+    universityOptions.append(empty);
+  } else {
+    for (const [index, university] of matches.entries()) {
+      const option = document.createElement('button');
+      option.className = 'university-option';
+      option.id = `university-option-${index}`;
+      option.type = 'button';
+      option.tabIndex = -1;
+      option.role = 'option';
+      option.textContent = university;
+      option.addEventListener('pointerdown', event => event.preventDefault());
+      option.addEventListener('click', () => {
+        universityInput.value = university;
+        closeUniversityOptions();
+        universityInput.focus();
+      });
+      universityOptions.append(option);
+    }
+  }
+
+  universityOptions.hidden = false;
+  universityInput.setAttribute('aria-expanded', 'true');
+}
+
+function setActiveUniversityOption(index) {
+  const options = $$('[role="option"]', universityOptions);
+  if (!options.length) return;
+  activeUniversityOption = (index + options.length) % options.length;
+  options.forEach((option, optionIndex) => {
+    option.setAttribute('aria-selected', String(optionIndex === activeUniversityOption));
+  });
+  const activeOption = options[activeUniversityOption];
+  universityInput.setAttribute('aria-activedescendant', activeOption.id);
+  activeOption.scrollIntoView({ block: 'nearest' });
 }
 
 function renderProfilePresence(members) {
@@ -252,6 +436,7 @@ function renderInterestOptions(selected = []) {
 }
 
 function openEditDialog(focusField) {
+  closeUniversityOptions();
   editForm.elements.namedItem('display_name').value = profile.display_name || '';
   editForm.elements.namedItem('username').value = profile.username || '';
   editForm.elements.namedItem('university').value = profile.university || '';
@@ -1077,6 +1262,28 @@ async function initialize() {
   $('[data-interest]').addEventListener('click', event => expressInterest(event.currentTarget));
   followButton.addEventListener('click', toggleFollow);
   editForm.addEventListener('submit', saveProfile);
+  universityInput.addEventListener('input', renderUniversityOptions);
+  universityInput.addEventListener('focus', renderUniversityOptions);
+  universityInput.addEventListener('keydown', event => {
+    if (event.key === 'ArrowDown' && !universityOptions.hidden) {
+      event.preventDefault();
+      setActiveUniversityOption(activeUniversityOption + 1);
+    } else if (event.key === 'ArrowUp' && !universityOptions.hidden) {
+      event.preventDefault();
+      setActiveUniversityOption(activeUniversityOption < 0
+        ? $$('[role="option"]', universityOptions).length - 1
+        : activeUniversityOption - 1);
+    } else if (event.key === 'Enter' && activeUniversityOption >= 0) {
+      event.preventDefault();
+      $$('[role="option"]', universityOptions)[activeUniversityOption]?.click();
+    } else if (event.key === 'Escape' && !universityOptions.hidden) {
+      event.preventDefault();
+      closeUniversityOptions();
+    }
+  });
+  universityInput.addEventListener('blur', () => {
+    window.setTimeout(closeUniversityOptions, 0);
+  });
   initCropControls();
   editForm.elements.namedItem('matchmaking_enabled').addEventListener('change', toggleIntentionFields);
   editForm.elements.namedItem('gender').addEventListener('change', toggleGenderDescription);
