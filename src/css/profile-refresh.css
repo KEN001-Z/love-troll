@@ -42,7 +42,7 @@
   .profile-identity{padding-inline:15px;padding-bottom:18px}
   .profile-avatar{left:15px;top:-46px;width:90px;height:90px}
   .profile-actions{min-height:58px;gap:5px;padding-left:105px}
-  .profile-action{min-height:35px;padding:6px 8px;font-size:.7rem;white-space:nowrap}
+  .profile-action{min-height:32px;padding:5px 6px;font-size:.66rem;white-space:nowrap}
   .profile-heading{padding-top:8px}
   .profile-heading h1{font-size:1.6rem}
   .profile-tabs{gap:13px;margin-top:13px}
