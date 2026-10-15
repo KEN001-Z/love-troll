@@ -1,0 +1,41 @@
+.vybes-install-dialog{position:fixed;inset:0;width:min(100% - 32px,520px);max-height:min(90dvh,760px);overflow:auto;margin:auto;padding:0;border:0;border-radius:28px;background:transparent;color:var(--ink);box-shadow:0 28px 90px rgba(25,19,44,.28)}
+.vybes-install-dialog::backdrop{background:rgba(30,24,44,.52);backdrop-filter:blur(5px)}
+.vybes-install-card{position:relative;overflow:hidden;padding:clamp(22px,5vw,34px);border:1px solid rgba(33,29,43,.12);border-radius:28px;background:radial-gradient(ellipse at 100% 0,rgba(234,228,255,.86),transparent 48%),linear-gradient(155deg,#fff 0%,#fffaf3 78%);animation:vybes-install-arrive .24s cubic-bezier(.2,.8,.2,1) both}
+.vybes-install-card::before{position:absolute;top:0;right:0;left:0;height:5px;background:linear-gradient(90deg,#7357e8 0 48%,#ff6b61 48% 73%,#ffd166 73%);content:""}
+.vybes-install-topline{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.vybes-install-brand{display:inline-flex;align-items:center;gap:9px;font:800 1.12rem/1 var(--display);letter-spacing:-.045em}
+.vybes-install-brand img{width:42px;height:42px;border-radius:13px}
+.vybes-install-close{width:40px;height:40px;display:grid;place-items:center;border:1px solid rgba(33,29,43,.12);border-radius:50%;background:rgba(255,255,255,.8);color:var(--ink);font:400 1.65rem/1 var(--body);cursor:pointer}
+.vybes-install-close:hover{background:#fff;transform:rotate(5deg)}
+.vybes-install-kicker{margin:22px 0 9px;color:#5a43c5;font-size:.68rem;font-weight:800;letter-spacing:.13em}
+.vybes-install-dialog h2{max-width:15ch;font-size:clamp(1.8rem,6vw,2.5rem);line-height:1.06;letter-spacing:-.055em}
+.vybes-install-description{max-width:44ch;margin-top:13px;color:#595265;font-size:.96rem;line-height:1.6}
+.vybes-install-guide{margin-top:19px;padding:16px;border:1px solid rgba(115,87,232,.15);border-radius:17px;background:rgba(255,255,255,.74)}
+.vybes-install-guide[hidden],.vybes-install-share[hidden],.vybes-install-status[hidden]{display:none}
+.vybes-install-share{width:max-content;display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:7px 11px;border:1px solid rgba(115,87,232,.2);border-radius:999px;background:#f4f0ff;color:#5138c5;font-size:.8rem;font-weight:700}
+.vybes-install-share svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.vybes-install-steps{display:grid;gap:11px;margin:0;padding-left:1.4rem;color:#433d4c;font-size:.9rem;line-height:1.5}
+.vybes-install-steps li{padding-left:3px}
+.vybes-install-steps li::marker{color:#6047d0;font-weight:800}
+.vybes-install-actions{display:flex;align-items:center;gap:10px;margin-top:23px}
+.vybes-install-actions button{min-height:48px;border-radius:14px;font:700 .92rem var(--body);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.vybes-install-primary{flex:1;padding:10px 17px;border:2px solid #211d2b;background:#7357e8;color:#fff;box-shadow:3px 3px 0 #211d2b}
+.vybes-install-primary:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #211d2b}
+.vybes-install-primary:disabled{cursor:wait;opacity:.65}
+.vybes-install-later{padding:10px 14px;border:1px solid rgba(33,29,43,.16);background:rgba(255,255,255,.75);color:#403a49}
+.vybes-install-later:hover{background:#fff}
+.vybes-install-footnote{margin-top:15px;color:#766f7c;font-size:.75rem;text-align:center}
+.app-header [data-vybes-install-open][hidden]{display:none}
+@keyframes vybes-install-arrive{from{opacity:0;transform:translateY(12px) scale(.985)}}
+@media(max-width:600px){
+  .vybes-install-dialog{position:fixed;inset:auto 0 0;width:100%;max-width:none;max-height:min(88dvh,780px);margin:0;border-radius:25px 25px 0 0}
+  .vybes-install-card{padding:22px 22px calc(21px + env(safe-area-inset-bottom));border-radius:25px 25px 0 0}
+  .vybes-install-kicker{margin-top:17px}
+  .vybes-install-dialog h2{max-width:19ch;font-size:clamp(1.8rem,8vw,2.25rem)}
+  .vybes-install-guide{padding:14px}
+  .vybes-install-actions{position:sticky;bottom:0;padding-top:8px;background:linear-gradient(180deg,transparent,#fffaf3 16%)}
+  .vybes-install-actions button{min-height:50px}
+}
+@media(prefers-reduced-motion:reduce){
+  .vybes-install-card,.vybes-install-actions button,.vybes-install-close{animation:none;transition:none}
+}

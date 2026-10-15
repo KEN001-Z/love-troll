@@ -6,6 +6,12 @@
 <title>Profile — VYBE</title>
 <meta name="description" content="A little more about your VYBE people.">
 <meta name="theme-color" content="#FFF9F0">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/img/vybes-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VYBES">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,6 +39,7 @@
       <a class="app-nav-link" href="messages.html"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v10H9l-5 3v-13Z"/><path d="M8 9.5h8M8 13h5"/></svg>Messages</a>
       <a class="app-nav-link" href="profile.html" aria-current="page"><svg class="app-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Profile</a>
     </nav>
+    <button class="nav-logout app-logout" type="button" data-vybes-install-open hidden>Install VYBES</button>
     <button class="nav-logout app-logout" type="button" data-logout>Log out</button>
   </div>
 </header>
@@ -205,7 +212,7 @@
     </section>
     <label class="edit-field">Display name<input name="display_name" type="text" maxlength="80" required autocomplete="name"></label>
     <label class="edit-field">Username<input name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" autocomplete="username"><small>Optional · 3–24 letters, numbers or underscores.</small></label>
-    <label class="edit-field">University<input name="university" type="text" maxlength="120" autocomplete="organization" placeholder="Enter your university"></label>
+    <label class="edit-field university-field">University<input name="university" type="text" maxlength="120" autocomplete="organization" placeholder="Start typing your university..." aria-autocomplete="list" aria-controls="university-options" aria-expanded="false" aria-describedby="university-help"><small id="university-help">Type a few letters to find a Nigerian university, or enter your university manually.</small><div class="university-options" id="university-options" data-university-options role="listbox" aria-label="Nigerian universities" hidden></div></label>
     <label class="edit-field">Gender<select name="gender"><option value="">Choose gender</option><option value="woman">Female</option><option value="man">Male</option><option value="non_binary">Non-binary</option><option value="self_describe">Self-describe</option><option value="prefer_not_to_say">Prefer not to say</option></select><small>Shown on your profile unless you choose “Prefer not to say”.</small></label>
     <label class="edit-field" data-gender-description-field hidden>Describe your gender<input name="gender_description" type="text" maxlength="66" autocomplete="off"><small>This will appear on your profile.</small></label>
     <label class="edit-field">Department<input name="department" type="text" maxlength="120"></label>

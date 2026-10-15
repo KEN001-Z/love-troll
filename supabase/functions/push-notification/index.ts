@@ -36,7 +36,7 @@ function response(body: Record<string, unknown>, status = 200): Response {
   return Response.json(body, { status, headers: corsHeaders });
 }
 
-function notificationFor(event: PushEvent) {
+function notificationFor(event: PushEvent, actorName: string) {
   const destinations: Record<PushEvent["kind"], string> = {
     follow: "/profile.html",
     interest: "/profile.html",
@@ -59,8 +59,8 @@ function notificationFor(event: PushEvent) {
       body: "Someone new wants to connect with you.",
     },
     message: {
-      title: "Someone wants your attention 👀",
-      body: "You have a new message on VYBES.",
+      title: `${actorName} sent you a message 💬`,
+      body: "Tap to open your private chat.",
     },
   };
   return {
@@ -152,7 +152,7 @@ Deno.serve(async (request) => {
   };
 
   try {
-    const [preferencesResult, recipientBlockResult, actorBlockResult] = await Promise.all([
+    const [preferencesResult, recipientBlockResult, actorBlockResult, actorProfileResult] = await Promise.all([
       supabase.from("push_notification_preferences")
         .select("enabled,messages,connections,community,social")
         .eq("user_id", event.recipient_id)
@@ -167,10 +167,14 @@ Deno.serve(async (request) => {
         .eq("blocker_id", event.actor_id)
         .eq("blocked_id", event.recipient_id)
         .maybeSingle(),
+      supabase.from("profiles")
+        .select("display_name")
+        .eq("id", event.actor_id)
+        .maybeSingle(),
     ]);
 
-    if (preferencesResult.error || recipientBlockResult.error || actorBlockResult.error) {
-      throw preferencesResult.error || recipientBlockResult.error || actorBlockResult.error;
+    if (preferencesResult.error || recipientBlockResult.error || actorBlockResult.error || actorProfileResult.error) {
+      throw preferencesResult.error || recipientBlockResult.error || actorBlockResult.error || actorProfileResult.error;
     }
     const preferences = preferencesResult.data;
     if (preferences?.enabled === false || preferences?.[event.category] === false ||
@@ -191,7 +195,11 @@ Deno.serve(async (request) => {
     }
 
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-    const payload = JSON.stringify(notificationFor(event as PushEvent));
+    const actorName = actorProfileResult.data?.display_name
+      ?.replace(/[\u0000-\u001f\u007f]/g, '')
+      .trim()
+      .slice(0, 60) || "Someone";
+    const payload = JSON.stringify(notificationFor(event as PushEvent, actorName));
     let accepted = 0;
     let expired = 0;
     let failed = 0;

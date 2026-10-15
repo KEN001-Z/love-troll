@@ -84,6 +84,11 @@
 .icon-close{width:38px;height:38px;flex:none;border:0;border-radius:50%;background:#f0edf5;color:var(--ink);font-size:1.5rem;line-height:1;cursor:pointer}
 .edit-field{display:grid;gap:6px;font-size:.9rem;font-weight:700}
 .edit-field input,.edit-field textarea,.edit-field select{width:100%;min-height:44px;padding:10px 12px;border:1px solid rgba(33,29,43,.2);border-radius:11px;background:#fff;color:var(--ink);font:500 .95rem var(--body)}
+.university-field{position:relative}
+.university-options{position:absolute;top:100%;z-index:5;width:100%;max-height:240px;overflow-y:auto;border:1px solid rgba(33,29,43,.16);border-radius:12px;background:#fff;box-shadow:0 12px 28px rgba(33,29,43,.16)}
+.university-option{width:100%;padding:10px 12px;border:0;background:#fff;color:var(--ink);font:500 .9rem var(--body);text-align:left;cursor:pointer}
+.university-option:hover,.university-option[aria-selected=true]{background:#f3efff;color:#5138c5}
+.university-no-results{padding:11px 12px;color:var(--muted);font-size:.82rem;font-weight:400}
 .edit-field textarea{resize:vertical}
 .edit-field small{color:var(--muted);font-size:.78rem;font-weight:400}
 .edit-photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border:1px solid rgba(115,87,232,.14);border-radius:16px;background:linear-gradient(120deg,#f5f1ff,#fff8f0)}

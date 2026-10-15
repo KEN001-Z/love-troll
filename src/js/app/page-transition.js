@@ -1,3 +1,5 @@
+import './pwa-install.js';
+
 const transition = (() => {
   'use strict';
 

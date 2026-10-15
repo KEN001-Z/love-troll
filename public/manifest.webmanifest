@@ -1,0 +1,37 @@
+{
+  "id": "/home.html",
+  "name": "VYBES",
+  "short_name": "VYBES",
+  "description": "Your people, your pace.",
+  "start_url": "/home.html?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#7357E8",
+  "theme_color": "#7357E8",
+  "icons": [
+    {
+      "src": "/img/vybes-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/vybes-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/vybes-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/img/vybes-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

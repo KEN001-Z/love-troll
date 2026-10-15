@@ -6,6 +6,12 @@
 <title>VYBE — Your people, your pace</title>
 <meta name="description" content="Discover people, join the gist, and find your vibe — at your own pace.">
 <meta name="theme-color" content="#FFF9F0">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/img/vybes-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VYBES">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/style.css">
 <link rel="stylesheet" href="src/css/app-shell.css">
+<link rel="stylesheet" href="src/css/entry-splash.css">
 <link rel="stylesheet" href="src/css/home.css">
 <link rel="stylesheet" href="src/css/home-redesign.css">
 <link rel="stylesheet" href="src/css/home-contrast.css">
@@ -25,10 +32,48 @@
 <link rel="stylesheet" href="src/css/home-creator-refresh.css">
 <link rel="stylesheet" href="src/css/home-notifications.css">
 <link rel="stylesheet" href="src/css/performance.css">
+<script>
+(function () {
+const mobileViewport = window.matchMedia('(max-width: 760px)').matches;
+const installedApp = navigator.standalone === true ||
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.matchMedia('(display-mode: fullscreen)').matches;
+const pwaLaunch = installedApp || new URLSearchParams(window.location.search).get('source') === 'pwa';
+if (mobileViewport || pwaLaunch) {
+  document.documentElement.classList.add('show-mobile-entry-splash');
+  try {
+    window.sessionStorage.setItem('vybe-mobile-entry-splash-pending', String(Date.now()));
+  } catch (error) {
+    console.warn('VYBE could not preserve the mobile entry splash across sign-in.', error);
+  }
+}
+})();
+</script>
 <script type="module" src="src/js/app/page-transition.js"></script>
 <script type="module" src="app-presence.js"></script>
 </head>
 <body class="home-body">
+<div class="mobile-entry-splash" role="status" aria-live="polite" aria-hidden="true">
+  <div class="entry-splash-content">
+    <div class="entry-splash-art" aria-hidden="true">
+      <span class="entry-splash-spark entry-splash-spark-one">✦</span>
+      <span class="entry-splash-spark entry-splash-spark-two">✧</span>
+      <svg viewBox="0 0 180 180">
+        <path d="M90 13c42 0 75 31 75 73s-32 80-76 80-74-34-74-76 33-77 75-77Z" fill="#FFD166" stroke="#211D2B" stroke-width="5"/>
+        <circle cx="64" cy="77" r="8" fill="#211D2B"/>
+        <circle cx="116" cy="77" r="8" fill="#211D2B"/>
+        <path d="M54 104q36 44 72 0" fill="none" stroke="#211D2B" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="43" cy="96" r="8" fill="#FF6B61"/>
+        <circle cx="137" cy="96" r="8" fill="#FF6B61"/>
+      </svg>
+      <span class="entry-splash-orbit"></span>
+    </div>
+    <p class="entry-splash-brand"><span class="entry-splash-mark" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="2" y="2" width="36" height="36" rx="12" fill="#fff" stroke="#211D2B" stroke-width="2.5"/><path d="M11 14l9 14 9-14" fill="none" stroke="#7357E8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31" cy="10" r="3" fill="#FF6B61"/></svg></span>VYBE</p>
+    <h1>Good people.<br>Mad gist.<br><span>Better vibes.</span></h1>
+    <p class="entry-splash-message">Checking your saved account…</p>
+    <span class="entry-splash-loader" aria-hidden="true"><i></i><i></i><i></i></span>
+  </div>
+</div>
 <a class="skip" href="#main">Skip to content</a>
 <header class="app-header">
   <div class="app-header-inner">
@@ -62,12 +107,24 @@
       <div>
         <p class="notification-eyebrow">YOUR VYBE</p>
         <h2 id="notification-title">Notifications</h2>
-        <p class="notification-intro">A little signal when something needs your attention. Hold a notification to select it for actions.</p>
+        <p class="notification-intro">A little signal when something needs your attention. Mark notifications as read directly, or hold to select several for bulk actions.</p>
       </div>
       <button class="notification-close" type="button" data-notification-close aria-label="Close notifications">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
     </header>
+    <section class="push-card" aria-labelledby="push-card-title">
+      <div class="push-card-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg>
+      </div>
+      <div class="push-card-copy">
+        <p class="push-card-eyebrow">YOUR PEOPLE, EVEN WHEN YOU’RE AWAY</p>
+        <h3 id="push-card-title">Take the gist with you</h3>
+        <p>Get a gentle heads-up when someone messages or connects with you, even when VYBE is closed.</p>
+        <p class="push-status" data-push-status role="status" aria-live="polite">Checking this device…</p>
+        <button class="push-toggle" type="button" data-push-toggle>Enable on this device</button>
+      </div>
+    </section>
     <p class="notification-status" data-notification-status role="status" aria-live="polite" hidden></p>
     <div class="notification-toolbar" data-notification-toolbar hidden>
       <label class="notification-select-all">
@@ -105,6 +162,17 @@
 
 <main class="home-main" id="main">
   <p class="home-status" data-home-status role="status" aria-live="polite" tabindex="-1" hidden></p>
+  <aside class="push-reminder" data-push-reminder aria-labelledby="push-reminder-title" hidden>
+    <div class="push-reminder-copy">
+      <p class="home-eyebrow">STAY IN THE LOOP</p>
+      <h2 id="push-reminder-title">Don’t miss a message</h2>
+      <p data-push-reminder-message role="status" aria-live="polite">Turn on push alerts to hear from your people, even when VYBE is closed.</p>
+    </div>
+    <div class="push-reminder-actions">
+      <button class="push-toggle" type="button" data-push-reminder-enable>Enable push alerts</button>
+      <button class="push-reminder-dismiss" type="button" data-push-reminder-dismiss>Not now</button>
+    </div>
+  </aside>
 
   <section class="campus-hero" aria-labelledby="welcome-title">
     <div class="campus-hero-copy">
@@ -230,5 +298,6 @@
 <div class="mobile-create-wrap"><div class="mobile-create-menu" id="mobile-create-menu" data-mobile-create-menu hidden><button type="button" data-create-kind="thought" disabled><span aria-hidden="true">✎</span> Write a post</button><button type="button" data-create-kind="image" disabled><span aria-hidden="true">▧</span> Add a photo</button><button type="button" data-create-kind="video" disabled><span aria-hidden="true">▶</span> Share a video</button></div><button class="mobile-create-button" type="button" data-mobile-create aria-label="Create a post" aria-expanded="false" aria-controls="mobile-create-menu" disabled><span aria-hidden="true">＋</span><span>Create</span></button></div>
 
 <script type="module" src="src/js/feed/home.js"></script>
+<script type="module" src="src/js/app/entry-splash.js"></script>
 </body>
 </html>

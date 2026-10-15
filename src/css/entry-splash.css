@@ -1,0 +1,174 @@
+.mobile-entry-splash {
+  position: fixed;
+  z-index: 11000;
+  inset: 0;
+  display: none;
+  place-items: center;
+  overflow: hidden;
+  padding: max(28px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 15% 18%, rgba(255, 209, 102, .18) 0 2px, transparent 3px),
+    radial-gradient(circle at 84% 76%, rgba(189, 235, 215, .2) 0 3px, transparent 4px),
+    linear-gradient(145deg, #8068ef 0%, #7357e8 45%, #573bc9 100%);
+  color: #fff;
+  opacity: 1;
+  text-align: center;
+  transition: opacity .32s ease, visibility .32s ease;
+}
+
+html.show-mobile-entry-splash .mobile-entry-splash {
+  display: grid;
+}
+
+.mobile-entry-splash.is-exiting {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.entry-splash-content {
+  position: relative;
+  display: flex;
+  width: min(100%, 360px);
+  flex-direction: column;
+  align-items: center;
+  animation: entry-splash-arrive .6s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.entry-splash-art {
+  position: relative;
+  display: grid;
+  width: min(58vw, 204px);
+  aspect-ratio: 1;
+  place-items: center;
+  margin-bottom: 18px;
+}
+
+.entry-splash-art > svg {
+  z-index: 1;
+  width: 78%;
+  filter: drop-shadow(6px 7px 0 rgba(33, 29, 43, .18));
+  animation: entry-splash-bob 1.7s ease-in-out infinite;
+}
+
+.entry-splash-orbit {
+  position: absolute;
+  inset: 6%;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 50%;
+}
+
+.entry-splash-spark {
+  position: absolute;
+  z-index: 2;
+  color: #fff;
+  font-size: 2rem;
+  animation: entry-splash-twinkle 1.2s ease-in-out infinite alternate;
+}
+
+.entry-splash-spark-one {
+  top: 8%;
+  right: 5%;
+  color: #FFD166;
+}
+
+.entry-splash-spark-two {
+  bottom: 10%;
+  left: 1%;
+  animation-delay: .35s;
+}
+
+.entry-splash-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+  font: 800 1.55rem/1 var(--display);
+  letter-spacing: -.055em;
+}
+
+.entry-splash-mark,
+.entry-splash-mark svg {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+
+.entry-splash-content h1 {
+  font-size: clamp(2.35rem, 10vw, 3.2rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+}
+
+.entry-splash-content h1 span {
+  color: #FFD166;
+}
+
+.entry-splash-message {
+  margin-top: 20px;
+  color: rgba(255, 255, 255, .88);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.entry-splash-loader {
+  display: flex;
+  gap: 7px;
+  margin-top: 20px;
+}
+
+.entry-splash-loader i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  animation: entry-splash-loader .7s ease-in-out infinite alternate;
+}
+
+.entry-splash-loader i:nth-child(2) {
+  background: #FFD166;
+  animation-delay: .16s;
+}
+
+.entry-splash-loader i:nth-child(3) {
+  background: #BDEBD7;
+  animation-delay: .32s;
+}
+
+@keyframes entry-splash-arrive {
+  from { opacity: 0; transform: translateY(10px) scale(.97); }
+}
+
+@keyframes entry-splash-bob {
+  50% { transform: translateY(-5px) rotate(2deg); }
+}
+
+@keyframes entry-splash-twinkle {
+  to { opacity: .55; transform: scale(.8) rotate(20deg); }
+}
+
+@keyframes entry-splash-loader {
+  to { opacity: .4; transform: translateY(-4px); }
+}
+
+@media (max-width: 360px) {
+  .entry-splash-art {
+    width: min(52vw, 170px);
+    margin-bottom: 12px;
+  }
+
+  .entry-splash-brand {
+    margin-bottom: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-entry-splash,
+  .entry-splash-content,
+  .entry-splash-art > svg,
+  .entry-splash-spark,
+  .entry-splash-loader i {
+    animation: none;
+    transition: none;
+  }
+}
