@@ -10,10 +10,9 @@ const corsHeaders = {
 
 type PushEvent = {
   id: string;
-  notification_id: number | string;
   recipient_id: string;
   actor_id: string;
-  kind: "follow" | "interest" | "match" | "message" | "like";
+  kind: "follow" | "interest" | "match" | "message";
   category: "messages" | "connections" | "community" | "social";
   conversation_id: string | null;
   attempt_count: number;
@@ -37,13 +36,7 @@ function response(body: Record<string, unknown>, status = 200): Response {
   return Response.json(body, { status, headers: corsHeaders });
 }
 
-function notificationFor(
-  event: PushEvent,
-  actorName: string,
-  actorAvatarUrl: string,
-  postId: string | null,
-  postType: string | null,
-) {
+function notificationFor(event: PushEvent, actorName: string) {
   const destinations: Record<PushEvent["kind"], string> = {
     follow: "/profile.html",
     interest: "/profile.html",
@@ -51,7 +44,6 @@ function notificationFor(
     message: event.conversation_id
       ? `/messages.html?conversation=${encodeURIComponent(event.conversation_id)}`
       : "/messages.html",
-    like: postId ? `/vibe.html#post-${encodeURIComponent(postId)}` : "/vibe.html",
   };
   const messages: Record<PushEvent["kind"], { title: string; body: string }> = {
     follow: {
@@ -70,15 +62,11 @@ function notificationFor(
       title: `${actorName} sent you a message 💬`,
       body: "Tap to open your private chat.",
     },
-    like: {
-      title: postType === "video" ? "Your video got a like 💜" : "Your post got a like 💜",
-      body: `${actorName} liked your ${postType === "video" ? "video" : "post"} on VYBES.`,
-    },
   };
   return {
     ...messages[event.kind],
     url: destinations[event.kind],
-    icon: actorAvatarUrl || "/img/vybes-icon.svg",
+    icon: "/img/vybes-icon.svg",
     badge: "/img/vybes-icon.svg",
     timestamp: Date.now(),
     tag: `vybes:${event.id}`,
@@ -125,7 +113,7 @@ Deno.serve(async (request) => {
   });
   const { data: pendingEvent, error: eventError } = await supabase
     .from("push_notification_outbox")
-    .select("id,notification_id,recipient_id,actor_id,kind,category,conversation_id,attempt_count")
+    .select("id,recipient_id,actor_id,kind,category,conversation_id,attempt_count")
     .eq("id", eventId)
     .eq("status", "pending")
     .maybeSingle();
@@ -145,7 +133,7 @@ Deno.serve(async (request) => {
     })
     .eq("id", eventId)
     .eq("status", "pending")
-    .select("id,notification_id,recipient_id,actor_id,kind,category,conversation_id,attempt_count")
+    .select("id,recipient_id,actor_id,kind,category,conversation_id,attempt_count")
     .maybeSingle();
 
   if (claimError) {
@@ -180,7 +168,7 @@ Deno.serve(async (request) => {
         .eq("blocked_id", event.recipient_id)
         .maybeSingle(),
       supabase.from("profiles")
-        .select("display_name,avatar_path")
+        .select("display_name")
         .eq("id", event.actor_id)
         .maybeSingle(),
     ]);
@@ -206,52 +194,12 @@ Deno.serve(async (request) => {
       return response({ accepted: true, subscriptions: 0 });
     }
 
-    let actorAvatarUrl = "";
-    const avatarPath = actorProfileResult.data?.avatar_path?.trim();
-    if (avatarPath) {
-      if (/^https:\/\//i.test(avatarPath)) {
-        actorAvatarUrl = avatarPath;
-      } else if (!/^[a-z][a-z0-9+.-]*:/i.test(avatarPath)) {
-        const { data: avatarData, error: avatarError } = await supabase.storage
-          .from("profile-media")
-          .createSignedUrl(avatarPath, 3600);
-        if (avatarError) {
-          console.error("Could not create a signed profile-photo URL for push.", avatarError.message);
-        } else if (avatarData?.signedUrl) {
-          actorAvatarUrl = avatarData.signedUrl;
-        } else {
-          console.error("Could not create a signed profile-photo URL for push.");
-        }
-      }
-    }
-
-    let postId: string | null = null;
-    let postType: string | null = null;
-    if (event.kind === "like") {
-      const { data: notification, error: notificationError } = await supabase
-        .from("notifications")
-        .select("post_id")
-        .eq("id", event.notification_id)
-        .maybeSingle();
-      if (notificationError) throw notificationError;
-      postId = notification?.post_id || null;
-      if (postId) {
-        const { data: post, error: postError } = await supabase
-          .from("posts")
-          .select("post_type")
-          .eq("id", postId)
-          .maybeSingle();
-        if (postError) throw postError;
-        postType = post?.post_type || null;
-      }
-    }
-
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
     const actorName = actorProfileResult.data?.display_name
       ?.replace(/[\u0000-\u001f\u007f]/g, '')
       .trim()
       .slice(0, 60) || "Someone";
-    const payload = JSON.stringify(notificationFor(event as PushEvent, actorName, actorAvatarUrl, postId, postType));
+    const payload = JSON.stringify(notificationFor(event as PushEvent, actorName));
     let accepted = 0;
     let expired = 0;
     let failed = 0;

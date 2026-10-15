@@ -43,7 +43,7 @@ async function showPushNotification(event) {
 
   await self.registration.showNotification(title, {
     body,
-    icon: safeIcon(payload.icon),
+    icon: APP_ICON,
     badge: APP_BADGE,
     tag,
     renotify: false,
@@ -51,17 +51,6 @@ async function showPushNotification(event) {
     silent: false,
     data: { url: target }
   });
-}
-
-function safeIcon(value) {
-  if (typeof value !== 'string' || value.length > 2048) return APP_ICON;
-  try {
-    const icon = new URL(value);
-    if (icon.protocol !== 'https:' || icon.username || icon.password) return APP_ICON;
-    return icon.href;
-  } catch {
-    return APP_ICON;
-  }
 }
 
 function safeText(value, limit) {

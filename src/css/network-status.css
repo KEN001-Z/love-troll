@@ -15,7 +15,7 @@
 .network-warning-actions button:hover{filter:brightness(.96)}
 .network-warning-actions button:disabled{opacity:.6;cursor:wait}
 .network-warning-actions button:focus-visible,.network-warning-toast-close:focus-visible{outline:3px solid rgba(115,87,232,.48);outline-offset:3px}
-.network-warning-toast-region{position:fixed;z-index:1100;inset:18px 0 auto;display:grid;justify-items:center;padding:0 18px;pointer-events:none}
+.network-warning-toast-region{position:fixed;z-index:1100;inset:0;display:grid;place-items:center;padding:18px;pointer-events:none}
 .network-warning-toast{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 14px 14px 17px;border:1.5px solid #f0ca66;border-radius:15px;background:#fff8df;color:#433819;font-size:.84rem;font-weight:700;line-height:1.45;box-shadow:0 12px 34px rgba(33,29,43,.17);pointer-events:auto;animation:network-warning-toast-in .22s ease both}
 .network-warning-toast{width:min(390px,100%)}
 .network-warning-toast-close{width:30px;height:30px;display:grid;place-items:center;flex:none;border:0;border-radius:50%;background:transparent;color:#625b69;font-size:1.35rem;cursor:pointer}
@@ -25,7 +25,7 @@
   .network-warning-card{padding:24px}
   .network-warning-actions{flex-direction:column-reverse}
   .network-warning-actions button{width:100%}
-  .network-warning-toast-region{inset:12px 0 auto;padding:0 12px}
+  .network-warning-toast-region{padding:12px}
 }
 @media(prefers-reduced-motion:reduce){
   .network-warning-toast{animation:none}
