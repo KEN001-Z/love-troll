@@ -50,7 +50,12 @@ export function startAppUpdateChecks() {
       if (!result || typeof result.version !== 'string' || !result.version) {
         throw new Error('Version check returned an invalid app version.');
       }
-      if (result.version !== __VYBE_BUILD_ID__) showUpdatePrompt();
+      const latestBuildTime = Date.parse(result.version);
+      const currentBuildTime = Date.parse(__VYBE_BUILD_ID__);
+      if (!Number.isFinite(latestBuildTime) || !Number.isFinite(currentBuildTime)) {
+        throw new Error('Version check returned an invalid build timestamp.');
+      }
+      if (latestBuildTime > currentBuildTime) showUpdatePrompt();
     } catch (error) {
       console.error('VYBE could not check whether a newer app version is available.', error);
     } finally {

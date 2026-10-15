@@ -558,11 +558,15 @@ function initCropControls() {
     preview.addEventListener('pointermove', event => {
       if (preview.dataset.dragging !== 'true') return;
       const rect = preview.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
+      const image = $('img', preview);
+      if (!rect.width || !rect.height || !image.naturalWidth || !image.naturalHeight) return;
       const dx = event.clientX - Number(preview.dataset.pointerX);
       const dy = event.clientY - Number(preview.dataset.pointerY);
-      cropState[kind].x = clampPosition(cropState[kind].x - (dx / rect.width) * 100);
-      cropState[kind].y = clampPosition(cropState[kind].y - (dy / rect.height) * 100);
+      const scale = Math.max(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
+      const overflowX = image.naturalWidth * scale - rect.width;
+      const overflowY = image.naturalHeight * scale - rect.height;
+      if (overflowX > 0) cropState[kind].x = clampPosition(cropState[kind].x - (dx / overflowX) * 100);
+      if (overflowY > 0) cropState[kind].y = clampPosition(cropState[kind].y - (dy / overflowY) * 100);
       preview.dataset.pointerX = String(event.clientX);
       preview.dataset.pointerY = String(event.clientY);
       updateCropPreview(kind);
@@ -591,7 +595,9 @@ async function cropImage(file, kind) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext('2d').drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('This browser couldn’t prepare the selected image.');
+  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
   const blob = await new Promise(resolve => canvas.toBlob(resolve, file.type, .92));
   if (!blob) throw new Error('The selected image could not be prepared.');
   return new File([blob], file.name, { type: file.type, lastModified: Date.now() });

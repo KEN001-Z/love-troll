@@ -16,12 +16,17 @@ const transition = (() => {
   let hideTimer;
   let removeTimer;
 
-  function showScreen() {
+  function showScreen({ immediate = false } = {}) {
     window.clearTimeout(hideTimer);
     window.clearTimeout(removeTimer);
-    if (!screen.isConnected) document.body.append(screen);
-    screen.getBoundingClientRect();
-    screen.classList.add('is-visible');
+    if (immediate) screen.classList.add('is-visible');
+    if (!screen.isConnected) {
+      document.body.append(screen);
+    }
+    if (!immediate) {
+      screen.getBoundingClientRect();
+      screen.classList.add('is-visible');
+    }
     document.documentElement.classList.remove('vybe-transition-pending');
   }
 
@@ -32,6 +37,14 @@ const transition = (() => {
       screen.classList.remove('is-visible');
       removeTimer = window.setTimeout(() => screen.remove(), reducedMotion.matches ? 0 : 260);
     }, delay);
+  }
+
+  function hideScreenWhenReady(delay = 180) {
+    if (document.readyState === 'complete') {
+      hideScreenAfter(delay);
+      return;
+    }
+    window.addEventListener('load', () => hideScreenAfter(delay), { once: true });
   }
 
   function markDestination(destination) {
@@ -61,8 +74,8 @@ const transition = (() => {
 
   window.addEventListener('pageshow', event => {
     if (event.persisted) {
-      showScreen();
-      hideScreenAfter();
+      showScreen({ immediate: true });
+      hideScreenWhenReady();
     }
   });
 
@@ -82,8 +95,8 @@ const transition = (() => {
     Date.now() - destinationTime < 10000;
 
   if (hasRecentDestination || navigation?.type === 'back_forward') {
-    showScreen();
-    hideScreenAfter(180);
+    showScreen({ immediate: true });
+    hideScreenWhenReady();
   }
 
   document.addEventListener('click', event => {
