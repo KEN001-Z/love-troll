@@ -439,20 +439,14 @@ function notificationAge(timestamp) {
   return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(Math.round(seconds / duration), unit);
 }
 
-function notificationMessage(notification) {
-  if (notification.kind === 'like') {
-    return notification.post_type === 'video' ? ' liked your video.' : ' liked your post.';
-  }
-  if (notification.kind === 'follow') return ' followed you.';
-  if (notification.kind === 'match') return ' matched with you.';
-  if (notification.kind === 'message') return ' sent you a message.';
+function notificationMessage(kind) {
+  if (kind === 'follow') return ' followed you.';
+  if (kind === 'match') return ' matched with you.';
+  if (kind === 'message') return ' sent you a message.';
   return ' sent you interest.';
 }
 
 function notificationUrl(notification) {
-  if (notification.kind === 'like' && notification.post_id) {
-    return `vibe.html#post-${encodeURIComponent(notification.post_id)}`;
-  }
   if (notification.kind === 'message') {
     const conversation = notification.conversation_id
       ? `?conversation=${encodeURIComponent(notification.conversation_id)}`
@@ -529,7 +523,7 @@ function renderNotifications(notifications, avatarUrls) {
     const message = document.createElement('span');
     const actorName = document.createElement('strong');
     actorName.textContent = name;
-    message.append(actorName, document.createTextNode(notificationMessage(notification)));
+    message.append(actorName, document.createTextNode(notificationMessage(notification.kind)));
     const time = document.createElement('time');
     time.className = 'notification-time';
     time.dateTime = notification.created_at;
@@ -572,12 +566,7 @@ function showNotificationToast(notification, avatarUrl = '') {
   const link = document.createElement('a');
   link.className = 'notification-toast-link';
   link.href = notificationUrl(notification);
-  const destinationLabel = notification.kind === 'message'
-    ? 'Open conversation.'
-    : notification.kind === 'like'
-      ? 'View post.'
-      : 'View profile.';
-  link.setAttribute('aria-label', `${name}${notificationMessage(notification)} ${destinationLabel}`);
+  link.setAttribute('aria-label', `${name}${notificationMessage(notification.kind)} ${notification.kind === 'message' ? 'Open conversation.' : 'View profile.'}`);
 
   const avatar = document.createElement('span');
   avatar.className = 'notification-toast-avatar';
@@ -588,16 +577,12 @@ function showNotificationToast(notification, avatarUrl = '') {
   copy.className = 'notification-toast-copy';
   const brand = document.createElement('span');
   brand.className = 'notification-toast-brand';
-  brand.textContent = notification.kind === 'follow'
-    ? 'NEW FOLLOWER'
-    : notification.kind === 'like'
-      ? 'NEW LIKE'
-      : 'A LITTLE VYBE UPDATE';
+  brand.textContent = notification.kind === 'follow' ? 'NEW FOLLOWER' : 'A LITTLE VYBE UPDATE';
   const message = document.createElement('span');
   message.className = 'notification-toast-message';
   const actorName = document.createElement('strong');
   actorName.textContent = name;
-  message.append(actorName, document.createTextNode(notificationMessage(notification)));
+  message.append(actorName, document.createTextNode(notificationMessage(notification.kind)));
   copy.append(brand, message);
   if (username) {
     const handle = document.createElement('span');
@@ -607,11 +592,7 @@ function showNotificationToast(notification, avatarUrl = '') {
   }
   const profileAction = document.createElement('span');
   profileAction.className = 'notification-toast-profile-action';
-  profileAction.textContent = notification.kind === 'message'
-    ? 'Open conversation →'
-    : notification.kind === 'like'
-      ? 'View post →'
-      : 'View profile →';
+  profileAction.textContent = notification.kind === 'message' ? 'Open conversation →' : 'View profile →';
   copy.append(profileAction);
   link.append(avatar, copy);
 
