@@ -1,0 +1,32 @@
+.network-warning-dialog{
+  position:fixed;inset:0;max-height:calc(100% - 32px);margin:auto;
+  width:min(430px,calc(100% - 32px));max-width:none;padding:0;border:1.5px solid rgba(33,29,43,.15);
+  border-radius:24px;background:#fffaf3;color:#211d2b;box-shadow:0 24px 80px rgba(33,29,43,.28)
+}
+.network-warning-dialog::backdrop{background:rgba(24,20,32,.56);backdrop-filter:blur(4px)}
+.network-warning-card{padding:30px}
+.network-warning-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:15px;background:#fff0c5;color:#6a4bc4;font-size:1.8rem;font-weight:800}
+.network-warning-eyebrow{margin:18px 0 6px;color:#6047d0;font-size:.65rem;font-weight:800;letter-spacing:.14em}
+.network-warning-card h2{margin:0;font:800 1.5rem/1.15 "Bricolage Grotesque",sans-serif;letter-spacing:-.04em}
+.network-warning-card>p:last-of-type{margin:12px 0 0;color:#625b69;font-size:.9rem;line-height:1.55}
+.network-warning-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.network-warning-actions button{min-height:42px;padding:0 14px;border:1px solid #ded7e8;border-radius:11px;background:#fff;color:#4935a4;font:700 .8rem/1.2 "DM Sans",sans-serif;cursor:pointer}
+.network-warning-actions .network-warning-retry{border-color:#7357e8;background:#7357e8;color:#fff}
+.network-warning-actions button:hover{filter:brightness(.96)}
+.network-warning-actions button:disabled{opacity:.6;cursor:wait}
+.network-warning-actions button:focus-visible,.network-warning-toast-close:focus-visible{outline:3px solid rgba(115,87,232,.48);outline-offset:3px}
+.network-warning-toast-region{position:fixed;z-index:1100;inset:0;display:grid;place-items:center;padding:18px;pointer-events:none}
+.network-warning-toast{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 14px 14px 17px;border:1.5px solid #f0ca66;border-radius:15px;background:#fff8df;color:#433819;font-size:.84rem;font-weight:700;line-height:1.45;box-shadow:0 12px 34px rgba(33,29,43,.17);pointer-events:auto;animation:network-warning-toast-in .22s ease both}
+.network-warning-toast{width:min(390px,100%)}
+.network-warning-toast-close{width:30px;height:30px;display:grid;place-items:center;flex:none;border:0;border-radius:50%;background:transparent;color:#625b69;font-size:1.35rem;cursor:pointer}
+.network-warning-toast-close:hover{background:rgba(33,29,43,.08)}
+@keyframes network-warning-toast-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:480px){
+  .network-warning-card{padding:24px}
+  .network-warning-actions{flex-direction:column-reverse}
+  .network-warning-actions button{width:100%}
+  .network-warning-toast-region{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .network-warning-toast{animation:none}
+}

@@ -35,6 +35,7 @@ try {
 <script type="module" src="src/js/app/page-transition.js"></script>
 <script type="module" src="app-presence.js"></script>
 <script type="module" src="src/js/app/pwa-update.js"></script>
+<script type="module" src="src/js/app/network-status.js"></script>
 </head>
 <body class="vibe-body" data-page="vibe">
 <a class="skip" href="#feed-title">Skip to the feed</a>
@@ -53,7 +54,7 @@ try {
         <button class="reel-tab" type="button" data-feed-filter="all" aria-pressed="true" disabled>For you</button>
         <button class="reel-tab" type="button" data-feed-filter="anonymous" aria-pressed="false" disabled>Anonymous</button>
       </div>
-      <a class="reel-top-btn" href="people.html" aria-label="Meet people">
+      <a class="reel-top-btn reel-search" href="people.html" aria-label="Search people">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
       </a>
     </div>
@@ -78,7 +79,7 @@ try {
 </div>
 
 <nav class="reel-nav" aria-label="Main">
-  <a class="reel-nav-link" href="home.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20H4Z"/></svg><span>Vibe</span></a>
+  <a class="reel-nav-link" href="vibe.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20H4Z"/></svg><span>Vibe</span></a>
   <a class="reel-nav-link" href="community.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-5 4.5V16h-.5A2.5 2.5 0 0 1 4 13.5Z"/></svg><span>Community</span></a>
   <a class="reel-nav-link reel-nav-people" href="people.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg><span>Meet people</span></a>
   <div class="mobile-create-wrap"><div class="mobile-create-menu" id="mobile-create-menu" data-mobile-create-menu hidden><button type="button" data-create-kind="thought" disabled><span aria-hidden="true">✎</span> Write a post</button><button type="button" data-create-kind="image" disabled><span aria-hidden="true">▧</span> Add a photo</button><button type="button" data-create-kind="video" disabled><span aria-hidden="true">▶</span> Share a video</button></div><button class="mobile-create-button" type="button" data-mobile-create aria-label="Create a post" aria-expanded="false" aria-controls="mobile-create-menu" disabled><span aria-hidden="true">＋</span><span>Create</span></button></div>
