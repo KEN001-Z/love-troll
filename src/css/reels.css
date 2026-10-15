@@ -92,9 +92,9 @@ a.reel-author:hover{text-decoration:underline}
 @keyframes reel-buffer{to{background-position:-200% 0}}
 
 /* Top bar */
-.reel-top{position:absolute;top:0;left:0;right:0;z-index:7;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:calc(var(--safe-t) + 8px) 8px 26px;background:linear-gradient(rgba(14,10,22,.62),rgba(14,10,22,0));pointer-events:none}
+.reel-top{position:absolute;top:0;left:0;right:0;z-index:7;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;padding:calc(var(--safe-t) + 8px) max(12px,env(safe-area-inset-right,0px)) 26px max(12px,env(safe-area-inset-left,0px));background:linear-gradient(rgba(14,10,22,.62),rgba(14,10,22,0));pointer-events:none}
 .reel-top > *{pointer-events:auto}
-.reel-tabs{grid-column:2;display:flex;align-items:center;justify-self:center;gap:clamp(12px,4vw,22px);white-space:nowrap}
+.reel-tabs{grid-column:2;display:flex;align-items:center;justify-self:center;gap:24px;white-space:nowrap}
 .reel-tab{position:relative;min-height:44px;padding:0 2px;border:0;background:none;color:rgba(255,255,255,.62);font:800 1.05rem var(--display);letter-spacing:-.01em;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 .reel-tab[aria-pressed="true"]{color:#fff}
 .reel-tab[aria-pressed="true"]::after{content:"";position:absolute;left:50%;bottom:4px;width:24px;height:3px;margin-left:-12px;border-radius:3px;background:var(--yellow)}
