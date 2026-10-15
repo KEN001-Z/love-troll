@@ -1191,14 +1191,15 @@
 
 @media (max-width: 760px) {
   .people-body .people-main > .people-section .people-discovery-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
   .people-body .people-main > .people-section .people-discovery-grid .suggestion-card,
   .people-body .people-main > .people-section .people-discovery-grid .suggestion-card:hover {
-    min-height: 0;
+    min-height: 100%;
     flex-direction: column;
+    align-items: stretch;
     padding: 0;
   }
 
@@ -1208,16 +1209,25 @@
     min-width: 0;
     min-height: 0;
     flex-basis: auto;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 1.08;
     padding: 0;
     border-radius: 0;
     background: #f1edff;
     box-shadow: none;
   }
 
+  .people-body .people-main > .people-section .people-discovery-grid .suggestion-visual,
+  .people-body .people-main > .people-section .people-discovery-grid .suggestion-avatar-image {
+    border-radius: 0;
+  }
+
   .people-body .people-main > .people-section .people-discovery-grid .suggestion-body {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
+  }
+
+  .people-body .people-main > .people-section .people-discovery-grid .suggestion-heading h2 {
+    font-size: .9rem;
   }
 
   .people-body .people-main > .people-section .people-discovery-grid .suggestion-detail,
@@ -1232,88 +1242,23 @@
     display: -webkit-box;
   }
 
+  .people-body .people-main > .people-section .people-discovery-grid .suggestion-follow {
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: .68rem;
+  }
+
   .people-body .people-main > .people-section .people-discovery-grid .people-skeleton {
-    min-height: 360px;
+    min-height: 280px;
+    border-radius: 15px;
     background:
       linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .78) 45%, transparent 70%) 0 0 / 220% 100%,
-      linear-gradient(#ece8f3 0 70%, #fff 70%);
+      linear-gradient(#ece8f3 0 66%, #fff 66%);
   }
 }
 
-.people-body .people-main > .people-section .people-discovery-grid {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-card,
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-card:hover {
-  min-height: 88px;
-  flex-direction: row;
-  align-items: center;
-  gap: 0;
-  padding: 10px 14px;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-avatar-link {
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
-  min-height: 64px;
-  flex: 0 0 64px;
-  aspect-ratio: 1;
-  padding: 3px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #7357e8, #ff6b61 55%, #ffd166);
-  box-shadow: 0 2px 7px rgba(33, 29, 43, .16);
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-visual {
-  border: 2px solid #fff;
-  border-radius: 50%;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-avatar-image {
-  border-radius: 50%;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-body {
-  width: auto;
-  min-width: 0;
-  justify-content: center;
-  padding: 0 0 0 12px;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-heading {
-  align-items: center;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-follow {
-  min-height: 36px;
-  padding: 7px 14px;
-  border: 1.5px solid var(--ink);
-  border-radius: 999px;
-  background: #7357e8;
-  box-shadow: 2px 2px 0 var(--ink);
-  font-size: .74rem;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-follow[aria-pressed="true"] {
-  background: #f0edfa;
-  box-shadow: 2px 2px 0 rgba(33, 29, 43, .45);
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-detail,
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-location,
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-common-ground,
-.people-body .people-main > .people-section .people-discovery-grid .interest-tags,
-.people-body .people-main > .people-section .people-discovery-grid .suggestion-actions {
-  display: none;
-}
-
-.people-body .people-main > .people-section .people-discovery-grid .people-skeleton {
-  min-height: 88px;
-  border-radius: 18px;
-  background:
-    linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .78) 45%, transparent 70%) 0 0 / 220% 100%,
-    linear-gradient(90deg, #ece8f3 0 68px, #fff 68px);
+@media (max-width: 360px) {
+  .people-body .people-main > .people-section .people-discovery-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

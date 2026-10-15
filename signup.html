@@ -16,6 +16,19 @@
 <meta property="og:description" content="VYBE: sign up.">
 <meta property="og:type" content="website">
 <meta name="robots" content="noindex">
+<script>
+try {
+  const [destinationPath, startedAt] = (sessionStorage.getItem('vybe-transition-destination') || '').split('|');
+  const age = Date.now() - Number(startedAt);
+  const navigation = performance.getEntriesByType('navigation')[0];
+  if ((destinationPath === location.pathname && Number.isFinite(age) && age >= 0 && age < 10000) ||
+      navigation?.type === 'back_forward') {
+    document.documentElement.classList.add('vybe-transition-pending');
+  }
+} catch (error) {
+  console.warn('VYBE could not prepare the page transition.', error);
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='12' fill='%237357E8'/%3E%3Cpath d='M11 14l9 14 9-14' fill='none' stroke='%23FFD166' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -24,6 +24,7 @@ const interestLabels = {
   tech: 'Tech'
 };
 const PAGE_SIZE = 24;
+const DISCOVERY_BATCH_SIZE = 100;
 const DISCOVERY_REFRESH_INTERVAL = 60_000;
 
 let supabase;
@@ -33,6 +34,8 @@ let activeFilter = 'for-you';
 let searchTerm = '';
 let candidates = [];
 let discoveryLimited = false;
+let discoveryBuffer = [];
+let discoveryExhausted = false;
 let offset = 0;
 let hasMore = false;
 let loading = false;
@@ -72,6 +75,26 @@ function searchHaystack(profile) {
     ...(profile.interests || []),
     ...(profile.hobbies || [])
   ].filter(Boolean).join(' ').toLocaleLowerCase();
+}
+
+function profileCreatedAt(profile) {
+  const createdAt = Date.parse(profile.created_at || '');
+  return Number.isFinite(createdAt) ? createdAt : null;
+}
+
+function isRegisteredToday(profile, now = new Date()) {
+  const createdAt = profileCreatedAt(profile);
+  if (createdAt === null || createdAt > now.getTime()) return false;
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  return createdAt >= startOfToday.getTime();
+}
+
+function isEstablishedProfile(profile, now = new Date()) {
+  const createdAt = profileCreatedAt(profile);
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  return createdAt !== null && createdAt < startOfToday.getTime();
 }
 
 function renderSkeletons() {
@@ -115,10 +138,10 @@ function renderEmptyState() {
         ? 'Some followed profiles are private or no longer available to discover. Load more to check the rest.'
         : 'Follow someone you like and you’ll find them here when their profile is visible.'
       : activeFilter === 'new'
-        ? 'New VYBE members will show up here, ordered by when they joined.'
+        ? 'Profiles registered today will show up here.'
         : hasMore
-          ? 'Browse recent members, with shared interests highlighted when you have them in common.'
-          : 'Complete your profile and check back as more people join VYBE.';
+          ? 'Browse established VYBE members, with shared interests highlighted when you have them in common.'
+          : 'There are no established profiles to show yet. Check the New on VYBE tab for recent sign-ups.';
   empty.append(
     makeElement('p', 'home-eyebrow', searching ? 'SEARCH' : activeFilter === 'following' ? 'YOUR CIRCLE' : activeFilter === 'new' ? 'NEW ON VYBE' : 'YOUR PEOPLE, YOUR PACE'),
     makeElement('h2', '', title),
@@ -164,8 +187,7 @@ function renderCandidate(candidate) {
   visual.setAttribute('aria-hidden', 'true');
   const monogram = makeElement('span', 'suggestion-monogram', name.slice(0, 1).toLocaleUpperCase());
   visual.append(monogram);
-  const createdAt = Date.parse(profile.created_at || '');
-  if (Number.isFinite(createdAt) && Date.now() - createdAt < 14 * 24 * 60 * 60 * 1000) {
+  if (isRegisteredToday(profile)) {
     visual.append(makeElement('span', 'people-new-badge', 'NEW'));
   }
 
@@ -291,6 +313,11 @@ async function loadPeople({ reset = true, background = false } = {}) {
   peopleRetry.hidden = true;
   suggestionList.dataset.error = '';
   discoveryLimited = false;
+  if (reset) {
+    discoveryBuffer = [];
+    discoveryExhausted = false;
+    offset = 0;
+  }
   setMessage(peopleMessage, reset ? 'Finding people you might click with…' : 'Loading more people…');
   if (reset) {
     if (background) {
@@ -331,28 +358,42 @@ async function loadPeople({ reset = true, background = false } = {}) {
         });
       }
     } else {
-      let result = await supabase.rpc('discover_profiles', {
-        result_offset: pageOffset,
-        result_limit: PAGE_SIZE + 1,
-        p_matchmaking_only: false
-      });
-      if (result.error?.code === 'PGRST202') {
-        result = await supabase.rpc('discover_profiles', {
-          result_offset: pageOffset,
-          result_limit: PAGE_SIZE + 1
+      let discoveryOffset = pageOffset;
+      while (discoveryBuffer.length < PAGE_SIZE && !discoveryExhausted) {
+        const discoveryNow = new Date();
+        let result = await supabase.rpc('discover_profiles', {
+          result_offset: discoveryOffset,
+          result_limit: DISCOVERY_BATCH_SIZE,
+          p_matchmaking_only: false
         });
-        if (result.error) throw result.error;
-        usingLegacyDiscovery = true;
-      } else if (result.error) {
-        throw result.error;
+        if (result.error?.code === 'PGRST202') {
+          result = await supabase.rpc('discover_profiles', {
+            result_offset: discoveryOffset,
+            result_limit: DISCOVERY_BATCH_SIZE
+          });
+          if (result.error) throw result.error;
+          usingLegacyDiscovery = true;
+        } else if (result.error) {
+          throw result.error;
+        }
+        if (id !== requestId) return;
+
+        const page = result.data || [];
+        discoveryOffset += page.length;
+        if (page.length < DISCOVERY_BATCH_SIZE) discoveryExhausted = true;
+        const matchingProfiles = page.filter(profile => (
+          activeFilter === 'new'
+            ? isRegisteredToday(profile, discoveryNow)
+            : isEstablishedProfile(profile, discoveryNow)
+        ));
+        discoveryBuffer.push(...matchingProfiles.filter(profile => (
+          !searchTerm || searchHaystack(profile).includes(searchTerm)
+        )));
       }
-      if (id !== requestId) return;
-      const page = result.data || [];
-      pageHasMore = page.length > PAGE_SIZE;
-      profiles = page.slice(0, PAGE_SIZE);
-      if (searchTerm) {
-        profiles = profiles.filter(profile => searchHaystack(profile).includes(searchTerm));
-      }
+
+      profiles = discoveryBuffer.splice(0, PAGE_SIZE);
+      offset = discoveryOffset;
+      pageHasMore = discoveryBuffer.length > 0 || !discoveryExhausted;
     }
     if (id !== requestId) return;
 
@@ -397,7 +438,7 @@ async function loadPeople({ reset = true, background = false } = {}) {
       const seen = new Set(candidates.map(candidate => candidate.profile.id));
       candidates.push(...pageCandidates.filter(candidate => !seen.has(candidate.profile.id)));
     }
-    offset = pageOffset + PAGE_SIZE;
+    if (activeFilter === 'following') offset = pageOffset + PAGE_SIZE;
     hasMore = pageHasMore;
     discoveryLimited = usingLegacyDiscovery;
     if (discoveryLimited) {

@@ -1,3 +1,4 @@
+@import "./page-transition.css";
 /* VYBE Vibe feed: full-screen vertical reels. Standalone sheet; loaded only by vibe.html. */
 :root{
   --deep:#161220;--ink:#211D2B;--purple:#7357E8;--coral:#FF6B61;--yellow:#FFD166;--mint:#BDEBD7;--lav:#EAE4FF;
@@ -93,14 +94,14 @@ a.reel-author:hover{text-decoration:underline}
 /* Top bar */
 .reel-top{position:absolute;top:0;left:0;right:0;z-index:7;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:calc(var(--safe-t) + 8px) 8px 26px;background:linear-gradient(rgba(14,10,22,.62),rgba(14,10,22,0));pointer-events:none}
 .reel-top > *{pointer-events:auto}
-.reel-tabs{display:flex;gap:22px}
+.reel-tabs{grid-column:2;display:flex;align-items:center;justify-self:center;gap:clamp(12px,4vw,22px);white-space:nowrap}
 .reel-tab{position:relative;min-height:44px;padding:0 2px;border:0;background:none;color:rgba(255,255,255,.62);font:800 1.05rem var(--display);letter-spacing:-.01em;text-shadow:0 1px 8px rgba(0,0,0,.5)}
 .reel-tab[aria-pressed="true"]{color:#fff}
 .reel-tab[aria-pressed="true"]::after{content:"";position:absolute;left:50%;bottom:4px;width:24px;height:3px;margin-left:-12px;border-radius:3px;background:var(--yellow)}
 .reel-top-btn{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:50%;background:none}
 .reel-top-btn svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))}
-.reel-top .reel-top-btn:last-child{justify-self:end}
-.reel-sound{display:none}
+.reel-top .reel-top-btn:last-child{grid-column:3;justify-self:end}
+.reel-sound{grid-column:1;display:none}
 .reel-has-video .reel-sound{display:grid}
 .reel-sound .on{display:none}
 .reel-sound[aria-pressed="true"] .on{display:block}
