@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 import { subscribeToAppPresence } from '../../../app-presence.js';
+import { getFriendlyError } from '../errors/friendly-error.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const status = $('[data-messages-status]');
@@ -173,7 +174,7 @@ function validateMedia(file) {
   const isImage = file.type.startsWith('image/'); const isVideo = file.type.startsWith('video/');
   if (!isImage && !isVideo) throw new Error('Choose an image or video clip.');
   const limit = isImage ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
-  if (file.size > limit) throw new Error(`${isImage ? 'Images' : 'Clips'} must be ${isImage ? '10MB' : '50MB'} or smaller.`);
+  if (file.size > limit) throw new Error(`Please pick ${isImage ? 'an image under 10 MB' : 'a clip under 50 MB'}.`);
   return { file, kind: isImage ? 'image' : 'video' };
 }
 
@@ -505,7 +506,7 @@ async function loadMessages({ reset = false } = {}) {
     otherMemberLastReadAt = lastReadAt;
     renderMessages({ preserve: !reset });
     const { error: readError } = await supabase.rpc('mark_direct_conversation_read', { p_conversation_id: conversationId });
-    if (readError && currentConversation?.id === conversationId) setComposer(`Messages loaded, but read status could not be updated: ${readError.message}`, 'error');
+    if (readError && currentConversation?.id === conversationId) setComposer(`Messages loaded, but read status could not be updated: ${getFriendlyError(readError)}`, 'error');
     else if (currentConversation?.id === conversationId) {
       const row = conversationRows.find(item => item.conversation_id === conversationId);
       if (row) row.unread_count = 0;
@@ -513,7 +514,7 @@ async function loadMessages({ reset = false } = {}) {
       setComposer('');
     }
   } catch (error) {
-    if (currentConversation?.id === conversationId) setComposer(error.message || 'We couldn’t load this conversation.', 'error');
+    if (currentConversation?.id === conversationId) setComposer(getFriendlyError(error), 'error');
   } finally { loadingConversationIds.delete(conversationId); }
 }
 
@@ -558,11 +559,11 @@ async function subscribe(conversationId, version) {
   if (currentConversation?.id !== conversationId || version !== selectionVersion) return;
   channel = supabase.channel(`direct:conversation:${currentConversation.id}`, { config: { private: true } })
     .on('broadcast', { event: 'message_created' }, ({ payload }) => {
-      if (payload?.message_id) loadSingleMessage(payload.message_id).catch(error => setComposer(error.message || 'A new message could not be loaded.', 'error'));
+      if (payload?.message_id) loadSingleMessage(payload.message_id).catch(error => setComposer(getFriendlyError(error), 'error'));
     })
     .on('broadcast', { event: 'read_receipt' }, ({ payload }) => {
       if (payload?.conversation_id === conversationId && payload.read_by === currentConversation?.other_user_id) {
-        refreshReadReceipt(conversationId, version).catch(error => setComposer(error.message || 'Read status could not be refreshed.', 'error'));
+        refreshReadReceipt(conversationId, version).catch(error => setComposer(getFriendlyError(error), 'error'));
       }
     })
     .subscribe(state => { if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') setComposer('Private chat connection interrupted. We’ll catch up when it returns.', 'error'); });
@@ -592,7 +593,7 @@ async function selectConversation(row) {
   setPresenceIndicator(chatPresence, onlineUserIds.has(row.other_user_id));
   updateCurrentPresence();
   try { renderConversations(await getConversationRows()); }
-  catch (error) { setComposer(`The conversation list could not be refreshed: ${error.message || 'Please try again.'}`, 'error'); }
+  catch (error) { setComposer(`The conversation list could not be refreshed: ${getFriendlyError(error)}`, 'error'); }
   if (version !== selectionVersion) return;
   setComposer('Loading messages…');
   await loadMessages({ reset: true });
@@ -643,7 +644,7 @@ async function sendMessage(event) {
     if (error) {
       if (error.code && sendAttempt.mediaUploaded && sendAttempt.mediaPath) {
         const { error: cleanupError } = await supabase.storage.from('direct-media').remove([sendAttempt.mediaPath]);
-        if (cleanupError) throw new Error(`${error.message} The failed attachment could not be cleaned up: ${cleanupError.message}`);
+        if (cleanupError) throw new Error(`${getFriendlyError(error)} ${getFriendlyError(cleanupError)}`);
         sendAttempt.mediaUploaded = false;
         sendAttempt.mediaPath = null;
       }
@@ -655,12 +656,13 @@ async function sendMessage(event) {
       updateConversationPreview(data[0]);
       if (data[0].id) {
         try { await loadSingleMessage(data[0].id); }
-        catch (error) { setComposer(`Message sent, but the conversation could not be refreshed: ${error.message || 'Please try again.'}`, 'error'); }
+        catch (error) { setComposer(`Message sent, but the conversation could not be refreshed: ${getFriendlyError(error)}`, 'error'); }
       }
     }
   } catch (error) {
-    setComposer(error.message || 'Your message could not be sent.', 'error');
-    if (selectedMedia?.kind === 'image') imagePreviewStatus.textContent = error.message || 'Your photo could not be sent. Please try again.';
+    const safeError = getFriendlyError(error);
+    setComposer(safeError, 'error');
+    if (selectedMedia?.kind === 'image') imagePreviewStatus.textContent = safeError;
   } finally {
     sending = false;
     input.disabled = false;
@@ -700,7 +702,7 @@ async function initialize() {
     currentUser = auth.user;
     subscribeToAppPresence(
       renderPresence,
-      error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
+      error => setStatus(`Online status could not be updated: ${getFriendlyError(error)}`, 'error')
     );
     await getConversationRows();
     const params = new URLSearchParams(window.location.search); const target = params.get('user');
@@ -724,8 +726,10 @@ async function initialize() {
     if (selected) await selectConversation(selected);
     setStatus('');
   } catch (error) {
+    const safeError = getFriendlyError(error);
     const missingRpc = ['PGRST202', 'PGRST205'].includes(error?.code);
-    const outdatedMatchRestriction = /private messages are available after a mutual connection/i.test(error?.message || '');
+    const outdatedMatchRestriction = !error?.code &&
+      /private messages are available after a mutual connection/i.test(error?.message || '');
     conversationList.hidden = true;
     conversationState.dataset.state = 'error';
     conversationStateLabel.textContent = 'Chats could not be loaded.';
@@ -735,7 +739,7 @@ async function initialize() {
       ? 'Private messaging is not enabled in Supabase yet. Apply the direct-message migration from SUPABASE_SETUP.md and try again.'
       : outdatedMatchRestriction
         ? 'Supabase is still using the old mutual-connection restriction. Apply 20261013220214_allow_direct_messages_without_match.sql to the connected project, then refresh this page.'
-        : error.message || 'Private messages are not available yet.';
+        : safeError;
     setStatus(message, 'error');
   }
   conversationList.addEventListener('click', event => { const button = event.target.closest('[data-conversation-id]'); const row = conversationRows.find(item => item.conversation_id === button?.dataset.conversationId); if (row) selectConversation(row); });
@@ -876,7 +880,7 @@ async function initialize() {
       if (error.name !== 'AbortError') {
         imageViewerDownload.hidden = false;
         imageViewerCopy.hidden = false;
-        imageViewerStatus.textContent = `The image could not be shared: ${error.message || 'Please use a fallback.'}`;
+        imageViewerStatus.textContent = `The image could not be shared: ${getFriendlyError(error)}`;
       }
     }
   });
@@ -885,7 +889,7 @@ async function initialize() {
       await downloadViewerImage();
       imageViewerStatus.textContent = '';
     } catch (error) {
-      imageViewerStatus.textContent = error.message || 'The image could not be downloaded.';
+      imageViewerStatus.textContent = getFriendlyError(error);
     }
   });
   imageViewerCopy.addEventListener('click', async () => {
@@ -894,10 +898,10 @@ async function initialize() {
       await navigator.clipboard.writeText(imageViewerUrl);
       imageViewerStatus.textContent = 'Image link copied. This private link may expire.';
     } catch (error) {
-      imageViewerStatus.textContent = error.message || 'The image link could not be copied.';
+      imageViewerStatus.textContent = getFriendlyError(error);
     }
   });
-  logoutButton.addEventListener('click', async event => { event.currentTarget.disabled = true; try { const { warning } = await signOutCurrentSession(supabase); window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html'); } catch (error) { setStatus(error.message, 'error'); event.currentTarget.disabled = false; } });
+  logoutButton.addEventListener('click', async event => { event.currentTarget.disabled = true; try { const { warning } = await signOutCurrentSession(supabase); window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html'); } catch (error) { setStatus(getFriendlyError(error), 'error'); event.currentTarget.disabled = false; } });
 }
 
 window.addEventListener('pagehide', () => {

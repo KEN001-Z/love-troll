@@ -20,8 +20,6 @@ const autoPromptPaths = new Set([
 ]);
 const isIOS = /iPad|iPhone|iPod/.test(ua) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const isSafariIOS = isIOS && /Version\/[\d.]+.*Safari\//i.test(ua) &&
-  !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA\/|Brave|YaBrowser/i.test(ua) && !isInAppBrowser;
 const isAndroid = /Android/i.test(ua);
 const isStandalone = () => navigator.standalone === true ||
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -90,11 +88,11 @@ function browserGuidance() {
   if (isIOS) {
     return {
       title: 'Get VYBES on your home screen 📲',
-      intro: 'To add VYBES from this browser, open this page in Safari first.',
+      intro: 'On iPhone or iPad, add VYBES from your browser’s Share menu.',
       steps: [
-        'In Safari, tap the Share button at the bottom of the screen.',
-        'Scroll the share sheet and select Add to Home Screen.',
-        'Tap Add at the top to finish. VYBES will open in its own app window.'
+        'Open the Share menu. In Safari, tap the Share icon at the bottom; in other browsers, use their Share or menu button.',
+        'Scroll the options and tap Add to Home Screen. If it is not shown, open this page in Safari and try again.',
+        'Leave Open as Web App enabled if it is offered, then tap Add.'
       ],
       share: true
     };
@@ -268,14 +266,14 @@ function openDialog() {
   laterButton.hidden = false;
   if (deferredInstallPrompt) {
     showInstallInvite();
-  } else if (isSafariIOS) {
+  } else if (isIOS && !isInAppBrowser) {
     showGuide({
       title: 'Get VYBES on your home screen 📲',
-      intro: 'A few quick taps and VYBES will be right there with your other apps.',
+      intro: 'On iPhone or iPad, add VYBES from your browser’s Share menu.',
       steps: [
-        'Tap the Share button in Safari.',
-        'Select Add to Home Screen.',
-        'Tap Add at the top to finish installing VYBES.'
+        'Open the Share menu. In Safari, tap the Share icon at the bottom; in other browsers, use their Share or menu button.',
+        'Scroll the options and tap Add to Home Screen. If it is not shown, open this page in Safari and try again.',
+        'Leave Open as Web App enabled if it is offered, then tap Add.'
       ],
       share: true
     });

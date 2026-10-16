@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 import { subscribeToAppPresence } from '../../../app-presence.js';
+import { getFriendlyError } from '../errors/friendly-error.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -656,11 +657,12 @@ async function refreshNotifications({ showLoading = false, incomingId = null } =
       if (incoming) showNotificationToast(incoming, avatars.urlsByProfileId.get(incoming.actor_id));
     }
   } catch (error) {
+    const safeError = getFriendlyError(error);
     const missingNotificationsRpc = error.code === 'PGRST202' ||
-      /could not find the function public\.get_my_notifications/i.test(error.message || '');
+      (!error.code && /could not find the function public\.get_my_notifications/i.test(error.message || ''));
     setNotificationStatus(missingNotificationsRpc
       ? 'Notifications aren’t set up in this Supabase project yet. Apply the notifications migration, then refresh this page.'
-      : `We couldn’t load your notifications. ${error.message || 'Please try again.'}`,
+      : `We couldn’t load your notifications. ${safeError}`,
     true);
   }
 }
@@ -677,7 +679,7 @@ async function markAllNotificationsRead() {
     renderNotifications(notificationItems, notificationAvatarUrls);
     setNotificationStatus('All notifications marked as read.');
   } catch (error) {
-    setNotificationStatus(`We couldn’t mark your notifications as read. ${error.message || 'Please try again.'}`, true);
+    setNotificationStatus(`We couldn’t mark your notifications as read. ${getFriendlyError(error)}`, true);
   } finally {
     notificationActionsBusy = false;
     updateNotificationActions();
@@ -712,11 +714,12 @@ async function markNotificationRead(button) {
     renderNotifications(notificationItems, notificationAvatarUrls);
     setNotificationStatus('Notification marked as read.');
   } catch (error) {
+    const safeError = getFriendlyError(error);
     const missingMarkReadRpc = error.code === 'PGRST202' ||
-      /could not find the function public\.mark_my_notification_read/i.test(error.message || '');
+      (!error.code && /could not find the function public\.mark_my_notification_read/i.test(error.message || ''));
     setNotificationStatus(missingMarkReadRpc
       ? 'Per-notification read isn’t enabled in this Supabase project yet. Apply migration 20261015002128_mark_single_notification_read.sql, then refresh and try again.'
-      : `We couldn’t mark this notification as read. ${error.message || 'Please try again.'}`,
+      : `We couldn’t mark this notification as read. ${safeError}`,
     true);
   } finally {
     if (button.isConnected) button.textContent = 'Mark as read';
@@ -743,7 +746,7 @@ async function deleteSelectedNotifications() {
     );
     setNotificationStatus(`${deletedCount} notification${deletedCount === 1 ? '' : 's'} deleted.`);
   } catch (error) {
-    setNotificationStatus(`We couldn’t delete the selected notifications. ${error.message || 'Please try again.'}`, true);
+    setNotificationStatus(`We couldn’t delete the selected notifications. ${getFriendlyError(error)}`, true);
   } finally {
     notificationActionsBusy = false;
     updateNotificationActions();
@@ -764,7 +767,7 @@ async function deleteAllNotifications() {
     renderNotifications([], notificationAvatarUrls);
     setNotificationStatus(`All ${deletedCount} notification${deletedCount === 1 ? '' : 's'} deleted.`);
   } catch (error) {
-    setNotificationStatus(`We couldn’t delete your notifications. ${error.message || 'Please try again.'}`, true);
+    setNotificationStatus(`We couldn’t delete your notifications. ${getFriendlyError(error)}`, true);
   } finally {
     notificationActionsBusy = false;
     updateNotificationActions();
@@ -927,7 +930,7 @@ async function enablePushNotifications() {
     setPushStatus('You’ll get message and activity alerts on this device.');
   } catch (error) {
     pushToggle.disabled = false;
-    setPushStatus(`Notifications couldn’t be enabled. ${error.message || 'Please try again.'}`, true);
+    setPushStatus(`Notifications couldn’t be enabled. ${getFriendlyError(error)}`, true);
   }
 }
 
@@ -997,7 +1000,7 @@ async function initializePushNotifications() {
     setPushReminder(message);
   } catch (error) {
     pushToggle.disabled = false;
-    setPushStatus(`Push status couldn’t be checked. ${error.message || 'Try enabling notifications again.'}`, true);
+    setPushStatus(`Push status couldn’t be checked. ${getFriendlyError(error)}`, true);
     setPushReminder('Push is not fully set up on this device yet. Try again to finish enabling alerts.', {
       buttonText: 'Finish setup'
     });
@@ -1039,7 +1042,7 @@ async function togglePushNotifications() {
     }
     else await enablePushNotifications();
   } catch (error) {
-    setPushStatus(`We couldn’t update push on this device. ${error.message || 'Please try again.'}`, true);
+    setPushStatus(`We couldn’t update push on this device. ${getFriendlyError(error)}`, true);
   } finally {
     pushToggle.disabled = false;
     if (refreshPushState) await initializePushNotifications();
@@ -1141,16 +1144,17 @@ function setComposerStatus(message, state = '') {
 }
 
 function explainPostBackendError(error) {
+  const friendlyMessage = getFriendlyError(error);
   if (['PGRST202', 'PGRST205', '42P01', '42883'].includes(error?.code)) {
     return 'The post publishing and Feed update requires the latest VYBE posts migration. Apply the reviewed migration, then try again.';
   }
-  if (/bucket.*not found/i.test(error?.message || '')) {
-    return 'Photo and video posting needs the private post-media Storage bucket and its access policies. Your caption and selected media are kept; configure post-media in Supabase, then retry.';
+  if (!error?.code && /bucket.*not found/i.test(error?.message || '')) {
+    return 'Photo and video posting needs the private post-media Storage bucket and its access policies. Apply supabase/migrations/20261015013030_post_media_publishing.sql to your Supabase project, then retry; your caption and selected media are kept.';
   }
-  if (/media_(path|mime|kind).*schema cache|could not find the .* column of .*posts/i.test(error?.message || '')) {
+  if (!error?.code && /media_(path|mime|kind).*schema cache|could not find the .* column of .*posts/i.test(error?.message || '')) {
     return 'Photo and video posting needs the post-media database columns enabled in Supabase. Your caption and selected media are kept; apply the reviewed post-media setup, then retry.';
   }
-  return error?.message || 'Please try again.';
+  return friendlyMessage;
 }
 
 function updateFeedFilters(busy = Boolean(feedRequest)) {
@@ -1572,7 +1576,8 @@ function validatePostMedia(file) {
     throw new Error('Choose a supported JPG, PNG, WebP, GIF, MP4, WebM, or QuickTime file.');
   }
   const limit = isImage ? POST_IMAGE_MAX_BYTES : POST_VIDEO_MAX_BYTES;
-  if (file.size > limit) throw new Error(`${isImage ? 'Images' : 'Clips'} must be ${isImage ? POST_IMAGE_MAX_BYTES / (1024 * 1024) : POST_VIDEO_MAX_BYTES / (1024 * 1024)}MB or smaller.`);
+  const limitMb = isImage ? POST_IMAGE_MAX_BYTES / (1024 * 1024) : POST_VIDEO_MAX_BYTES / (1024 * 1024);
+  if (file.size > limit) throw new Error(`Please pick ${isImage ? 'an image' : 'a clip'} under ${limitMb} MB.`);
   return { file, kind: isImage ? 'image' : 'video' };
 }
 
@@ -2112,7 +2117,7 @@ async function followReelAuthor(button) {
       .forEach(el => el.classList.toggle('is-following', result.following));
     showReelToast(result.following ? 'Following' : 'Unfollowed');
   } catch (error) {
-    showReelToast(error.message || 'Couldn’t follow right now. Try again.');
+    showReelToast(getFriendlyError(error));
   } finally {
     button.disabled = false;
   }
@@ -2992,16 +2997,15 @@ async function submitPost(event) {
       if (feedState.textContent.startsWith(savedMessage)) setFeedState('');
     }, 4000);
   } catch (error) {
-    let cleanupMessage = '';
     if (!saved && !saveStateUnconfirmed && uploadedPaths.length) {
       try {
         const { error: cleanupError } = await supabase.storage.from('post-media').remove(uploadedPaths);
-        if (cleanupError) cleanupMessage = ` Uploaded files could not be cleaned up: ${cleanupError.message}`;
+        if (cleanupError) getFriendlyError(cleanupError);
       } catch (cleanupError) {
-        cleanupMessage = ` Uploaded files could not be cleaned up: ${cleanupError.message || 'please contact support.'}`;
+        getFriendlyError(cleanupError);
       }
     }
-    setComposerStatus(`We couldn’t confirm the post was published: ${explainPostBackendError(error)}${cleanupMessage}`, 'error');
+    setComposerStatus(getFriendlyError(error, 'post'), 'error');
     if (isImmersiveFeed) createRetryButton.hidden = false;
   } finally {
     composerBusy = false;
@@ -3067,13 +3071,13 @@ async function handlePostAction(event) {
       ? await supabase.storage.from('post-media').remove(mediaPaths)
       : { error: null };
     if (mediaCleanup.error) {
-      setFeedState(`Your post was deleted, but its media could not be cleaned up: ${mediaCleanup.error.message}`, 'error');
+      setFeedState(`Your post was deleted, but its media could not be cleaned up. ${getFriendlyError(mediaCleanup.error)}`, 'error');
       return;
     }
     setFeedState('Your post was deleted.', 'success');
   } catch (error) {
     button.disabled = false;
-    setFeedState(error.message || 'We couldn’t delete your post. Please try again.', 'error');
+    setFeedState(getFriendlyError(error), 'error');
   }
 }
 
@@ -3231,7 +3235,7 @@ async function signProfileAvatars(profiles) {
     let failedCount = 0;
     if (uniqueSignedPaths.length) {
       const { data, error } = await supabase.storage.from('profile-media').createSignedUrls(uniqueSignedPaths, 3600);
-      if (error) return { urlsByProfileId, warning: `We couldn’t load profile photos: ${error.message}` };
+      if (error) return { urlsByProfileId, warning: `We couldn’t load profile photos: ${getFriendlyError(error)}` };
       (data || []).forEach(result => {
         if (result.error || !result.signedUrl) {
           failedCount += 1;
@@ -3260,7 +3264,7 @@ async function signProfileAvatars(profiles) {
       warning: failedCount ? `${failedCount} profile photo${failedCount === 1 ? '' : 's'} couldn’t be loaded.` : ''
     };
   } catch (error) {
-    return { urlsByProfileId, warning: `We couldn’t load profile photos: ${error.message || 'Please try again.'}` };
+    return { urlsByProfileId, warning: `We couldn’t load profile photos: ${getFriendlyError(error)}` };
   }
 }
 
@@ -3514,7 +3518,7 @@ async function loadSuggestions({ reset = true } = {}) {
       suggestionList.dataset.error = 'true';
       peopleLoadMore.hidden = true;
       peopleRetry.hidden = false;
-      setSectionMessage(peopleMessage, `We couldn’t load people to meet: ${error.message || 'Please try again.'}`, 'error');
+      setSectionMessage(peopleMessage, `We couldn’t load people to meet: ${getFriendlyError(error)}`, 'error');
     }
     throw error;
   } finally {
@@ -3644,7 +3648,7 @@ async function handleCandidateAction(button) {
       );
       renderCandidates();
     } catch (error) {
-      setSectionMessage(peopleMessage, error.message || 'We couldn’t update your follow. Please try again.', 'error');
+      setSectionMessage(peopleMessage, getFriendlyError(error), 'error');
       controls.forEach(control => { control.disabled = false; });
       button.textContent = originalLabel || 'Follow';
     } finally {
@@ -3684,11 +3688,11 @@ async function handleCandidateAction(button) {
       try {
         await loadConnections();
       } catch (error) {
-        setSectionMessage(peopleMessage, `You’re matched! We couldn’t refresh your connections: ${error.message}`, 'error');
+        setSectionMessage(peopleMessage, `You’re matched! We couldn’t refresh your connections: ${getFriendlyError(error)}`, 'error');
       }
     }
   } catch (error) {
-    setSectionMessage(peopleMessage, error.message || 'We couldn’t send that interest. Please try again.', 'error');
+    setSectionMessage(peopleMessage, getFriendlyError(error), 'error');
     controls.forEach(control => { control.disabled = false; });
     button.textContent = originalLabel || 'Send interest';
   } finally {
@@ -3780,7 +3784,7 @@ async function initialize() {
     void initializePushNotifications();
     subscribeToAppPresence(
       renderAppPresence,
-      error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
+      error => setStatus(`Online status could not be updated: ${getFriendlyError(error)}`, 'error')
     );
 
     const { data: profile, error: profileError } = await supabase.from('profiles')
@@ -3852,7 +3856,7 @@ async function initialize() {
   } catch (error) {
     document.documentElement.classList.add('home-session-checked');
     window.dispatchEvent(new Event('vybe:home-session-checked'));
-    setStatus(error.message || 'We couldn’t load your VYBE home. Please refresh and try again.');
+    setStatus(getFriendlyError(error));
   }
 
   logoutButton?.addEventListener('click', async () => {
@@ -3861,7 +3865,7 @@ async function initialize() {
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
-      setStatus(`We couldn’t log you out: ${error.message || 'Please try again.'}`, 'error');
+      setStatus(`We couldn’t log you out: ${getFriendlyError(error)}`, 'error');
       logoutButton.disabled = false;
     }
   });

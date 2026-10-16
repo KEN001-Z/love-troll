@@ -291,8 +291,8 @@ begin
   end if;
 
   select item.value ->> 'kind' into media_type
-  from pg_catalog.jsonb_array_elements(media) with ordinality as item(value, ordinality)
-  order by item.ordinality
+  from pg_catalog.jsonb_array_elements(media) with ordinality as item(value, media_position)
+  order by item.media_position
   limit 1;
 
   insert into public.posts (
@@ -305,17 +305,17 @@ begin
     select item.value ->> 'path' as path,
            item.value ->> 'mime' as mime,
            item.value ->> 'kind' as kind
-    from pg_catalog.jsonb_array_elements(media) with ordinality as item(value, ordinality)
-    order by item.ordinality
+    from pg_catalog.jsonb_array_elements(media) with ordinality as item(value, media_position)
+    order by item.media_position
     limit 1
   ) as item on true
   returning * into created_post;
 
   insert into public.post_media_assets (post_id, position, media_path, media_mime, media_kind)
-  select created_post.id, item.ordinality::smallint, item.value ->> 'path',
+  select created_post.id, item.media_position::smallint, item.value ->> 'path',
          item.value ->> 'mime', item.value ->> 'kind'
-  from pg_catalog.jsonb_array_elements(media) with ordinality as item(value, ordinality)
-  where item.ordinalinality > 1;
+  from pg_catalog.jsonb_array_elements(media) with ordinality as item(value, media_position)
+  where item.media_position > 1;
 
   select coalesce(
     pg_catalog.jsonb_agg(
