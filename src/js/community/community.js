@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 import { subscribeToAppPresence } from '../../../app-presence.js';
+import { getFriendlyError } from '../errors/friendly-error.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -245,7 +246,7 @@ async function fetchMessages({ reset = false } = {}) {
     setComposerStatus('Messages are saved to Community chat.', 'success');
   } catch (error) {
     chatState.textContent = 'Unavailable';
-    setComposerStatus(`We couldn’t load this room: ${error.message || 'Please try again.'}`, 'error');
+    setComposerStatus(`We couldn’t load this room: ${getFriendlyError(error)}`, 'error');
     setStatus('Community chat is unavailable. Apply the Community migration, then reload.', 'error');
   } finally {
     loadingMessages = false;
@@ -329,7 +330,7 @@ async function sendMessage(event) {
     setComposerStatus('Message sent.', 'success');
     if (data?.id) await fetchSingleMessage(data.id);
   } catch (error) {
-    setComposerStatus(`Message failed: ${error.message || 'Please try again.'}`, 'error');
+    setComposerStatus(`Message failed: ${getFriendlyError(error)}`, 'error');
   } finally {
     sendingMessage = false;
     sendButton.disabled = false;
@@ -366,7 +367,7 @@ async function submitReport(event) {
     reportStatus.hidden = false;
     reportMessageId = null;
   } catch (error) {
-    reportStatus.textContent = error.message || 'We couldn’t submit that report. Please try again.';
+    reportStatus.textContent = getFriendlyError(error);
     reportStatus.dataset.state = 'error';
     reportStatus.hidden = false;
   } finally {
@@ -385,7 +386,7 @@ async function initialize() {
     currentUser = auth.user;
     subscribeToAppPresence(
       renderPresence,
-      error => setStatus(`Online status could not be updated: ${error.message || 'Please try again.'}`, 'error')
+      error => setStatus(`Online status could not be updated: ${getFriendlyError(error)}`, 'error')
     );
     const { data: rooms, error } = await supabase.from('community_rooms').select('slug,name,description,sort_order').order('sort_order');
     if (error) throw error;
@@ -420,7 +421,7 @@ async function initialize() {
     setStatus('', '');
   } catch (error) {
     roomList.innerHTML = '<p class="room-error">Community rooms could not load. Apply the Community migration and reload.</p>';
-    setStatus(`We couldn’t open Community: ${error.message || 'Please try again.'}`);
+    setStatus(`We couldn’t open Community: ${getFriendlyError(error)}`);
     setComposerStatus('Community chat is unavailable until its Supabase migration is applied.', 'error');
   }
 
@@ -450,7 +451,7 @@ async function initialize() {
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
-      setStatus(`We couldn’t log you out: ${error.message || 'Please try again.'}`);
+      setStatus(`We couldn’t log you out: ${getFriendlyError(error)}`);
       logoutButton.disabled = false;
     }
   });

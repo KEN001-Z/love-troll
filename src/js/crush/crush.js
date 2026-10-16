@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { getFriendlyError } from '../errors/friendly-error.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -146,7 +147,7 @@ async function showProfileAvatar() {
     }, { once: true });
     $('[data-preview-avatar]').replaceChildren(image);
   } catch (error) {
-    setStatus(`We couldn’t load your profile photo preview: ${error.message || 'Please try again.'}`, 'error');
+    setStatus(`We couldn’t load your profile photo preview: ${getFriendlyError(error)}`, 'error');
   }
 }
 
@@ -196,7 +197,7 @@ async function saveSetup() {
     flow.hidden = true;
     $('#crush-hub').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
   } catch (error) {
-    showStepError(`We couldn’t save your setup: ${error.message || 'Please try again.'}`);
+    showStepError(getFriendlyError(error));
   } finally {
     busy = false;
     saveButton.disabled = false;
@@ -251,12 +252,12 @@ async function initialize() {
         if (result.warning) setStatus('You’re signed out on this device, but VYBE could not confirm server sign-out.', 'error');
         window.location.replace('index.html');
       } catch (error) {
-        setStatus(`We couldn’t log you out: ${error.message || 'Please try again.'}`, 'error');
+        setStatus(`We couldn’t log you out: ${getFriendlyError(error)}`, 'error');
         button.disabled = false;
       }
     });
   } catch (error) {
-    setStatus(`VYBE Crush couldn’t load: ${error.message || 'Please try again.'}`, 'error');
+    setStatus(`VYBE Crush couldn’t load: ${getFriendlyError(error)}`, 'error');
     status.focus();
   }
 }

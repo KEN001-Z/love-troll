@@ -1,28 +1,9 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
 import { navigateWithTransition } from '../app/page-transition.js';
+import { getFriendlyError, isSessionExpiredError } from '../errors/friendly-error.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-
-function friendlyError(error) {
-  const message = error?.message || '';
-  if (error instanceof TypeError || /failed to fetch|networkerror|network request failed/i.test(message)) {
-    return 'VYBE could not reach the server. Check your internet connection and try again.';
-  }
-  if (error?.code === 'email_not_confirmed' || /email not confirmed/i.test(message)) {
-    return 'Confirm your email address from the link we sent you, then try logging in again.';
-  }
-  if (/unsupported provider|provider.*not enabled|provider.*disabled/i.test(message)) {
-    return 'Google sign-in is not enabled yet. Please use email for now or try again later.';
-  }
-  if (/invalid login credentials/i.test(message)) {
-    return 'That email or password does not match an account. Check your details or reset your password.';
-  }
-  if (/user already registered/i.test(message)) {
-    return 'An account with that email already exists. Log in or reset your password instead.';
-  }
-  return message || 'Something went wrong. Please try again.';
-}
 
 function setStatus(status, message, state = 'fail') {
   if (!status) return;
@@ -37,12 +18,40 @@ function setBusy(button, busy, label) {
   button.setAttribute('aria-busy', String(busy));
 }
 
+function startEmailCooldown(button, initialLabel, action) {
+  const expiresAt = Date.now() + 60_000;
+  let timer;
+  const update = () => {
+    const remaining = Math.ceil((expiresAt - Date.now()) / 1000);
+    if (remaining <= 0) {
+      window.clearInterval(timer);
+      button.disabled = false;
+      button.textContent = initialLabel;
+      return;
+    }
+    button.disabled = true;
+    button.textContent = `${action} in ${remaining}s`;
+  };
+  update();
+  timer = window.setInterval(update, 1000);
+}
+
+function onboardingLoginUrl() {
+  const login = new URL('login.html', window.location.href);
+  login.searchParams.set('session', 'expired');
+  login.searchParams.set('returnTo', 'onboarding.html');
+  return login.toString();
+}
+
 async function getAuthenticatedDestination(supabase, user) {
   const { data: profile, error } = await supabase.from('profiles')
     .select('onboarding_completed')
     .eq('id', user.id)
     .maybeSingle();
   if (error) throw error;
+  if (getRequestedReturnTo() === new URL('onboarding.html', window.location.href).pathname) {
+    return 'onboarding.html';
+  }
   if (!profile?.onboarding_completed) return 'onboarding.html';
   return getRequestedReturnTo() || 'home.html';
 }
@@ -57,7 +66,7 @@ function getRequestedReturnTo() {
   } catch {
     return '';
   }
-  const allowedPaths = ['messages.html', 'profile.html']
+  const allowedPaths = ['messages.html', 'profile.html', 'onboarding.html']
     .map(page => new URL(page, window.location.href).pathname);
   if (destination.origin !== window.location.origin ||
       !allowedPaths.includes(destination.pathname)) return '';
@@ -108,11 +117,11 @@ function validate(form) {
 
   if (name && name.value.trim().length < 2) errors.set(name, 'Enter a display name with at least 2 characters.');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.value.trim())) {
-    errors.set(email, 'Enter a valid email, like you@example.com.');
+    errors.set(email, 'That email doesn’t look right. Please check it.');
   }
   if (password && form.dataset.form === 'signup' &&
       !(password.value.length >= 8 && /[A-Za-z]/.test(password.value) && /\d/.test(password.value))) {
-    errors.set(password, 'Use at least 8 characters, with a letter and a number.');
+    errors.set(password, 'Your password is too weak. Use at least 8 characters.');
   } else if (password && !password.value) {
     errors.set(password, 'Enter your password.');
   }
@@ -227,7 +236,7 @@ function bindGoogleAuth(form, supabase) {
       });
       if (error) throw error;
     } catch (error) {
-      setStatus(status, friendlyError(error));
+      setStatus(status, getFriendlyError(error, form.dataset.form));
       status.focus();
     } finally {
       button.disabled = false;
@@ -243,18 +252,51 @@ async function submitAuthForm(form, supabase) {
   const status = $('.status', form);
   const button = $('[type="submit"]', form);
   const initialLabel = button.textContent;
+  const resendButton = $('[data-resend-confirmation]', form);
   let submitting = false;
+  let resending = false;
+  let cooldownUntil = 0;
+  let cooldownTimer;
+
+  const startSignupCooldown = () => {
+    cooldownUntil = Date.now() + 60_000;
+    window.clearInterval(cooldownTimer);
+    const update = () => {
+      const remaining = Math.ceil((cooldownUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        window.clearInterval(cooldownTimer);
+        cooldownUntil = 0;
+        button.disabled = false;
+        button.textContent = initialLabel;
+        if (resendButton) {
+          resendButton.disabled = false;
+          resendButton.textContent = 'Resend confirmation email';
+        }
+        return;
+      }
+      button.disabled = true;
+      button.textContent = `Try again in ${remaining}s`;
+      if (resendButton) {
+        resendButton.disabled = true;
+        resendButton.textContent = `Resend in ${remaining}s`;
+      }
+    };
+    update();
+    cooldownTimer = window.setInterval(update, 1000);
+  };
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || cooldownUntil > Date.now()) return;
     status.hidden = true;
     if (!validate(form)) return;
 
     submitting = true;
     setBusy(button, true, initialLabel);
+    let sentEmailRequest = false;
     try {
       if (kind === 'signup') {
+        sentEmailRequest = true;
         const { data, error } = await supabase.auth.signUp({
           email: $('[name="email"]', form).value.trim(),
           password: $('[name="password"]', form).value,
@@ -272,6 +314,7 @@ async function submitAuthForm(form, supabase) {
           return;
         }
         setStatus(status, 'Check your email to confirm your account. The confirmation link will take you to onboarding.', 'ok');
+        if (resendButton) resendButton.hidden = false;
       } else if (kind === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: $('[name="email"]', form).value.trim(),
@@ -285,6 +328,7 @@ async function submitAuthForm(form, supabase) {
         if (!user) throw new Error('Your session started, but we could not load your account. Please try again.');
         navigateWithTransition(await getAuthenticatedDestination(supabase, user), { replace: true });
       } else if (kind === 'reset') {
+        sentEmailRequest = true;
         const { error } = await supabase.auth.resetPasswordForEmail(
           $('[name="email"]', form).value.trim(),
           { redirectTo: new URL('reset.html', window.location.href).toString() }
@@ -294,11 +338,37 @@ async function submitAuthForm(form, supabase) {
         form.reset();
       }
     } catch (error) {
-      setStatus(status, friendlyError(error));
+      setStatus(status, getFriendlyError(error, kind));
       status.focus();
     } finally {
       setBusy(button, false, initialLabel);
       submitting = false;
+      if (sentEmailRequest) {
+        if (kind === 'signup') startSignupCooldown();
+        else startEmailCooldown(button, initialLabel, 'Resend');
+      }
+    }
+  });
+
+  resendButton?.addEventListener('click', async () => {
+    if (resending || cooldownUntil > Date.now()) return;
+    resending = true;
+    resendButton.disabled = true;
+    status.hidden = true;
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: $('[name="email"]', form).value.trim(),
+        options: { emailRedirectTo: new URL('onboarding.html', window.location.href).toString() }
+      });
+      if (error) throw error;
+      setStatus(status, 'Confirmation email sent. Check your inbox and spam folder.', 'ok');
+    } catch (error) {
+      setStatus(status, getFriendlyError(error, 'resend'));
+      status.focus();
+    } finally {
+      resending = false;
+      startSignupCooldown();
     }
   });
 }
@@ -315,7 +385,7 @@ async function submitNewPassword(form, supabase) {
     const confirm = $('[name="confirm-password"]', form);
     status.hidden = true;
     if (!(password.value.length >= 8 && /[A-Za-z]/.test(password.value) && /\d/.test(password.value))) {
-      setStatus(status, 'Use at least 8 characters, with a letter and a number.');
+      setStatus(status, 'Your password is too weak. Use at least 8 characters.');
       password.focus();
       return;
     }
@@ -333,7 +403,7 @@ async function submitNewPassword(form, supabase) {
       setStatus(status, 'Password updated. You can now log in with your new password.', 'ok');
       form.reset();
     } catch (error) {
-      setStatus(status, friendlyError(error));
+      setStatus(status, getFriendlyError(error, 'password-reset'));
       status.focus();
     } finally {
       setBusy(button, false, initialLabel);
@@ -373,7 +443,7 @@ async function initializeAuthForms(supabase) {
         }
         navigateWithTransition(await getAuthenticatedDestination(supabase, user), { replace: true });
       } catch (error) {
-        setStatus(returningStatus, friendlyError(error));
+        setStatus(returningStatus, getFriendlyError(error));
         returningStatus.focus();
         continueButton.disabled = false;
         continueButton.textContent = initialLabel;
@@ -405,13 +475,13 @@ async function initializeAuthForms(supabase) {
       $('[data-account-initials]', returningAccount).textContent = initials;
 
       if (profileError) {
-        setStatus(returningStatus, `We couldn't load your full profile: ${friendlyError(profileError)}`, 'pending');
+        setStatus(returningStatus, `We couldn't load your full profile: ${getFriendlyError(profileError)}`, 'pending');
       } else if (profile?.avatar_path) {
         const { data: avatar, error: avatarError } = await supabase.storage
           .from('profile-media')
           .createSignedUrl(profile.avatar_path, 3600);
         if (avatarError) {
-          setStatus(returningStatus, `We couldn't load your profile photo: ${friendlyError(avatarError)}`, 'pending');
+          setStatus(returningStatus, `We couldn't load your profile photo: ${getFriendlyError(avatarError)}`, 'pending');
         } else if (avatar?.signedUrl) {
           const image = $('[data-account-avatar]', returningAccount);
           image.src = avatar.signedUrl;
@@ -482,18 +552,28 @@ async function initializeOnboarding(supabase) {
     navigationControls.forEach(control => { control.disabled = pending; });
   };
 
-  const { user, recovered } = await getAuthenticatedUser(supabase);
+  const { user } = await getAuthenticatedUser(supabase);
   if (!user) {
-    window.location.replace(recovered ? 'login.html?session=expired' : 'login.html');
+    window.location.replace(onboardingLoginUrl());
     return;
   }
   const supabaseUser = user;
-  const { data: profile, error: profileError } = await supabase.from('profiles')
-    .select('display_name, relationship_status, food_personality, looking_for, vibe, interests, matchmaking_enabled, onboarding_step, onboarding_completed')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (profileError) throw profileError;
-  if (!profile) await ensureUserProfile(supabase, user);
+  let profile;
+  try {
+    const result = await supabase.from('profiles')
+      .select('display_name, relationship_status, food_personality, looking_for, vibe, interests, matchmaking_enabled, onboarding_step, onboarding_completed')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    profile = result.data;
+    if (!profile) await ensureUserProfile(supabase, user);
+  } catch (error) {
+    if (isSessionExpiredError(error)) {
+      window.location.replace(onboardingLoginUrl());
+      return;
+    }
+    throw error;
+  }
   if (profile) {
     answers.relationship_status = profile.relationship_status;
     answers.food_personality = profile.food_personality;
@@ -501,6 +581,21 @@ async function initializeOnboarding(supabase) {
     answers.vibe = profile.vibe || [];
     answers.interests = profile.interests || [];
     answers.onboarding_step = profile.onboarding_step || 0;
+  }
+  const draftKey = 'vybe-onboarding-draft';
+  try {
+    const draft = JSON.parse(window.sessionStorage.getItem(draftKey) || 'null');
+    if (draft && typeof draft === 'object') {
+      for (const key of ['relationship_status', 'food_personality', 'looking_for']) {
+        if (typeof draft[key] === 'string' || draft[key] === null) answers[key] = draft[key];
+      }
+      for (const key of ['vibe', 'interests']) {
+        if (Array.isArray(draft[key])) answers[key] = draft[key];
+      }
+      if (Number.isInteger(draft.onboarding_step)) answers.onboarding_step = draft.onboarding_step;
+    }
+  } catch (error) {
+    console.warn('VYBE could not restore the onboarding draft.', error);
   }
   currentStep = Math.min(answers.onboarding_step, steps.length - 1);
 
@@ -581,13 +676,27 @@ async function initializeOnboarding(supabase) {
     writeQueue = write.catch(() => {});
 
     return write.then(() => {
+      try {
+        window.sessionStorage.removeItem(draftKey);
+      } catch (error) {
+        console.warn('VYBE could not clear the saved onboarding draft.', error);
+      }
       status.hidden = true;
       if (complete) {
         window.location.replace('home.html');
       }
       return true;
     }).catch(error => {
-      setStatus(status, `We couldn't save your answers: ${friendlyError(error)}`);
+      if (isSessionExpiredError(error)) {
+        try {
+          window.sessionStorage.setItem(draftKey, JSON.stringify(answers));
+        } catch (storageError) {
+          console.warn('VYBE could not preserve the onboarding draft for sign-in.', storageError);
+        }
+        window.location.replace(onboardingLoginUrl());
+        return false;
+      }
+      setStatus(status, getFriendlyError(error, 'onboarding'));
       status.focus();
       return false;
     });
@@ -639,7 +748,7 @@ async function initializeOnboarding(supabase) {
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
-      setStatus(status, `We couldn't log you out: ${friendlyError(error)}`);
+      setStatus(status, `We couldn't log you out: ${getFriendlyError(error)}`);
       status.focus();
       button.disabled = false;
     }
@@ -694,7 +803,7 @@ async function initializeLanding(supabase) {
         const { warning } = await signOutCurrentSession(supabase);
         if (warning) setStatus(status, 'You’re signed out on this device, but Supabase could not confirm that the session was revoked. Please try again when you have a connection.');
       } catch (logoutError) {
-        setStatus(status, `We couldn't log you out: ${friendlyError(logoutError)}`);
+        setStatus(status, `We couldn't log you out: ${getFriendlyError(logoutError)}`);
         status.hidden = false;
         logout.disabled = false;
       }
@@ -718,7 +827,7 @@ async function initialize() {
       $('[data-login-loading]').hidden = true;
     }
     if (status) {
-      setStatus(status, friendlyError(error));
+      setStatus(status, getFriendlyError(error));
       status.focus();
     }
   }

@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { getFriendlyError } from '../errors/friendly-error.js';
 import { subscribeToAppPresence } from '../../../app-presence.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -194,10 +195,6 @@ function setMessage(element, message, state = '') {
   element.hidden = !message;
 }
 
-function friendlyError(error) {
-  return error?.message || 'Something went wrong. Please try again.';
-}
-
 function closeUniversityOptions() {
   universityOptions.hidden = true;
   universityInput.setAttribute('aria-expanded', 'false');
@@ -323,7 +320,7 @@ async function renderPhotos() {
       image.src = await signedAsset(avatarSource);
       avatar.append(image);
     } catch (error) {
-      failures.push(error.message);
+      failures.push(getFriendlyError(error));
     }
   }
   if (coverSource) {
@@ -331,7 +328,7 @@ async function renderPhotos() {
       cover.style.backgroundImage = `url("${await signedAsset(coverSource)}")`;
       cover.classList.add('has-image');
     } catch (error) {
-      failures.push(error.message);
+      failures.push(getFriendlyError(error));
     }
   }
   if (failures.length) setMessage($('[data-action-feedback]'), failures.join(' '), 'error');
@@ -630,7 +627,7 @@ function validateImage(file, label) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     throw new Error(`${label} must be a JPG, PNG, or WebP image.`);
   }
-  if (file.size > 5 * 1024 * 1024) throw new Error(`${label} must be 5 MB or smaller.`);
+  if (file.size > 5 * 1024 * 1024) throw new Error(`Please pick a ${label.toLowerCase()} under 5 MB.`);
 }
 
 async function uploadProfileImage(file, folder, progress) {
@@ -729,17 +726,17 @@ async function saveProfile(event) {
   } catch (error) {
     if (profileSaved) {
       editDialog.close();
-      setMessage($('[data-action-feedback]'), `Your changes were saved, but the profile could not refresh: ${friendlyError(error)}`, 'error');
+      setMessage($('[data-action-feedback]'), `Your changes were saved, but the profile could not refresh: ${getFriendlyError(error)}`, 'error');
       return;
     }
     if (!profileSaved && createdPaths.length) {
       const { error: cleanupError } = await supabase.storage.from('profile-media').remove(createdPaths);
       if (cleanupError) {
-        setMessage(feedback, `${friendlyError(error)} The new photo could not be cleaned up: ${cleanupError.message}`, 'error');
+        setMessage(feedback, `${getFriendlyError(error)} The new photo could not be cleaned up: ${getFriendlyError(cleanupError)}`, 'error');
         return;
       }
     }
-    setMessage(feedback, friendlyError(error), 'error');
+    setMessage(feedback, getFriendlyError(error), 'error');
   } finally {
     button.disabled = false;
     button.textContent = oldLabel;
@@ -942,7 +939,7 @@ async function loadProfilePosts({ reset = false } = {}) {
       setProfilePostState(
         ['PGRST202', 'PGRST205', '42883'].includes(error?.code)
           ? 'Profile posts need the latest reviewed Feed migration. Apply it, then retry.'
-          : `Couldn’t load posts. ${friendlyError(error)}`,
+          : `Couldn’t load posts. ${getFriendlyError(error)}`,
         'error'
       );
       profilePostRetry.hidden = false;
@@ -961,7 +958,7 @@ function refreshProfilePosts() {
   if (profilePostRefreshing || document.visibilityState !== 'visible') return;
   profilePostRefreshing = true;
   Promise.all([loadProfile(), loadProfilePosts({ reset: true })])
-    .catch(error => setProfilePostState(`Couldn’t refresh profile posts. ${friendlyError(error)}`, 'error'))
+    .catch(error => setProfilePostState(`Couldn’t refresh profile posts. ${getFriendlyError(error)}`, 'error'))
     .finally(() => { profilePostRefreshing = false; });
 }
 
@@ -1043,7 +1040,7 @@ async function toggleFollow() {
     setMessage($('[data-action-feedback]'), profile.is_following ? 'You are now following this profile.' : 'You unfollowed this profile.', 'success');
   } catch (error) {
     followButton.textContent = wasFollowing ? 'Following' : 'Follow';
-    setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+    setMessage($('[data-action-feedback]'), getFriendlyError(error), 'error');
   } finally {
     changingFollow = false;
     followButton.disabled = false;
@@ -1073,7 +1070,7 @@ async function expressInterest(button) {
   } catch (error) {
     button.disabled = false;
     button.textContent = 'Send interest';
-    setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+    setMessage($('[data-action-feedback]'), getFriendlyError(error), 'error');
   } finally {
     sendingInterest = false;
   }
@@ -1100,7 +1097,7 @@ async function blockProfile() {
     status.hidden = false;
     unblockProfileButton.hidden = false;
   } catch (error) {
-    setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+    setMessage($('[data-action-feedback]'), getFriendlyError(error), 'error');
   } finally {
     changingProfileBlock = false;
     blockProfileButton.disabled = false;
@@ -1121,7 +1118,7 @@ async function unblockProfile() {
     window.location.reload();
   } catch (error) {
     status.dataset.state = 'error';
-    status.textContent = friendlyError(error);
+    status.textContent = getFriendlyError(error);
     status.hidden = false;
   } finally {
     changingProfileBlock = false;
@@ -1151,7 +1148,7 @@ async function submitProfileReport(event) {
     reportForm.reset();
     setMessage($('[data-action-feedback]'), 'Thanks — your report was submitted privately.', 'success');
   } catch (error) {
-    setMessage(reportStatus, friendlyError(error), 'error');
+    setMessage(reportStatus, getFriendlyError(error), 'error');
   } finally {
     submittingProfileReport = false;
     submitButton.disabled = false;
@@ -1170,7 +1167,7 @@ async function shareProfile() {
       throw new Error('Sharing isn’t supported in this browser.');
     }
   } catch (error) {
-    if (error?.name !== 'AbortError') setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+    if (error?.name !== 'AbortError') setMessage($('[data-action-feedback]'), getFriendlyError(error), 'error');
   }
 }
 
@@ -1199,7 +1196,7 @@ async function initialize() {
     targetId = new URLSearchParams(window.location.search).get('id') || user.id;
     subscribeToAppPresence(
       renderProfilePresence,
-      error => setMessage($('[data-action-feedback]'), `Online status could not be updated: ${friendlyError(error)}`, 'error')
+      error => setMessage($('[data-action-feedback]'), `Online status could not be updated: ${getFriendlyError(error)}`, 'error')
     );
 
     const profileAvailable = await loadProfile();
@@ -1216,7 +1213,7 @@ async function initialize() {
         openEditDialog('university');
       }
       loadInterestState().catch(error => {
-        setMessage($('[data-action-feedback]'), friendlyError(error), 'error');
+        setMessage($('[data-action-feedback]'), getFriendlyError(error), 'error');
       });
     }
     window.dispatchEvent(new Event('vybe:page-ready'));
@@ -1224,7 +1221,7 @@ async function initialize() {
     status.dataset.state = 'error';
     status.textContent = ['PGRST202', 'PGRST204', 'PGRST205', '42703'].includes(error?.code)
       ? 'Student profiles aren’t enabled yet. Apply the discovery and student-profile Supabase migrations, then reload.'
-      : friendlyError(error);
+      : getFriendlyError(error);
     status.hidden = false;
     window.dispatchEvent(new Event('vybe:page-ready'));
   }
@@ -1303,7 +1300,7 @@ async function initialize() {
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
-      setMessage(status, `We couldn’t log you out: ${friendlyError(error)}`, 'error');
+      setMessage(status, `We couldn’t log you out: ${getFriendlyError(error)}`, 'error');
       button.disabled = false;
     }
   });

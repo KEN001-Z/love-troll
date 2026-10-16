@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, getSupabaseClient, signOutCurrentSession } from '../supabase/client.js';
+import { getFriendlyError } from '../errors/friendly-error.js';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -286,7 +287,7 @@ async function signAvatars(profiles) {
   const storagePaths = paths.filter(path => !direct.includes(path));
   if (!storagePaths.length) return { urls, warning: '' };
   const { data, error } = await supabase.storage.from('profile-media').createSignedUrls(storagePaths, 3600);
-  if (error) return { urls, warning: `We couldn’t load profile photos: ${error.message}` };
+  if (error) return { urls, warning: `We couldn’t load profile photos: ${getFriendlyError(error)}` };
 
   let failedCount = 0;
   const urlsByPath = new Map();
@@ -453,6 +454,7 @@ async function loadPeople({ reset = true, background = false } = {}) {
     suggestionList.dataset.error = '';
   } catch (error) {
     if (id === requestId) {
+      const safeError = getFriendlyError(error);
       if (!background) suggestionList.replaceChildren();
       suggestionList.setAttribute('aria-busy', 'false');
       suggestionList.dataset.error = 'true';
@@ -460,7 +462,7 @@ async function loadPeople({ reset = true, background = false } = {}) {
       peopleRetry.hidden = false;
       const errorMessage = error?.code === 'PGRST202'
         ? 'The VYBE discovery function is not installed yet. Apply 20261014014300_split_profile_discovery_by_matchmaking.sql in Supabase, then try again.'
-        : error.message || 'Please try again.';
+        : safeError;
       setMessage(peopleMessage, `We couldn’t load people to meet: ${errorMessage}`, 'error');
     }
   } finally {
@@ -528,7 +530,7 @@ async function toggleFollow(button) {
     button.disabled = false;
     button.textContent = wasFollowing ? 'Unfollow' : 'Follow';
     button.setAttribute('aria-label', `${wasFollowing ? 'Unfollow' : 'Follow'} ${profileName(candidate.profile)}`);
-    setMessage(peopleMessage, error.message || 'We couldn’t update your follow. Please try again.', 'error');
+    setMessage(peopleMessage, getFriendlyError(error), 'error');
   } finally {
     pendingFollows.delete(candidate.profile.id);
   }
@@ -560,7 +562,7 @@ async function initialize() {
     await loadPeople();
     startDiscoveryRefresh();
   } catch (error) {
-    setPageStatus(error.message || 'We couldn’t load Meet People. Please refresh and try again.', 'error');
+    setPageStatus(getFriendlyError(error), 'error');
     peopleRetry.hidden = false;
   }
 
@@ -620,7 +622,7 @@ async function initialize() {
       const { warning } = await signOutCurrentSession(supabase);
       window.location.assign(warning ? 'index.html?logout=unconfirmed' : 'index.html');
     } catch (error) {
-      setPageStatus(`We couldn’t log you out: ${error.message || 'Please try again.'}`, 'error');
+      setPageStatus(`We couldn’t log you out: ${getFriendlyError(error)}`, 'error');
       button.disabled = false;
     }
   });
